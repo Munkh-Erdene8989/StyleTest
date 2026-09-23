@@ -49,36 +49,36 @@ export function CheckoutPanel({ initial }: { initial: OrderView }) {
   const qr = order.qrImage ? (order.qrImage.startsWith("data:") ? order.qrImage : `data:image/png;base64,${order.qrImage}`) : "";
 
   return (
-    <section className="grid gap-4">
-      <p>
+    <section className="stack-form">
+      <p className="price">
         {formatMnt(order.amount)} {order.currency}
       </p>
       <p role="status">Төлөв: {statusLabel(order.paymentStatus)}</p>
-      {qr ? <img src={qr} alt="QPay QR" className="w-56 rounded-xl border border-stone-200" /> : null}
+      {qr ? <img src={qr} alt="QPay QR" className="qr" /> : null}
       <ul className="grid gap-2">
         {order.urls.map((url) => (
           <li key={url.link}>
-            <a className="underline" href={url.link}>
+            <a className="inline-link" href={url.link}>
               {url.name}
             </a>
           </li>
         ))}
       </ul>
-      <button type="button" onClick={() => void check()} className="min-h-12 rounded-xl bg-teal-800 text-white">
+      <button type="button" onClick={() => void check()} className="btn">
         Төлбөр шалгах
       </button>
       {order.simulate ? (
-        <button type="button" onClick={() => void simulate()} className="min-h-12 rounded-xl border border-stone-300">
+        <button type="button" onClick={() => void simulate()} className="btn-quiet">
           Туршилтын төлбөр баталгаажуулах
         </button>
       ) : null}
       {order.paymentStatus === "paid" && order.reportId ? (
-        <Link className="underline" href={`/reports/${order.reportId}`}>
+        <Link className="inline-link" href={`/reports/${order.reportId}`}>
           Тайлан руу орох
         </Link>
       ) : null}
       {message ? <p>{message}</p> : null}
-      <p className="text-stone-600">
+      <p className="note">
         Картын буцаалт QPay-ээр, банкны QR гар аргаар шийдэгдэнэ. Одоогийн суваг автомат буцаалттай эсэх:{" "}
         {order.cardRefundAvailable ? "тийм." : "үгүй."}
       </p>

@@ -11,7 +11,7 @@ export default async function StylePage() {
   if (user.ageBand !== "adult") {
     return (
       <main>
-        <h1 className="text-2xl font-semibold">Стайл</h1>
+        <h1>Стайл</h1>
         <p>Зурагтай стайлын үйлчилгээ 18-аас дээш насныханд нээлттэй.</p>
       </main>
     );
@@ -22,8 +22,8 @@ export default async function StylePage() {
   const session = existing ?? (await createStyleSession(user));
   const personality = sessions.find((item) => item.kind === "personality" && item.status === "completed");
   return (
-    <main className="grid gap-4">
-      <h1 className="text-2xl font-semibold">Стайлын зөвлөмж</h1>
+    <main>
+      <h1>Стайлын зөвлөмж</h1>
       <p>Дуртай хувцас гол шалгуур. Зургаас зан төлөв, сэтгэцийн шинж тогтоохгүй. Үнэ, брэнд, дэлгүүр санал болгохгүй.</p>
       <StyleWizard
         sessionId={session.id}

@@ -12,7 +12,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ order
   if (!order || order.ownerUid !== user.id) notFound();
   return (
     <main className="grid gap-4">
-      <h1 className="text-2xl font-semibold">Төлбөр</h1>
+      <h1>Төлбөр</h1>
       <CheckoutPanel initial={publicOrder(order)} />
     </main>
   );

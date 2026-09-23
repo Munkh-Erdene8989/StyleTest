@@ -42,7 +42,7 @@ export default function FinishLoginPage() {
 
   return (
     <main>
-      <h1 className="text-2xl font-semibold">Нэвтрэлт</h1>
+      <h1>Нэвтрэлт</h1>
       <p role="status">{message}</p>
     </main>
   );

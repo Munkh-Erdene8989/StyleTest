@@ -7,18 +7,19 @@ export function ShareCard({ title, appName }: { title: string; appName: string }
     canvas.height = 1080;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "#f6f4f1";
+    ctx.fillStyle = "#f4f3ef";
     ctx.fillRect(0, 0, 1080, 1080);
-    ctx.fillStyle = "#0f766e";
-    ctx.fillRect(80, 80, 160, 12);
-    ctx.fillStyle = "#1c1917";
-    ctx.font = "48px sans-serif";
-    ctx.fillText(appName, 80, 180);
-    ctx.font = "72px sans-serif";
-    wrap(ctx, title, 80, 320, 900, 88);
-    ctx.font = "32px sans-serif";
-    ctx.fillStyle = "#57534e";
-    ctx.fillText("Хөгжилтэй тест. Шинжлэх ухааны үнэлгээ биш.", 80, 860);
+    ctx.fillStyle = "#6e2c38";
+    ctx.fillRect(0, 0, 28, 1080);
+    ctx.fillStyle = "#141414";
+    const family = getComputedStyle(document.body).fontFamily || "sans-serif";
+    ctx.font = `500 42px ${family}`;
+    ctx.fillText(appName, 96, 180);
+    ctx.font = `600 78px ${family}`;
+    wrap(ctx, title, 96, 340, 900, 96);
+    ctx.font = `400 32px ${family}`;
+    ctx.fillStyle = "#5c5852";
+    ctx.fillText("Хөгжилтэй тест. Шинжлэх ухааны үнэлгээ биш.", 96, 960);
     const link = document.createElement("a");
     link.href = canvas.toDataURL("image/png");
     link.download = "result.png";
@@ -26,7 +27,7 @@ export function ShareCard({ title, appName }: { title: string; appName: string }
   }
 
   return (
-    <button type="button" onClick={() => void download()} className="min-h-12 rounded-xl border border-stone-300 px-4">
+    <button type="button" onClick={() => void download()} className="btn-quiet">
       Хуваалцах зураг татах
     </button>
   );

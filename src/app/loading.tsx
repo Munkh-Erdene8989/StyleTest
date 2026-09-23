@@ -1,3 +1,3 @@
 export default function Loading() {
-  return <p role="status">Ачаалж байна…</p>;
+  return <p className="row-meta" role="status">Ачаалж байна…</p>;
 }

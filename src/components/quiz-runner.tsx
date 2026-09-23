@@ -57,17 +57,17 @@ export function QuizRunner({
   if (!question) return <p>Асуулт алга.</p>;
 
   return (
-    <section className="grid gap-4">
-      <p role="status">
+    <section className="stack-form">
+      <p className="row-meta" role="status">
         {progress} / {questions.length}
       </p>
-      <div className="h-2 rounded-full bg-stone-200" aria-hidden="true">
-        <div className="h-2 rounded-full bg-teal-800" style={{ width: `${(progress / questions.length) * 100}%` }} />
+      <div className="meter" aria-hidden="true">
+        <span style={{ width: `${(progress / questions.length) * 100}%` }} />
       </div>
-      <fieldset className="grid gap-3">
-        <legend className="text-xl font-semibold leading-snug">{question.text}</legend>
+      <fieldset>
+        <legend className="question">{question.text}</legend>
         {question.options.map((option) => (
-          <label key={option.id} className="flex min-h-12 items-center gap-3 rounded-xl border border-stone-200 bg-white px-3">
+          <label key={option.id} className="choice">
             <input
               type="radio"
               name={question.id}
@@ -79,23 +79,18 @@ export function QuizRunner({
           </label>
         ))}
       </fieldset>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className="min-h-12 flex-1 rounded-xl border border-stone-300"
-          onClick={() => setIndex(Math.max(0, index - 1))}
-          disabled={index === 0}
-        >
+      <div className="actions">
+        <button type="button" className="btn-quiet" onClick={() => setIndex(Math.max(0, index - 1))} disabled={index === 0}>
           Өмнөх
         </button>
         {index === questions.length - 1 ? (
-          <button type="button" className="min-h-12 flex-1 rounded-xl bg-teal-800 text-white" onClick={() => void finish()} disabled={pending || !answers[question.id]}>
+          <button type="button" className="btn" onClick={() => void finish()} disabled={pending || !answers[question.id]}>
             {pending ? "Боловсруулж байна…" : "Дуусгах"}
           </button>
         ) : null}
       </div>
       {error ? (
-        <p role="alert" className="text-rose-800">
+        <p role="alert" className="alert">
           {error}
         </p>
       ) : null}

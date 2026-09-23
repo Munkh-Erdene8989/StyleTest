@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
-import { Noto_Sans } from "next/font/google";
+import { Onest, Unbounded } from "next/font/google";
 import Link from "next/link";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { optionalUser } from "@/server/auth";
 import { getStore } from "@/server/store";
 import "./globals.css";
 
-const noto = Noto_Sans({
+const onest = Onest({
   subsets: ["cyrillic", "latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   variable: "--font-sans",
+});
+
+const unbounded = Unbounded({
+  subsets: ["cyrillic", "latin"],
+  weight: ["500"],
+  variable: "--font-display",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,14 +28,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = await optionalUser();
   return (
     <html lang="mn">
-      <body className={`${noto.className} antialiased`}>
+      <body className={`${onest.className} ${unbounded.variable}`}>
         <AuthBootstrap />
-        <div className="mx-auto min-h-screen max-w-3xl px-4 py-5">
-          <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="text-lg font-semibold">
+        <div className="shell">
+          <header className="top">
+            <Link href="/" className="wordmark">
               {site.appName}
             </Link>
-            <nav className="flex flex-wrap gap-3 text-sm">
+            <nav className="nav">
               <Link href="/tests">Тест</Link>
               {user?.ageBand === "adult" ? <Link href="/style">Стайл</Link> : null}
               <Link href="/account">Миний хэсэг</Link>
@@ -37,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </nav>
           </header>
           {children}
-          <footer className="mt-10 flex gap-4 border-t border-stone-200 pt-4 text-sm text-stone-600">
+          <footer className="foot">
             <Link href="/privacy">Нууцлал</Link>
             <Link href="/terms">Үйлчилгээний нөхцөл</Link>
           </footer>

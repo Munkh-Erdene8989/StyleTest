@@ -37,11 +37,11 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
   const locked = view.entitlementStatus === "locked" || view.entitlementStatus === "unlocking";
 
   return (
-    <article className="grid gap-4">
-      {view.demo ? <p className="rounded-xl bg-amber-50 p-3">Үзүүлэх агуулга. Баталгаажсан аргачлал биш.</p> : null}
-      <h1 className="text-2xl font-semibold">{view.summary.title}</h1>
+    <article className="stack-form">
+      {view.demo ? <p className="banner">Үзүүлэх агуулга. Баталгаажсан аргачлал биш.</p> : null}
+      <h1>{view.summary.title}</h1>
       <p>{view.summary.body}</p>
-      {view.summary.disclaimer ? <p className="text-stone-700">{view.summary.disclaimer}</p> : null}
+      {view.summary.disclaimer ? <p className="note">{view.summary.disclaimer}</p> : null}
       {view.kind === "stress" ? <Help contacts={view.helpContacts} /> : null}
       {view.jobStatus === "pending" || view.jobStatus === "processing" ? (
         <p role="status">Боловсруулж байна. Төлбөр баталгаажсан ч дуусаагүй бол бэлэн болмогц нээгдэнэ.</p>
@@ -49,19 +49,19 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
       {view.jobStatus === "failed" ? <p role="alert">Боловсруулалт амжилтгүй. Техникийн дахин оролдлого шинэ төлбөр биш.</p> : null}
       {view.entitlementStatus === "unlocking" ? <p>Төлбөр баталгаажсан. Тайлан бэлтгэгдэж байна.</p> : null}
       {locked && view.priceMnt > 0 ? (
-        <section className="grid gap-2 rounded-2xl border border-stone-200 bg-white p-4">
-          <h2 className="font-medium">Дэлгэрэнгүйд багтах зүйл</h2>
+        <section className="pay">
+          <h2>Дэлгэрэнгүйд багтах зүйл</h2>
           <ul className="list-disc pl-5">
             {view.outline.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
-          <p className="text-xl font-semibold">{formatMnt(view.priceMnt)}₮</p>
+          <p className="price">{formatMnt(view.priceMnt)}₮</p>
           {view.expiresAt ? <p>Төлөгдөөгүй дэлгэрэнгүй хэсэг {formatDay(view.expiresAt)} хүртэл хадгалагдана.</p> : null}
           {email ? (
             <BuyButton sessionId={view.sessionId} product={view.kind === "style_package" ? "style_package" : "personality_report"} />
           ) : (
-            <Link className="underline" href="/login">
+            <Link className="inline-link" href="/login">
               Төлбөр төлөхийн өмнө нэвтэрнэ үү
             </Link>
           )}
@@ -77,13 +77,13 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
         </section>
       ))}
       {view.assets?.map((asset) => (
-        <img key={asset.url} src={asset.url} alt="Стайлын дүрслэл" className="w-full rounded-2xl border border-stone-200" />
+        <img key={asset.url} src={asset.url} alt="Стайлын дүрслэл" className="frame" />
       ))}
       {view.kind === "fun" ? <ShareCard title={view.summary.title} appName={appName} /> : null}
       {view.entitlementStatus === "active" ? (
         <button
           type="button"
-          className="min-h-12 rounded-xl border border-stone-300"
+          className="btn-quiet"
           onClick={() => void fetch(`/api/reports/${view.reportId}/used`, { method: "POST" })}
         >
           Зөвлөмж ашигласан
@@ -111,10 +111,10 @@ function BuyButton({ sessionId, product }: { sessionId: string; product: string 
   }
   return (
     <>
-      <button type="button" onClick={() => void buy()} className="min-h-12 rounded-xl bg-teal-800 px-4 text-white">
+      <button type="button" onClick={() => void buy()} className="btn">
         Төлбөр төлөх
       </button>
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <p role="alert" className="alert">{error}</p> : null}
     </>
   );
 }
@@ -136,8 +136,8 @@ function sections(content: unknown) {
 
 function Help({ contacts }: { contacts: View["helpContacts"] }) {
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-4">
-      <h2 className="font-medium">Тусламж</h2>
+    <section className="help">
+      <h2>Тусламж</h2>
       {contacts.length === 0 ? (
         <p>Тусламжийн холбоо барих мэдээллийг баталгаатай эх сурвалжаар оруулаагүй байна.</p>
       ) : (

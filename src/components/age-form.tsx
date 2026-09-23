@@ -30,25 +30,18 @@ export function AgeForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-stone-200 bg-white p-4">
-      <label className="grid gap-1" htmlFor="dob">
-        <span className="font-medium">Төрсөн өдөр</span>
-        <span className="text-stone-600">Насанд тохирсон тест, төлбөр, зурагтай стайлыг үүгээр ялгана.</span>
-        <input
-          id="dob"
-          type="date"
-          required
-          value={dateOfBirth}
-          onChange={(event) => setDateOfBirth(event.target.value)}
-          className="min-h-12 rounded-xl border border-stone-300 px-3"
-        />
+    <form onSubmit={submit} className="stack-form">
+      <label htmlFor="dob">
+        <span className="row-title">Төрсөн өдөр</span>
+        <span className="row-meta">Насанд тохирсон тест, төлбөр, зурагтай стайлыг үүгээр ялгана.</span>
+        <input id="dob" className="field" type="date" required value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} />
       </label>
       {error ? (
-        <p role="alert" className="text-rose-800">
+        <p role="alert" className="alert">
           {error}
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className="min-h-12 rounded-xl bg-teal-800 px-4 font-medium text-white">
+      <button type="submit" disabled={pending} className="btn">
         {pending ? "Хадгалж байна…" : "Үргэлжлүүлэх"}
       </button>
     </form>

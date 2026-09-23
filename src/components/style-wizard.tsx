@@ -81,71 +81,69 @@ export function StyleWizard({
   }
 
   return (
-    <div className="grid gap-4">
-      <p>
-        Алхам {step + 1} / 3
-      </p>
+    <div className="stack-form">
+      <p className="row-meta">Алхам {step + 1} / 3</p>
       {step === 0 ? (
-        <section className="grid gap-4">
+        <section className="stack-form">
           <Picker title="Дуртай" examples={examples} selected={liked} onToggle={(id) => toggle(liked, id, setLiked)} />
           <Picker title="Өмсөж үзмээр" examples={examples} selected={aspire} onToggle={(id) => toggle(aspire, id, setAspire)} />
           <Picker title="Таалагддаггүй" examples={examples} selected={disliked} onToggle={(id) => toggle(disliked, id, setDisliked)} />
-          <button type="button" className="min-h-12 rounded-xl bg-teal-800 text-white" onClick={() => setStep(1)}>
+          <button type="button" className="btn" onClick={() => setStep(1)}>
             Үргэлжлүүлэх
           </button>
         </section>
       ) : null}
       {step === 1 ? (
-        <section className="grid gap-3">
-          <label className="grid gap-1">
+        <section className="stack-form">
+          <label>
             Амьдралын хэв маяг
-            <select className="min-h-12 rounded-xl border border-stone-300 px-3" value={lifestyle} onChange={(event) => setLifestyle(event.target.value as "office" | "home" | "mixed")}>
+            <select className="field" value={lifestyle} onChange={(event) => setLifestyle(event.target.value as "office" | "home" | "mixed")}>
               <option value="mixed">Холимог</option>
               <option value="office">Ажил, нямбай</option>
               <option value="home">Гэр, тухтай</option>
             </select>
           </label>
-          <label className="grid gap-1">
+          <label>
             Тухтай санагддаг хувцас
-            <textarea className="min-h-24 rounded-xl border border-stone-300 p-3" value={comfort} onChange={(event) => setComfort(event.target.value)} maxLength={400} />
+            <textarea className="field" value={comfort} onChange={(event) => setComfort(event.target.value)} maxLength={400} />
           </label>
-          <label className="grid gap-1">
+          <label>
             Хүсэлт
-            <textarea className="min-h-24 rounded-xl border border-stone-300 p-3" value={request} onChange={(event) => setRequest(event.target.value)} maxLength={400} />
+            <textarea className="field" value={request} onChange={(event) => setRequest(event.target.value)} maxLength={400} />
           </label>
           {personalitySessionId ? (
-            <label className="flex gap-2">
+            <label className="check">
               <input type="checkbox" checked={usePersonality} onChange={(event) => setUsePersonality(event.target.checked)} />
               Зан төлөвийн тестийн үр дүнг тусад нь зөвшөөрч ашиглах
             </label>
           ) : null}
-          <button type="button" className="min-h-12 rounded-xl bg-teal-800 text-white" onClick={() => void saveInput().then(() => setStep(2)).catch(() => setError("Сонголтоо шалгана уу."))}>
+          <button type="button" className="btn" onClick={() => void saveInput().then(() => setStep(2)).catch(() => setError("Сонголтоо шалгана уу."))}>
             Үргэлжлүүлэх
           </button>
         </section>
       ) : null}
       {step === 2 ? (
-        <form onSubmit={finish} className="grid gap-3">
+        <form onSubmit={finish} className="stack-form">
           <p>Нүүр тод, гэрэл жигд, бүтэн бие хувцастай, хэт тайралтгүй зураг оруулна уу. Зөвхөн өөрийн зураг.</p>
-          <label className="flex gap-2">
+          <label className="check">
             <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
             Өөрийн зургийг стайлын дүрслэлд ашиглахыг зөвшөөрч байна
           </label>
-          <label className="grid gap-1">
+          <label>
             Нүүрний зураг
-            <input name="face" type="file" accept="image/png,image/jpeg,image/webp" required />
+            <input className="field" name="face" type="file" accept="image/png,image/jpeg,image/webp" required />
           </label>
-          <label className="grid gap-1">
+          <label>
             Бүтэн биеийн зураг
-            <input name="body" type="file" accept="image/png,image/jpeg,image/webp" required />
+            <input className="field" name="body" type="file" accept="image/png,image/jpeg,image/webp" required />
           </label>
-          <button type="submit" disabled={pending} className="min-h-12 rounded-xl bg-teal-800 text-white">
+          <button type="submit" disabled={pending} className="btn">
             {pending ? "Боловсруулж байна…" : "Дуусгах"}
           </button>
         </form>
       ) : null}
       {error ? (
-        <p role="alert" className="text-rose-800">
+        <p role="alert" className="alert">
           {error}
         </p>
       ) : null}
@@ -165,29 +163,22 @@ function Picker({
   onToggle: (id: string) => void;
 }) {
   return (
-    <fieldset className="grid gap-2">
-      <legend className="font-medium">{title}</legend>
-      <div className="grid grid-cols-2 gap-2">
+    <fieldset className="stack-form">
+      <legend className="row-title">{title}</legend>
+      <div className="picks">
         {examples.map((example) => (
           <button
             type="button"
             key={example.id}
             aria-pressed={selected.includes(example.id)}
             onClick={() => onToggle(example.id)}
-            className={`min-h-16 rounded-xl border px-2 text-left ${selected.includes(example.id) ? "border-teal-800 bg-teal-50" : "border-stone-200 bg-white"}`}
+            className="pick"
           >
-            <span className={`mb-1 block h-3 rounded ${swatch(example.paletteFamily)}`} />
+            <span className={`fabric fabric-${example.paletteFamily}`} />
             {example.title}
           </button>
         ))}
       </div>
     </fieldset>
   );
-}
-
-function swatch(palette: string) {
-  if (palette === "warm") return "bg-orange-200";
-  if (palette === "contrast") return "bg-stone-800";
-  if (palette === "earth") return "bg-amber-700";
-  return "bg-stone-300";
 }

@@ -15,11 +15,11 @@ export default async function TestIntroPage({ params }: { params: Promise<{ slug
   const allowed = Boolean(user && canStartTest(version.kind, user.ageBand));
   const resume = allowed && user ? await resumeSession(user, slug) : null;
   return (
-    <main className="grid gap-4">
-      <h1 className="text-2xl font-semibold">{version.title}</h1>
-      {version.status === "demo" ? <p className="rounded-xl bg-amber-50 p-3">Үзүүлэх хувилбар. Баталгаажсан хэмжүүр биш.</p> : null}
+    <main>
+      <h1>{version.title}</h1>
+      {version.status === "demo" ? <p className="banner">Үзүүлэх хувилбар. Баталгаажсан хэмжүүр биш.</p> : null}
       <p>{version.description}</p>
-      <p>{version.disclaimer}</p>
+      <p className="note">{version.disclaimer}</p>
       {version.kind === "personality" ? (
         <p>Товч үр дүн үнэгүй, дэлгэрэнгүй тайлан төлбөртэй. Яг үнэ үр дүнгийн хуудсан дээр гарна.</p>
       ) : null}
@@ -27,7 +27,7 @@ export default async function TestIntroPage({ params }: { params: Promise<{ slug
       {!user || user.ageBand === "unknown" ? <p>Эхлээд нүүр хуудаснаас төрсөн өдрөө оруулна уу.</p> : null}
       {user && user.ageBand !== "unknown" && !allowed ? <p>Энэ тест таны насны бүлэгт нээлттэй биш.</p> : null}
       {allowed ? (
-        <Link className="min-h-12 rounded-xl bg-teal-800 px-4 py-3 text-center text-white" href={`/tests/${slug}/quiz`}>
+        <Link className="btn" href={`/tests/${slug}/quiz`}>
           {resume ? "Үргэлжлүүлэх" : "Эхлүүлэх"}
         </Link>
       ) : null}

@@ -22,10 +22,10 @@ export function RefundForm({ orders }: { orders: { id: string; label: string }[]
   if (orders.length === 0) return <p>Буцаалт хүсэх төлбөр алга.</p>;
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
-      <label className="grid gap-1">
+    <form onSubmit={submit} className="stack-form">
+      <label>
         Захиалга
-        <select className="min-h-12 rounded-xl border border-stone-300 px-3" value={orderId} onChange={(event) => setOrderId(event.target.value)}>
+        <select className="field" value={orderId} onChange={(event) => setOrderId(event.target.value)}>
           {orders.map((order) => (
             <option key={order.id} value={order.id}>
               {order.label}
@@ -33,11 +33,11 @@ export function RefundForm({ orders }: { orders: { id: string; label: string }[]
           ))}
         </select>
       </label>
-      <label className="grid gap-1">
+      <label>
         Шалтгаан
-        <textarea required className="min-h-24 rounded-xl border border-stone-300 p-3" value={reason} onChange={(event) => setReason(event.target.value)} />
+        <textarea required className="field" value={reason} onChange={(event) => setReason(event.target.value)} />
       </label>
-      <button type="submit" className="min-h-12 rounded-xl border border-stone-300">
+      <button type="submit" className="btn-quiet">
         24 цагийн дотор буцаалт хүсэх
       </button>
       {message ? <p role="status">{message}</p> : null}
@@ -52,8 +52,8 @@ export function DeletePhotosButton() {
     setMessage(response.ok ? "Эх зургийг устгалаа. Худалдаж авсан тайлан, дүрслэл үлдэнэ." : "Устгасангүй.");
   }
   return (
-    <div className="grid gap-2">
-      <button type="button" onClick={() => void run()} className="min-h-12 rounded-xl border border-stone-300">
+    <div className="stack-form">
+      <button type="button" onClick={() => void run()} className="btn-quiet">
         Эх зураг устгах
       </button>
       {message ? <p>{message}</p> : null}
@@ -80,16 +80,16 @@ export function DeleteAccountForm() {
     router.refresh();
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <form onSubmit={submit} className="stack-form">
       <p>Бүртгэл устгахад хариулт, тайлан, эх зураг, дүрслэл, эрх хамт устана. Захиалга, буцаалтын санхүүгийн мөр үлдэнэ.</p>
-      <label className="grid gap-1">
+      <label>
         Батлахын тулд «устгах» гэж бичнэ үү
-        <input className="min-h-12 rounded-xl border border-stone-300 px-3" value={confirm} onChange={(event) => setConfirm(event.target.value)} />
+        <input className="field" value={confirm} onChange={(event) => setConfirm(event.target.value)} />
       </label>
-      <button type="submit" className="min-h-12 rounded-xl bg-rose-900 text-white">
+      <button type="submit" className="btn-danger">
         Бүртгэл, тайлан устгах
       </button>
-      {message ? <p role="alert">{message}</p> : null}
+      {message ? <p role="alert" className="alert">{message}</p> : null}
     </form>
   );
 }

@@ -29,7 +29,7 @@ export default async function QuizPage({ params }: { params: Promise<{ slug: str
     if (error instanceof AppError && error.code === "age_restricted") {
       return (
         <main>
-          <h1 className="text-2xl font-semibold">Насанд тохирохгүй</h1>
+          <h1>Насанд тохирохгүй</h1>
           <p>Энэ тест таны насны бүлэгт нээлттэй биш.</p>
         </main>
       );

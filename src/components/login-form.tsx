@@ -34,25 +34,25 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
-      <label className="grid gap-1" htmlFor="email">
+    <form onSubmit={submit} className="stack-form">
+      <label htmlFor="email">
         И-мэйл
         <input
           id="email"
+          className="field"
           type="email"
           required
           autoComplete="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="min-h-12 rounded-xl border border-stone-300 px-3"
         />
       </label>
-      <button type="submit" className="min-h-12 rounded-xl bg-teal-800 font-medium text-white">
+      <button type="submit" className="btn">
         Нэвтрэх холбоос авах
       </button>
       {message ? <p role="status">{message}</p> : null}
       {error ? (
-        <p role="alert" className="text-rose-800">
+        <p role="alert" className="alert">
           {error}
         </p>
       ) : null}

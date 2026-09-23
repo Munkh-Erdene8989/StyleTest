@@ -55,9 +55,9 @@ export function AdminPanel() {
       >
         <label className="grid gap-1">
           Сайтын нэр
-          <input className="min-h-12 rounded-xl border border-stone-300 px-3" value={name} onChange={(event) => setName(event.target.value)} />
+          <input className="field" value={name} onChange={(event) => setName(event.target.value)} />
         </label>
-        <button className="min-h-12 rounded-xl bg-teal-800 text-white" type="submit">
+        <button className="btn" type="submit">
           Нэр хадгалах
         </button>
       </form>
@@ -91,7 +91,7 @@ export function AdminPanel() {
             </span>
             <button
               type="button"
-              className="rounded-lg border border-stone-300 px-2 py-1"
+              className="btn-small"
               onClick={() =>
                 void fetch("/api/admin/jobs/retry", {
                   method: "POST",
@@ -113,13 +113,13 @@ export function AdminPanel() {
               {refund.status}: {refund.reason}
             </p>
             <div className="flex gap-2">
-              <button type="button" className="rounded-lg border px-2 py-1" onClick={() => void decide(refund.id, "approve")}>
+              <button type="button" className="btn-small" onClick={() => void decide(refund.id, "approve")}>
                 Зөвшөөрөх
               </button>
-              <button type="button" className="rounded-lg border px-2 py-1" onClick={() => void decide(refund.id, "reject")}>
+              <button type="button" className="btn-small" onClick={() => void decide(refund.id, "reject")}>
                 Татгалзах
               </button>
-              <button type="button" className="rounded-lg border px-2 py-1" onClick={() => void decide(refund.id, "manual")}>
+              <button type="button" className="btn-small" onClick={() => void decide(refund.id, "manual")}>
                 Гараар буцаасан
               </button>
             </div>
@@ -153,9 +153,9 @@ export function AdminPanel() {
         }}
       >
         <h2 className="font-medium">Мэдрэмтгий хандалт</h2>
-        <input className="min-h-12 rounded-xl border px-3" placeholder="session:..." value={target} onChange={(event) => setTarget(event.target.value)} />
-        <input className="min-h-12 rounded-xl border px-3" placeholder="Шалтгаан" value={reason} onChange={(event) => setReason(event.target.value)} />
-        <button type="submit" className="min-h-12 rounded-xl border">
+        <input className="field" placeholder="session:..." value={target} onChange={(event) => setTarget(event.target.value)} />
+        <input className="field" placeholder="Шалтгаан" value={reason} onChange={(event) => setReason(event.target.value)} />
+        <button type="submit" className="btn-quiet">
           Шалтгаантай нээх
         </button>
         {sensitive ? <p>{sensitive}</p> : null}
