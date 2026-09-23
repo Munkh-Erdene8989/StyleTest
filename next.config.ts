@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["firebase-admin", "@google-cloud/tasks", "@google/genai"],
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
 export default nextConfig;
