@@ -1,3 +1,4 @@
+import { PRICES } from "./money";
 import type { MethodologyVersion, StyleDirection, StyleExample, TestDefinition } from "./types";
 
 const personalityOutline = [
@@ -217,7 +218,7 @@ export const VERSIONS: MethodologyVersion[] = [
 ];
 
 export const TESTS: TestDefinition[] = [
-  { id: "personality-demo", slug: "personality", kind: "personality", activeVersionId: "personality-demo-v1", priceMnt: 9900, productCode: "personality_report" },
+  { id: "personality-demo", slug: "personality", kind: "personality", activeVersionId: "personality-demo-v1", priceMnt: PRICES.personality_report, productCode: "personality_report" },
   { id: "stress-demo", slug: "stress", kind: "stress", activeVersionId: "stress-demo-v1", priceMnt: 0, productCode: null },
   { id: "fun-demo", slug: "fun", kind: "fun", activeVersionId: "fun-demo-v1", priceMnt: 0, productCode: null },
   { id: "youth-demo", slug: "youth", kind: "youth", activeVersionId: "youth-demo-v1", priceMnt: 0, productCode: null },

@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { resolveAppName } from "@/domain/brand";
 import type { AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
@@ -241,11 +242,12 @@ export class MemoryStore implements AppStore {
   async getSiteConfig() {
     if (!this.db.site) {
       this.db.site = {
-        appName: process.env.NEXT_PUBLIC_APP_NAME || "StyleAI",
+        appName: resolveAppName(process.env.NEXT_PUBLIC_APP_NAME),
         helpContacts: [],
         funCopy: {},
       };
     }
+    this.db.site.appName = resolveAppName(this.db.site.appName);
     return this.db.site;
   }
   async saveSiteConfig(config: SiteConfig) {

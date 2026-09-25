@@ -1,6 +1,7 @@
 import { getFirestore, type DocumentData, type Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { adminApp } from "../firebase-admin";
+import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
 import type { AppStore, EmailOtp } from "./types";
 import type {
@@ -211,9 +212,16 @@ export class FirestoreStore implements AppStore {
 
   async getSiteConfig() {
     const existing = await this.read<SiteConfig>("siteConfig", "public");
-    if (existing) return existing;
+    if (existing) {
+      const name = resolveAppName(existing.appName);
+      if (name !== existing.appName) {
+        existing.appName = name;
+        await this.put("siteConfig", "public", existing);
+      }
+      return existing;
+    }
     const config: SiteConfig = {
-      appName: process.env.NEXT_PUBLIC_APP_NAME || "StyleAI",
+      appName: resolveAppName(process.env.NEXT_PUBLIC_APP_NAME),
       helpContacts: [],
       funCopy: {},
     };

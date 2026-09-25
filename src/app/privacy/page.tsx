@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Нууцлал",
+  description: "Naruka Styling Studio хариулт, тайлан, зургийг хэрхэн хадгалж, устгах тухай.",
+};
+
 export default function PrivacyPage() {
   return (
     <main className="grid gap-3">

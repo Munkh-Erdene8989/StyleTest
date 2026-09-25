@@ -1,46 +1,29 @@
 import { AgeForm } from "@/components/age-form";
-import { CatalogRow } from "@/components/catalog-row";
+import { StudioAbout, StudioContact, StudioGallerySection, StudioHero, StudioServices, StudioStories, StudioTraining } from "@/components/studio-sections";
+import { spreadFor, TestSpread } from "@/components/test-spread";
 import { optionalUser } from "@/server/auth";
-import { testsForAge } from "@/server/catalog";
 
 export default async function HomePage() {
   const user = await optionalUser();
-  const tests = user ? await testsForAge(user.ageBand) : [];
-  const ready = Boolean(user && user.ageBand !== "unknown");
+  const age = user?.ageBand ?? "unknown";
+  const { items, locked, under18 } = await spreadFor(age, "/#start");
   return (
-    <main>
-      {ready ? (
-        <>
-          <h1>Юу хийх вэ</h1>
-          {tests.length === 0 ? <p>Танд нээлттэй тест алга. Дараа дахин шалгана уу.</p> : null}
-          <div className="catalog">
-            {tests.map(({ test, version }) => (
-              <CatalogRow
-                key={test.id}
-                href={`/tests/${test.slug}`}
-                kind={test.kind}
-                title={version.title}
-                meta={`${version.minutes} минут`}
-              />
-            ))}
-            {user?.ageBand === "adult" ? (
-              <CatalogRow href="/style" kind="style" title="Стайлын зөвлөмж" meta="Товч чиглэл үнэгүй. Бүтэн багц 19,000₮." />
-            ) : (
-              <p className="note">18-аас доош насанд зурагтай стайл, төлбөртэй тайлан хаалттай.</p>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          <header className="hero">
-            <h1>Өөрийгөө таньж, хувцсаа сонго.</h1>
-            <p className="lede">
-              Монгол хэл дээрх асуулга, стрессийн өөрийн тэмдэглэл, хөгжилтэй тест. Насанд хүрэгчдэд хувцасны чиглэл.
-            </p>
-          </header>
-          <AgeForm />
-        </>
-      )}
+    <main className="studio">
+      <StudioHero />
+      <StudioAbout />
+      <StudioServices>
+        <div id="start" className="spread-note">
+          {locked ? <AgeForm /> : <p className="note">Нас тохируулсан. Доорх тестүүд танд нээлттэй.</p>}
+        </div>
+        <div id="tests">
+          <TestSpread items={items} embedStyle={false} />
+        </div>
+        {under18 ? <p className="note">18-аас доош насанд зурагтай стайл, төлбөртэй тайлан хаалттай.</p> : null}
+      </StudioServices>
+      <StudioTraining />
+      <StudioGallerySection />
+      <StudioStories />
+      <StudioContact />
     </main>
   );
 }

@@ -175,7 +175,7 @@ async function grant(order: Order) {
         fullContent: null,
         assetPaths: [],
         generationJobId: job.id,
-        priceMnt: 1000,
+        priceMnt: PRICES.style_addon,
         createdAt: iso(),
       });
     }

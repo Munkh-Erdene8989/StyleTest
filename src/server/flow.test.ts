@@ -10,6 +10,7 @@ import { resetStoreForTests } from "./store";
 import { getStore } from "./store";
 import { processJobById } from "./worker";
 import { getVersion, STYLE_DIRECTIONS } from "@/domain/content";
+import { PRICES } from "@/domain/money";
 import { imageFormatOk } from "@/domain/images";
 
 const PNG = Buffer.from(
@@ -41,14 +42,14 @@ describe("product flow", () => {
     const locked = await present(adult, `rep_${session.id}`);
     expect(locked.fullContent).toBeUndefined();
     expect(locked.assets).toBeUndefined();
-    expect(locked.priceMnt).toBe(9900);
+    expect(locked.priceMnt).toBe(PRICES.personality_report);
     const buyer = await attachEmail(adult.id, "buyer@example.com");
     const order = await createOrder(buyer, { sessionId: session.id, productCode: "personality_report" });
     const bad = await applyObservation(order.id, { paid: true, amount: 100, currency: "MNT", paymentId: "bad", channel: "card" });
     expect(bad.reason).toBe("amount_mismatch");
     expect((await present(buyer, `rep_${session.id}`)).entitlementStatus).toBe("locked");
-    const paid = await applyObservation(order.id, { paid: true, amount: 9900, currency: "MNT", paymentId: "pay-1", channel: "card" });
-    const again = await applyObservation(order.id, { paid: true, amount: 9900, currency: "MNT", paymentId: "pay-1", channel: "card" });
+    const paid = await applyObservation(order.id, { paid: true, amount: PRICES.personality_report, currency: "MNT", paymentId: "pay-1", channel: "card" });
+    const again = await applyObservation(order.id, { paid: true, amount: PRICES.personality_report, currency: "MNT", paymentId: "pay-1", channel: "card" });
     expect(paid.reason).toBe("paid");
     expect(again.duplicate).toBe(true);
     const open = await present(buyer, `rep_${session.id}`);
@@ -124,7 +125,7 @@ describe("product flow", () => {
     const session = await answerPersonality(adult.id);
     await processJobById((await getStore().getReport(`rep_${session.id}`))!.generationJobId!);
     const order = await createOrder(adult, { sessionId: session.id, productCode: "personality_report" });
-    await applyObservation(order.id, { paid: true, amount: 9900, currency: "MNT", paymentId: "bank-1", channel: "bank_qr" });
+    await applyObservation(order.id, { paid: true, amount: PRICES.personality_report, currency: "MNT", paymentId: "bank-1", channel: "bank_qr" });
     const refund = await requestRefund(adult, order.id, "Бодол өөрчлөгдсөн");
     const calls: string[] = [];
     const review = await reviewRefund(adultAdmin(), refund.id, "approve", {
@@ -142,7 +143,7 @@ describe("product flow", () => {
     const session = await answerPersonality(adult.id);
     await processJobById((await getStore().getReport(`rep_${session.id}`))!.generationJobId!);
     const order = await createOrder(adult, { sessionId: session.id, productCode: "personality_report" });
-    await applyObservation(order.id, { paid: true, amount: 9900, currency: "MNT", paymentId: "card-1", channel: "card" });
+    await applyObservation(order.id, { paid: true, amount: PRICES.personality_report, currency: "MNT", paymentId: "card-1", channel: "card" });
     const refund = await requestRefund(adult, order.id, "Тайлбар тохироогүй");
     await reviewRefund(adultAdmin(), refund.id, "approve", { refundCard: async () => undefined });
     expect((await present(adult, `rep_${session.id}`)).entitlementStatus).toBe("revoked");
@@ -186,7 +187,7 @@ describe("product flow", () => {
     await processJobById((await getStore().getReport(`rep_${session.id}`))!.generationJobId!);
     expect(await addonEligibility(adult, session.id)).toEqual({ eligible: false });
     const order = await createOrder(adult, { sessionId: session.id, productCode: "style_package" });
-    await applyObservation(order.id, { paid: true, amount: 19000, currency: "MNT", paymentId: "style-1", channel: "other" });
+    await applyObservation(order.id, { paid: true, amount: PRICES.style_package, currency: "MNT", paymentId: "style-1", channel: "other" });
     const open = await addonEligibility(adult, session.id);
     if (open.eligible) {
       expect(STYLE_DIRECTIONS.some((item) => item.id === open.directionId)).toBe(true);

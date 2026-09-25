@@ -1,29 +1,33 @@
+import type { Metadata } from "next";
 import { AgeForm } from "@/components/age-form";
-import { CatalogRow } from "@/components/catalog-row";
+import { spreadFor, TestSpread } from "@/components/test-spread";
 import { optionalUser } from "@/server/auth";
-import { testsForAge } from "@/server/catalog";
+
+export const metadata: Metadata = {
+  title: "Тест",
+  description: "Naruka Styling Studio-ийн онлайн стайл тест. Насанд тохирсон асуулга, товч үр дүн.",
+};
 
 export default async function TestsPage() {
   const user = await optionalUser();
-  if (!user || user.ageBand === "unknown") {
-    return (
-      <main>
-        <h1>Тест</h1>
-        <p>Эхлээд төрсөн өдрөө оруулна уу.</p>
-        <AgeForm />
-      </main>
-    );
-  }
-  const tests = await testsForAge(user.ageBand);
+  const age = user?.ageBand ?? "unknown";
+  const { items, locked, under18 } = await spreadFor(age, "#start");
   return (
-    <main>
-      <h1>Тест</h1>
-      {tests.length === 0 ? <p>Одоогоор нээлттэй тест алга. Дараа дахин шалгана уу.</p> : null}
-      <div className="catalog">
-        {tests.map(({ test, version }) => (
-          <CatalogRow key={test.id} href={`/tests/${test.slug}`} kind={test.kind} title={version.title} meta={`${version.minutes} минут`} />
-        ))}
+    <main className="spread-page">
+      <div className="band-head">
+        <p className="kicker">Тест</p>
+        <h1>
+          Танд нээлттэй <em>асуулга</em>
+        </h1>
       </div>
+      {locked ? (
+        <div id="start">
+          <p>Эхлээд төрсөн өдрөө оруулна уу. Дараа нь доорх тестүүд нээгдэнэ.</p>
+          <AgeForm />
+        </div>
+      ) : null}
+      <TestSpread items={items} />
+      {under18 ? <p className="note">18-аас доош насанд зурагтай стайл, төлбөртэй тайлан хаалттай.</p> : null}
     </main>
   );
 }

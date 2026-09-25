@@ -4,6 +4,7 @@ import { getTestBySlug, STYLE_DIRECTIONS, STYLE_EXAMPLES } from "@/domain/conten
 import { AppError } from "@/domain/errors";
 import { imageFormatOk } from "@/domain/images";
 import { stableId } from "@/domain/jobs";
+import { PRICES } from "@/domain/money";
 import { bandFor, scoreAnswers } from "@/domain/score";
 import { rankDirections } from "@/domain/style-match";
 import { DAY_MS, iso, plus } from "@/domain/time";
@@ -88,7 +89,7 @@ export async function completeQuiz(user: User, sessionId: string) {
         ? null
         : { source: "template", paragraphs: band.detail, score: score.raw },
     assetPaths: [],
-    priceMnt: version.kind === "personality" ? 9900 : 0,
+    priceMnt: version.kind === "personality" ? PRICES.personality_report : 0,
     createdAt: iso(),
   };
   const store = getStore();
@@ -254,7 +255,7 @@ export async function completeStyle(user: User, sessionId: string) {
     ],
     fullContent: null,
     assetPaths: [],
-    priceMnt: 19000,
+    priceMnt: PRICES.style_package,
     createdAt: iso(),
   };
   const job = newJob({

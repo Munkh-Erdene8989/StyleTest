@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { canStartTest } from "@/domain/age";
@@ -5,6 +6,14 @@ import { getTestBySlug } from "@/domain/content";
 import { optionalUser } from "@/server/auth";
 import { effectiveVersion } from "@/server/catalog";
 import { resumeSession } from "@/server/session-service";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const test = getTestBySlug(slug);
+  if (!test) return { title: "Тест" };
+  const version = await effectiveVersion(test.activeVersionId);
+  return { title: version.title, description: version.description };
+}
 
 export default async function TestIntroPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

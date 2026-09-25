@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { QuizRunner } from "@/components/quiz-runner";
 import { AppError } from "@/domain/errors";
 import { getTestBySlug } from "@/domain/content";
+import { noIndex } from "@/lib/seo";
 import { optionalUser } from "@/server/auth";
 import { effectiveVersion } from "@/server/catalog";
 import { createQuizSession, resumeSession } from "@/server/session-service";
+
+export const metadata: Metadata = noIndex;
 
 export default async function QuizPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

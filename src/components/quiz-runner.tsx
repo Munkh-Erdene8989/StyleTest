@@ -58,8 +58,8 @@ export function QuizRunner({
 
   return (
     <section className="stack-form">
-      <p className="row-meta" role="status">
-        {progress} / {questions.length}
+      <p className="kicker" role="status">
+        Асуулт {index + 1} / {questions.length}
       </p>
       <div className="meter" aria-hidden="true">
         <span style={{ width: `${(progress / questions.length) * 100}%` }} />
