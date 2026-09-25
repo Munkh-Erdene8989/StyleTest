@@ -172,7 +172,7 @@ async function openaiImage(input: { direction: StyleDirection; face?: Buffer; bo
   if (!data) throw new Error("image_empty");
   const bytes = Buffer.from(data, "base64");
   const contentType = "image/png";
-  if (!imageFormatOk(bytes, contentType) || contentType === "image/svg+xml") throw new Error("image_invalid");
+  if (!imageFormatOk(bytes, contentType)) throw new Error("image_invalid");
   const inputTokens =
     json.usage?.input_tokens ??
     Math.ceil((input.face?.length ?? 0) / 1000) + Math.ceil((input.body?.length ?? 0) / 1000);
