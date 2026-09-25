@@ -13,4 +13,4 @@ npm run dev
 
 `.env.local` дээрх хоосон утгыг бөглөнө. Admin эрх байхгүй үед өгөгдөл санах ойд хадгалагдана. `QPAY_SIMULATE=true` үед production QPay хаяг дээр туршилтын төлбөр ажиллахгүй.
 
-Firebase, Resend, QPay, Claude, Gemini түлхүүрээ бөглөсний дараа `DATA_DRIVER=firestore` гэж тохируулна. Урт generation ажил `WORKER_URL` руу Cloud Tasks-аар гарна.
+Firebase, Resend, QPay, OpenAI түлхүүрээ бөглөсний дараа `DATA_DRIVER=firestore` гэж тохируулна. Урт generation ажил `WORKER_URL` руу Cloud Tasks-аар гарна.

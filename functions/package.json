@@ -6,7 +6,7 @@
     "node": "20"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=lib/index.js --external:firebase-admin --external:firebase-functions --external:@google/genai"
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=lib/index.js --external:firebase-admin --external:firebase-functions"
   },
   "dependencies": {
     "firebase-admin": "^14.4.0",

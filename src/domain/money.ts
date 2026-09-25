@@ -7,13 +7,13 @@ export const PRICES: Record<ProductCode, number> = {
 };
 
 export function textCostUsd(inputTokens: number, outputTokens: number) {
-  const inputRate = numberEnv("ANTHROPIC_INPUT_USD_PER_MTOK", 2);
-  const outputRate = numberEnv("ANTHROPIC_OUTPUT_USD_PER_MTOK", 10);
+  const inputRate = numberEnv("OPENAI_INPUT_USD_PER_MTOK", 2);
+  const outputRate = numberEnv("OPENAI_OUTPUT_USD_PER_MTOK", 8);
   return (inputTokens / 1_000_000) * inputRate + (outputTokens / 1_000_000) * outputRate;
 }
 
 export function imageCostUsd(imageCount: number, inputTokens: number) {
-  const perImage = numberEnv("IMAGE_USD_PER_IMAGE", 0.067);
+  const perImage = numberEnv("IMAGE_USD_PER_IMAGE", 0.063);
   const inputRate = numberEnv("IMAGE_INPUT_USD_PER_MTOK", 0.5);
   return imageCount * perImage + (inputTokens / 1_000_000) * inputRate;
 }

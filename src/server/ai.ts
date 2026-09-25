@@ -37,9 +37,9 @@ export const providers = {
     answers: { question: string; answer: string }[];
   }): Promise<{ draft: PersonalityDraft; costUsd: number; model?: string }> {
     const template = personalityTemplate(input.band, input.answers);
-    if (!process.env.ANTHROPIC_API_KEY) return { draft: template, costUsd: 0 };
-    const model = process.env.ANTHROPIC_TEXT_MODEL || "claude-sonnet-5";
-    const result = await claudeJson(model, { task: "personality_report", outline: input.outline, band: input.band, answers: input.answers });
+    if (!process.env.OPENAI_API_KEY) return { draft: template, costUsd: 0 };
+    const model = process.env.OPENAI_TEXT_MODEL || "gpt-4.1";
+    const result = await openaiJson(model, { task: "personality_report", outline: input.outline, band: input.band, answers: input.answers });
     const parsed = personalitySchema.safeParse(result.json);
     if (!parsed.success) throw new Error("schema_invalid");
     if (parsed.data.sections.some((section, index) => section.heading !== input.outline[index])) {
@@ -60,9 +60,9 @@ export const providers = {
     personalitySummary?: string;
   }): Promise<{ draft: StyleDraft; costUsd: number; model?: string }> {
     const template = styleTemplate(input.directions, input.comfort);
-    if (!process.env.ANTHROPIC_API_KEY) return { draft: template, costUsd: 0 };
-    const model = process.env.ANTHROPIC_TEXT_MODEL || "claude-sonnet-5";
-    const result = await claudeJson(model, {
+    if (!process.env.OPENAI_API_KEY) return { draft: template, costUsd: 0 };
+    const model = process.env.OPENAI_TEXT_MODEL || "gpt-4.1";
+    const result = await openaiJson(model, {
       task: "style_package",
       directionIds: input.directions.map((item) => item.id),
       directions: input.directions.map((item) => ({ id: item.id, title: item.title, hint: item.reasonHint })),
@@ -79,7 +79,7 @@ export const providers = {
   },
 
   async renderImage(input: { direction: StyleDirection; face?: Buffer; body?: Buffer }): Promise<RenderedImage> {
-    if (process.env.GEMINI_API_KEY) return geminiImage(input);
+    if (process.env.OPENAI_API_KEY) return openaiImage(input);
     if (process.env.NODE_ENV === "production") throw new Error("image_unconfigured");
     const svg = demoSvg(input.direction.title);
     return { bytes: Buffer.from(svg), contentType: "image/svg+xml", provider: "demo", costUsd: 0 };
@@ -122,66 +122,93 @@ function styleTemplate(directions: StyleDirection[], comfort: string): StyleDraf
   };
 }
 
-async function claudeJson(model: string, data: unknown) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+async function openaiJson(model: string, data: unknown) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     signal: AbortSignal.timeout(20_000),
     headers: {
-      "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
-      "anthropic-version": "2023-06-01",
+      authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
       model,
-      max_tokens: 2000,
-      system: SYSTEM,
-      messages: [{ role: "user", content: JSON.stringify({ data }) }],
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: JSON.stringify({ data }) },
+      ],
     }),
   });
   if (!response.ok) throw new Error("model_http");
   const json = (await response.json()) as {
-    content?: { type: string; text?: string }[];
-    usage?: { input_tokens?: number; output_tokens?: number };
+    choices?: { message?: { content?: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
-  const text = json.content?.find((block) => block.type === "text")?.text ?? "";
+  const text = json.choices?.[0]?.message?.content ?? "";
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("schema_invalid");
   return {
     json: JSON.parse(match[0]) as unknown,
-    inputTokens: json.usage?.input_tokens ?? 0,
-    outputTokens: json.usage?.output_tokens ?? 0,
+    inputTokens: json.usage?.prompt_tokens ?? 0,
+    outputTokens: json.usage?.completion_tokens ?? 0,
   };
 }
 
-async function geminiImage(input: { direction: StyleDirection; face?: Buffer; body?: Buffer }): Promise<RenderedImage> {
-  const { GoogleGenAI } = await import("@google/genai");
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+async function openaiImage(input: { direction: StyleDirection; face?: Buffer; body?: Buffer }): Promise<RenderedImage> {
+  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
   const prompt = [
     "Edit clothing and accessories only.",
     "Preserve the person's face, skin tone, body shape, pose, and identity.",
     "Do not change the face. Do not add logos, brand names, or readable text.",
     `Outfit direction: ${input.direction.title}. ${input.direction.reasonHint}`,
   ].join(" ");
-  const content: ({ type: "text"; text: string } | { type: "image"; data: string; mime_type: string })[] = [
-    { type: "text", text: prompt },
-  ];
-  if (input.face) content.push({ type: "image", data: input.face.toString("base64"), mime_type: "image/jpeg" });
-  if (input.body) content.push({ type: "image", data: input.body.toString("base64"), mime_type: "image/jpeg" });
-  const interaction = await ai.interactions.create({
-    model: process.env.IMAGE_MODEL || "gemini-3.1-flash-image",
-    input: content,
-  });
-  const data = interaction.output_image?.data;
+  const response = input.face || input.body ? await openaiImageEdit(model, prompt, input) : await openaiImageGenerate(model, prompt);
+  if (!response.ok) throw new Error("model_http");
+  const json = (await response.json()) as {
+    data?: { b64_json?: string }[];
+    usage?: { input_tokens?: number };
+  };
+  const data = json.data?.[0]?.b64_json;
   if (!data) throw new Error("image_empty");
   const bytes = Buffer.from(data, "base64");
-  const contentType = interaction.output_image?.mime_type || "image/png";
+  const contentType = "image/png";
   if (!imageFormatOk(bytes, contentType) || contentType === "image/svg+xml") throw new Error("image_invalid");
-  return {
-    bytes,
-    contentType,
-    provider: "gemini",
-    costUsd: imageCostUsd(1, Math.ceil((input.face?.length ?? 0) / 1000) + Math.ceil((input.body?.length ?? 0) / 1000)),
-  };
+  const inputTokens =
+    json.usage?.input_tokens ??
+    Math.ceil((input.face?.length ?? 0) / 1000) + Math.ceil((input.body?.length ?? 0) / 1000);
+  return { bytes, contentType, provider: "openai", costUsd: imageCostUsd(1, inputTokens) };
+}
+
+async function openaiImageGenerate(model: string, prompt: string) {
+  return fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    signal: AbortSignal.timeout(60_000),
+    headers: {
+      authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model, prompt, size: "1024x1536", n: 1, output_format: "png" }),
+  });
+}
+
+async function openaiImageEdit(
+  model: string,
+  prompt: string,
+  input: { face?: Buffer; body?: Buffer },
+) {
+  const form = new FormData();
+  form.append("model", model);
+  form.append("prompt", prompt);
+  form.append("size", "1024x1536");
+  form.append("output_format", "png");
+  if (input.face) form.append("image[]", new Blob([new Uint8Array(input.face)], { type: "image/jpeg" }), "face.jpg");
+  if (input.body) form.append("image[]", new Blob([new Uint8Array(input.body)], { type: "image/jpeg" }), "body.jpg");
+  return fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    signal: AbortSignal.timeout(60_000),
+    headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}` },
+    body: form,
+  });
 }
 
 function demoSvg(title: string) {

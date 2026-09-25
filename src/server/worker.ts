@@ -60,7 +60,7 @@ async function runPersonality(job: GenerationJob) {
     outline: band.paidOutline,
     answers: questionAnswerPairs(version, session.answers),
   });
-  job.provider = explained.draft.source === "model" ? "anthropic" : "template";
+  job.provider = explained.draft.source === "model" ? "openai" : "template";
   job.model = explained.model;
   const report = await requireReport(job);
   report.fullContent = explained.draft;
@@ -90,7 +90,7 @@ async function runStylePackage(job: GenerationJob) {
   const body = await uploadBytes(session.styleInput.bodyUploadId);
   const paths: string[] = [];
   let imageCost = 0;
-  let provider = explained.draft.source === "model" ? "anthropic" : "template";
+  let provider = explained.draft.source === "model" ? "openai" : "template";
   for (const direction of directions) {
     const image = await providers.renderImage({ direction, face, body });
     if (image.provider !== "demo") provider = image.provider;
