@@ -46,17 +46,17 @@ export function StyleWizard({
         personalitySessionId: usePersonality ? personalitySessionId : undefined,
       }),
     });
-    if (!response.ok) throw new Error("save");
+    if (!response.ok) throw new Error(await errorCode(response));
   }
 
   async function upload(role: "face" | "body", file: File) {
     const form = new FormData();
-    form.set("file", file);
+    form.set("file", await prepareImage(file));
     form.set("role", role);
     form.set("sessionId", sessionId);
     form.set("consent", String(consent));
     const response = await fetch("/api/uploads", { method: "POST", body: form });
-    if (!response.ok) throw new Error("upload");
+    if (!response.ok) throw new Error(await errorCode(response));
   }
 
   async function finish(event: React.FormEvent<HTMLFormElement>) {
@@ -67,16 +67,19 @@ export function StyleWizard({
       const form = new FormData(event.currentTarget);
       const face = form.get("face");
       const body = form.get("body");
-      if (!(face instanceof File) || !(body instanceof File) || !consent) throw new Error("upload");
+      if (!consent) throw new Error("consent_required");
+      if (!(face instanceof File) || face.size === 0 || !(body instanceof File) || body.size === 0) {
+        throw new Error("invalid_image");
+      }
       await saveInput();
       await upload("face", face);
       await upload("body", body);
       const response = await fetch(`/api/style/sessions/${sessionId}/complete`, { method: "POST" });
-      if (!response.ok) throw new Error("complete");
+      if (!response.ok) throw new Error(await errorCode(response));
       router.push(`/sessions/${sessionId}`);
-    } catch {
+    } catch (error) {
       setPending(false);
-      setError("Зураг, зөвшөөрөл, дуртай жишээгээ шалгаад дахин оролдоно уу.");
+      setError(messageFor(error instanceof Error ? error.message : ""));
     }
   }
 
@@ -149,6 +152,42 @@ export function StyleWizard({
       ) : null}
     </div>
   );
+}
+
+async function errorCode(response: Response) {
+  const body = (await response.json().catch(() => null)) as { error?: string } | null;
+  return body?.error || "server_error";
+}
+
+function messageFor(code: string) {
+  if (code === "consent_required") return "Зургийн зөвшөөрлөө тэмдэглэнэ үү.";
+  if (code === "invalid_image") return "PNG, JPEG эсвэл WEBP зураг оруулна уу.";
+  if (code === "file_too_large") return "Зураг хэт том байна. Бага хэмжээтэй зураг сонгоно уу.";
+  if (code === "preference_required") return "Дуртай эсвэл өмсөж үзмээр жишээнээс нэгийг сонгоно уу.";
+  if (code === "not_enough_directions") return "Сонголтоо өөрчилж дахин оролдоно уу.";
+  if (code === "server_error") return "Зураг хадгалахад алдаа гарлаа. Дахин оролдоно уу.";
+  return "Зураг, зөвшөөрөл, дуртай жишээгээ шалгаад дахин оролдоно уу.";
+}
+
+async function prepareImage(file: File) {
+  if (file.size <= 1_500_000 && file.type === "image/jpeg") return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const max = 1600;
+    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+    if (!blob) return file;
+    return new File([blob], "photo.jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
 }
 
 function Picker({

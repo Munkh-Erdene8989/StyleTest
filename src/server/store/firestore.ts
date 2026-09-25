@@ -1,5 +1,5 @@
+import { createHash, randomBytes } from "crypto";
 import { getFirestore, type DocumentData, type Firestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
 import { adminApp } from "../firebase-admin";
 import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
@@ -22,6 +22,8 @@ import type {
   User,
   VersionOverride,
 } from "@/domain/types";
+
+const OBJECT_CHUNK = 480_000;
 
 function clean<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -246,36 +248,54 @@ export class FirestoreStore implements AppStore {
     return this.read<StylePackage>("stylePackages", sessionId);
   }
 
-  private bucket() {
-    const app = adminApp();
-    if (!app) throw new AppError("firebase_unconfigured", 500);
-    return getStorage(app).bucket();
-  }
-
   async putObject(path: string, bytes: Buffer, contentType: string) {
-    await this.bucket().file(path).save(bytes, { contentType, resumable: false });
+    const ref = this.objectRef(path);
+    const parts = Math.max(1, Math.ceil(bytes.length / OBJECT_CHUNK));
+    await ref.set({ path, contentType, parts, bytes: bytes.length });
+    for (let index = 0; index < parts; index += 1) {
+      const slice = bytes.subarray(index * OBJECT_CHUNK, (index + 1) * OBJECT_CHUNK);
+      await ref.collection("parts").doc(String(index)).set({ data: slice.toString("base64") });
+    }
+    const existing = await ref.collection("parts").get();
+    for (const doc of existing.docs) {
+      if (Number(doc.id) >= parts) await doc.ref.delete();
+    }
   }
   async getObject(path: string) {
-    const file = this.bucket().file(path);
-    const [exists] = await file.exists();
-    if (!exists) return null;
-    const [bytes] = await file.download();
-    const [meta] = await file.getMetadata();
-    return { bytes, contentType: meta.contentType || "application/octet-stream" };
+    const ref = this.objectRef(path);
+    const snap = await ref.get();
+    if (!snap.exists) return null;
+    const meta = snap.data() as { contentType?: string; parts?: number };
+    const parts = meta.parts ?? 0;
+    const chunks: Buffer[] = [];
+    for (let index = 0; index < parts; index += 1) {
+      const part = await ref.collection("parts").doc(String(index)).get();
+      const data = part.data()?.data;
+      if (!part.exists || typeof data !== "string") return null;
+      chunks.push(Buffer.from(data, "base64"));
+    }
+    return { bytes: Buffer.concat(chunks), contentType: meta.contentType || "application/octet-stream" };
   }
   async deleteObject(path: string) {
-    await this.bucket().file(path).delete({ ignoreNotFound: true });
+    const ref = this.objectRef(path);
+    const parts = await ref.collection("parts").get();
+    for (const doc of parts.docs) await doc.ref.delete();
+    await ref.delete();
   }
   async createReadUrl(path: string) {
-    const [url] = await this.bucket().file(path).getSignedUrl({
-      action: "read",
-      expires: Date.now() + 5 * 60 * 1000,
-      version: "v4",
-    });
-    return url;
+    const token = randomBytes(24).toString("hex");
+    await this.put("mediaTokens", token, { path, exp: Date.now() + 5 * 60 * 1000 });
+    return `/api/media/${token}`;
   }
-  async resolveReadToken() {
-    return null;
+  async resolveReadToken(token: string) {
+    const row = await this.read<{ path: string; exp: number }>("mediaTokens", token);
+    if (!row || row.exp < Date.now()) return null;
+    return row.path;
+  }
+
+  private objectRef(path: string) {
+    const id = createHash("sha256").update(path).digest("hex");
+    return this.database().collection("objects").doc(id);
   }
 
   async bumpRate(key: string, limit: number, windowMs: number, now: number) {

@@ -6,8 +6,8 @@ const LIST_PRICES: Record<ProductCode, number> = {
   style_addon: 1000,
 };
 
-// Temporary checkout discount. 0.1 charges 90% less. Set to 1 to restore list prices.
-const TEMP_PRICE_FACTOR = 0.1;
+// Temporary checkout discount. 0.01 charges 99% less than list (another 90% off the previous 0.1 prices). Set to 1 to restore list prices.
+const TEMP_PRICE_FACTOR = 0.01;
 
 export const PRICES: Record<ProductCode, number> = {
   personality_report: Math.round(LIST_PRICES.personality_report * TEMP_PRICE_FACTOR),
