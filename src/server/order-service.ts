@@ -9,7 +9,7 @@ import { iso } from "@/domain/time";
 import type { Entitlement, Order, ProductCode, User } from "@/domain/types";
 import { recordOnce } from "./events";
 import { limit } from "./limit";
-import { checkInvoice, createInvoice, refundCardPayment, simulatePayAllowed } from "./qpay";
+import { checkInvoice, createInvoice, qpayConfigured, refundCardPayment, simulatePayAllowed } from "./qpay";
 import { getStore } from "./store";
 import { newJob, ownedSession } from "./session-service";
 import { deliverReportEmail, recoverCost } from "./worker";
@@ -42,7 +42,7 @@ export async function createOrder(user: User, input: { sessionId: string; produc
       (order.addonDirectionId ?? "") === (input.addonDirectionId ?? "") &&
       (order.paymentStatus === "draft" || order.paymentStatus === "invoiced"),
   );
-  if (existing) return existing;
+  if (existing) return publicOrder(await ensurePayLinks(existing));
   const amount = PRICES[input.productCode];
   const order: Order = {
     id: `ord_${randomUUID()}`,
@@ -334,6 +334,24 @@ async function finalizeRefund(orderId: string, reviewerId: string, resolution: s
       createdAt: iso(),
     });
   }
+}
+
+export async function ensurePayLinks(order: Order) {
+  const urls = order.urls ?? [];
+  const open = order.paymentStatus === "draft" || order.paymentStatus === "invoiced";
+  if (!open || urls.some((item) => item.logo) || !qpayConfigured()) return order;
+  const invoice = await createInvoice({
+    id: order.id,
+    amount: order.amount,
+    description: productLabel(order.productCode),
+  });
+  if (!invoice.urls.some((item) => item.logo)) return order;
+  order.qpayInvoiceId = invoice.invoiceId ?? order.qpayInvoiceId;
+  order.qrImage = invoice.qrImage ?? order.qrImage;
+  order.urls = invoice.urls;
+  order.paymentStatus = "invoiced";
+  await getStore().saveOrder(order);
+  return order;
 }
 
 export function publicOrder(order: Order) {

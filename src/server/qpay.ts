@@ -21,9 +21,11 @@ export function qpayConfigured() {
   );
 }
 
+export type PayLink = { name: string; link: string; logo?: string };
+
 export async function createInvoice(order: { id: string; amount: number; description: string }) {
   if (!qpayConfigured()) {
-    if (simulatePayAllowed()) return { invoiceId: undefined, qrImage: undefined, urls: [] as { name: string; link: string }[] };
+    if (simulatePayAllowed()) return { invoiceId: undefined, qrImage: undefined, urls: [] as PayLink[] };
     throw new AppError("qpay_unconfigured", 500);
   }
   const access = await accessToken();
@@ -40,16 +42,23 @@ export async function createInvoice(order: { id: string; amount: number; descrip
     }),
   });
   if (!response.ok) throw new AppError("qpay_invoice", 502);
-  const json = (await response.json()) as { invoice_id?: string; qr_image?: string; urls?: { name?: string; link?: string }[] };
+  const json = (await response.json()) as { invoice_id?: string; qr_image?: string; urls?: { name?: string; link?: string; logo?: string }[] };
   return {
     invoiceId: json.invoice_id ? String(json.invoice_id) : undefined,
     qrImage: typeof json.qr_image === "string" ? json.qr_image : undefined,
-    urls: Array.isArray(json.urls)
-      ? json.urls
-          .map((item) => ({ name: String(item.name ?? "Банк"), link: String(item.link ?? "") }))
-          .filter((item) => item.link.startsWith("https://") || item.link.includes("://"))
-      : [],
+    urls: payLinks(json.urls),
   };
+}
+
+export function payLinks(urls: { name?: string; link?: string; logo?: string }[] | undefined): PayLink[] {
+  if (!Array.isArray(urls)) return [];
+  return urls
+    .map((item) => {
+      const link = String(item.link ?? "");
+      const logo = typeof item.logo === "string" && item.logo.startsWith("https://") ? item.logo : undefined;
+      return { name: String(item.name ?? "Банк"), link, ...(logo ? { logo } : {}) };
+    })
+    .filter((item) => item.link.startsWith("https://") || item.link.includes("://"));
 }
 
 export async function checkInvoice(invoiceId: string) {

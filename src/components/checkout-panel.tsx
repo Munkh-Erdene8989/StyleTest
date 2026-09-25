@@ -10,7 +10,7 @@ type OrderView = {
   currency: string;
   paymentStatus: string;
   qrImage?: string;
-  urls: { name: string; link: string }[];
+  urls: { name: string; link: string; logo?: string }[];
   reportId: string;
   simulate: boolean;
   cardRefundAvailable: boolean;
@@ -37,7 +37,8 @@ export function CheckoutPanel({ initial }: { initial: OrderView }) {
       return;
     }
     if (data.order) setOrder(data.order);
-    setMessage(data.reason === "paid" ? "Төлбөр баталгаажлаа." : "Төлбөр хүлээгдэж байна.");
+    const paid = data.order?.paymentStatus === "paid" || data.reason === "paid" || data.reason === "duplicate";
+    setMessage(paid ? "Төлбөр баталгаажлаа." : "Төлбөр хүлээгдэж байна.");
   }
 
   async function simulate() {
@@ -47,6 +48,7 @@ export function CheckoutPanel({ initial }: { initial: OrderView }) {
   }
 
   const qr = order.qrImage ? (order.qrImage.startsWith("data:") ? order.qrImage : `data:image/png;base64,${order.qrImage}`) : "";
+  const notice = order.paymentStatus === "paid" ? "Төлбөр баталгаажлаа." : message;
 
   return (
     <section className="stack-form">
@@ -55,11 +57,12 @@ export function CheckoutPanel({ initial }: { initial: OrderView }) {
       </p>
       <p role="status">Төлөв: {statusLabel(order.paymentStatus)}</p>
       {qr ? <img src={qr} alt="QPay QR" className="qr" /> : null}
-      <ul className="grid gap-2">
+      <ul className="banks">
         {order.urls.map((url) => (
           <li key={url.link}>
-            <a className="inline-link" href={url.link}>
-              {url.name}
+            <a className="bank" href={url.link}>
+              {url.logo ? <img src={url.logo} alt="" /> : null}
+              <span>{url.name}</span>
             </a>
           </li>
         ))}
@@ -77,7 +80,7 @@ export function CheckoutPanel({ initial }: { initial: OrderView }) {
           Тайлан руу орох
         </Link>
       ) : null}
-      {message ? <p>{message}</p> : null}
+      {notice ? <p role="status">{notice}</p> : null}
       <p className="note">
         Картын буцаалт QPay-ээр, банкны QR гар аргаар шийдэгдэнэ. Одоогийн суваг автомат буцаалттай эсэх:{" "}
         {order.cardRefundAvailable ? "тийм." : "үгүй."}

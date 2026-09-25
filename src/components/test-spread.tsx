@@ -37,6 +37,7 @@ export type SpreadItem = {
   image: string;
   action: string;
   badge: string;
+  priceMnt: number;
 };
 
 export async function spreadFor(age: AgeBand, gate: string) {
@@ -55,6 +56,7 @@ export async function spreadFor(age: AgeBand, gate: string) {
       image: FACES.style.image,
       action: locked ? "Насаа оруулаад эхлэх" : "Эхлүүлэх",
       badge: `${formatMnt(PRICES.style_package)}₮`,
+      priceMnt: PRICES.style_package,
     });
   }
   return { items, locked, under18: age === "under18" };
@@ -78,7 +80,8 @@ function toItem(test: TestDefinition, version: MethodologyVersion, locked: boole
     points,
     image: face.image,
     action: locked ? "Насаа оруулаад эхлэх" : "Эхлүүлэх",
-    badge: test.priceMnt > 0 ? "Тайлан төлбөртэй" : "Үнэгүй",
+    badge: test.priceMnt > 0 ? `${test.priceMnt.toLocaleString("mn-MN")}₮` : "Үнэгүй",
+    priceMnt: test.priceMnt,
   };
 }
 
@@ -102,9 +105,13 @@ export function TestSpread({ items, embedStyle = true }: { items: SpreadItem[]; 
   );
 }
 
-function Panel({ item, featured = false }: { item: SpreadItem; featured?: boolean }) {
+export function OfferCard({ item, spotlight = false }: { item: SpreadItem; spotlight?: boolean }) {
+  return <Panel item={item} featured spotlight={spotlight} />;
+}
+
+function Panel({ item, featured = false, spotlight = false }: { item: SpreadItem; featured?: boolean; spotlight?: boolean }) {
   return (
-    <article className={featured ? "panel panel-feature" : "tile"}>
+    <article className={featured ? `panel panel-feature${spotlight ? " panel-spotlight" : ""}` : "tile"}>
       <div className="panel-photo">
         <img src={item.image} alt="" />
         <span className="tag">{item.badge}</span>
@@ -112,6 +119,7 @@ function Panel({ item, featured = false }: { item: SpreadItem; featured?: boolea
       <div className="panel-copy">
         <p className="kicker">{item.kicker}</p>
         <h2>{item.title}</h2>
+        {spotlight && item.priceMnt > 0 ? <p className="price">{formatMnt(item.priceMnt)}₮</p> : null}
         <p>{item.description}</p>
         <ul className="ticks">
           {item.points.map((point) => (

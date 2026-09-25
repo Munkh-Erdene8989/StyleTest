@@ -776,6 +776,49 @@ label {
   background: #fff;
 }
 
+.banks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bank {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 0.4rem;
+  min-height: 6.5rem;
+  padding: 0.75rem 0.35rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+
+.bank img {
+  width: 2.6rem;
+  height: 2.6rem;
+  object-fit: contain;
+  border-radius: 0.7rem;
+}
+
+.bank:hover {
+  border-color: var(--gold);
+}
+
+.bank:focus-visible {
+  outline: 2px solid var(--bordeaux);
+  outline-offset: 2px;
+}
+
 .foot {
   background: var(--charcoal);
   color: rgb(255 255 255 / 62%);
@@ -1032,6 +1075,20 @@ main.studio {
 .panel-feature,
 .tile {
   display: grid;
+}
+
+.panel-spotlight {
+  border: 1px solid var(--gold);
+  box-shadow: 0 1.25rem 2.5rem rgb(196 149 106 / 18%);
+}
+
+.panel-spotlight .tag {
+  background: var(--gold);
+  color: var(--charcoal);
+}
+
+.panel-spotlight .price {
+  color: var(--bordeaux);
 }
 
 .panel-photo {

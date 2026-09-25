@@ -164,7 +164,7 @@ export function StudioAbout() {
   );
 }
 
-export function StudioServices({ children }: { children: ReactNode }) {
+export function StudioServices({ featured, children }: { featured?: ReactNode; children: ReactNode }) {
   return (
     <section className="band band-sand" id="services">
       <div className="bar">
@@ -173,6 +173,7 @@ export function StudioServices({ children }: { children: ReactNode }) {
           <h2>Таны гоо үзэсгэлэнд зориулсан</h2>
         </div>
         <div className="spread">
+          {featured}
           {SERVICES.map((service) => (
             <article key={service.title} className="panel panel-feature">
               <div className="panel-photo">

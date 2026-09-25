@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { CheckoutPanel } from "@/components/checkout-panel";
 import { optionalUser } from "@/server/auth";
-import { publicOrder } from "@/server/order-service";
+import { ensurePayLinks, publicOrder } from "@/server/order-service";
 import { getStore } from "@/server/store";
 
 export default async function CheckoutPage({ params }: { params: Promise<{ orderId: string }> }) {
@@ -10,10 +10,11 @@ export default async function CheckoutPage({ params }: { params: Promise<{ order
   if (!user) notFound();
   const order = await getStore().getOrder(orderId);
   if (!order || order.ownerUid !== user.id) notFound();
+  const ready = await ensurePayLinks(order);
   return (
     <main className="grid gap-4">
       <h1>Төлбөр</h1>
-      <CheckoutPanel initial={publicOrder(order)} />
+      <CheckoutPanel initial={publicOrder(ready)} />
     </main>
   );
 }

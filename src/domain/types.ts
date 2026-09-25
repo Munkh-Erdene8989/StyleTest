@@ -193,7 +193,7 @@ export type Order = {
   qpayPaymentId?: string;
   channel: PayChannel;
   qrImage?: string;
-  urls?: { name: string; link: string }[];
+  urls?: { name: string; link: string; logo?: string }[];
   paidAt?: string;
   createdAt: string;
 };
