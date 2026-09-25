@@ -64,6 +64,34 @@ describe("style match", () => {
 });
 
 describe("paywall", () => {
+  it("shows 60 percent of a written report before payment", () => {
+    const body = "а".repeat(100);
+    const report = baseReport();
+    report.fullContent = {
+      sections: ["нэг", "хоёр", "гурав", "дөрөв"].map((heading) => ({ heading, body: `${heading} ${body}` })),
+    };
+    const locked = projectResult({
+      report,
+      entitlement: null,
+      jobStatus: "ready",
+      versionStatus: "demo",
+      helpContacts: [],
+    });
+    const preview = locked.fullContent as { sections: { heading: string; body: string }[] };
+    const shown = preview.sections.map((section) => section.body).join("");
+    expect(preview.sections.at(-1)?.heading).not.toBe("дөрөв");
+    expect(shown.length).toBeLessThan(JSON.stringify(report.fullContent).length);
+    expect(JSON.stringify(locked)).not.toContain("дөрөв");
+    const open = projectResult({
+      report,
+      entitlement: { id: "ent", ownerUid: "u", orderId: "o", targetId: report.id, status: "active" },
+      jobStatus: "ready",
+      versionStatus: "demo",
+      helpContacts: [],
+    });
+    expect(open.fullContent).toEqual(report.fullContent);
+  });
+
   it("omits the full report and asset urls until the entitlement is active", () => {
     const report = baseReport();
     const locked = projectResult({

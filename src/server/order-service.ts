@@ -210,6 +210,7 @@ async function grant(order: Order) {
       createdAt: iso(),
     });
   }
+  if (job && job.status !== "ready" && job.status !== "expired") await enqueueJob(job.id);
   if (job) await recoverCost(job.id);
   if (status === "active") await deliverReportEmail(order.ownerUid, order.id, reportId);
 }

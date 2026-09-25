@@ -41,10 +41,8 @@ export const providers = {
     const model = process.env.OPENAI_TEXT_MODEL || "gpt-4.1";
     const result = await openaiJson(model, { task: "personality_report", outline: input.outline, band: input.band, answers: input.answers });
     const parsed = personalitySchema.safeParse(result.json);
-    if (!parsed.success) throw new Error("schema_invalid");
-    if (parsed.data.sections.some((section, index) => section.heading !== input.outline[index])) {
-      throw new Error("schema_invalid");
-    }
+    const headingsMatch = parsed.success && parsed.data.sections.every((section, index) => section.heading === input.outline[index]);
+    if (!parsed.success || !headingsMatch) return { draft: template, costUsd: textCostUsd(result.inputTokens, result.outputTokens), model };
     return {
       draft: { ...parsed.data, source: "model" },
       costUsd: textCostUsd(result.inputTokens, result.outputTokens),

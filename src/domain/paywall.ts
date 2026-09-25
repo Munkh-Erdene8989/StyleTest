@@ -47,6 +47,57 @@ export function projectResult(input: {
   if (reveal) {
     view.fullContent = input.report.fullContent;
     if (input.assets && input.assets.length > 0) view.assets = input.assets;
+  } else if (status === "locked") {
+    const preview = previewContent(input.report.fullContent);
+    if (preview) view.fullContent = preview;
   }
   return view;
+}
+
+const PREVIEW_RATIO = 0.6;
+
+export function previewContent(content: unknown) {
+  if (!content || typeof content !== "object" || !("sections" in content)) return undefined;
+  const sections = (content as { sections?: unknown }).sections;
+  if (!Array.isArray(sections)) return undefined;
+  const blocks = sections.filter(isSection);
+  if (blocks.length === 0) return undefined;
+  const bodies = sliceText(blocks.map((section) => section.body), PREVIEW_RATIO);
+  return {
+    sections: blocks.slice(0, bodies.length).map((section, index) => ({
+      heading: section.heading,
+      body: bodies[index],
+    })),
+  };
+}
+
+function isSection(value: unknown): value is { heading: string; body: string } {
+  return Boolean(value && typeof value === "object" && "heading" in value && "body" in value && typeof value.heading === "string" && typeof value.body === "string");
+}
+
+function sliceText(blocks: string[], ratio: number) {
+  const total = blocks.reduce((sum, block) => sum + block.length, 0);
+  if (total === 0) return blocks.slice(0, 1);
+  const budget = Math.max(1, Math.ceil(total * ratio));
+  const out: string[] = [];
+  let used = 0;
+  for (const block of blocks) {
+    if (used >= budget) break;
+    const room = budget - used;
+    if (block.length <= room) {
+      out.push(block);
+      used += block.length;
+    } else {
+      out.push(cut(block, room));
+      break;
+    }
+  }
+  return out;
+}
+
+function cut(text: string, room: number) {
+  const slice = text.slice(0, room);
+  const space = slice.lastIndexOf(" ");
+  const trimmed = space > room * 0.6 ? slice.slice(0, space) : slice;
+  return `${trimmed.trimEnd()}…`;
 }

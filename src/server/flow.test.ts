@@ -40,7 +40,10 @@ describe("product flow", () => {
     await processJobById((await getStore().getReport(`rep_${session.id}`))!.generationJobId!);
     await expect(present(other, `rep_${session.id}`)).rejects.toMatchObject({ code: "not_found" });
     const locked = await present(adult, `rep_${session.id}`);
-    expect(locked.fullContent).toBeUndefined();
+    const stored = await getStore().getReport(`rep_${session.id}`);
+    expect(JSON.stringify(locked.fullContent).length).toBeLessThan(JSON.stringify(stored?.fullContent).length);
+    const full = stored?.fullContent as { sections: { body: string }[] };
+    expect(JSON.stringify(locked.fullContent)).not.toContain(full.sections.at(-1)?.body);
     expect(locked.assets).toBeUndefined();
     expect(locked.priceMnt).toBe(PRICES.personality_report);
     const buyer = await attachEmail(adult.id, "buyer@example.com");

@@ -25,16 +25,21 @@ type View = {
 export function ResultLive({ initial, appName, email }: { initial: View; appName: string; email: string | null }) {
   const [view, setView] = useState(initial);
 
+  const waiting = view.jobStatus === "pending" || view.jobStatus === "processing" || view.entitlementStatus === "unlocking";
+
   useEffect(() => {
-    if (view.jobStatus !== "pending" && view.jobStatus !== "processing") return;
+    if (!waiting) return;
     const timer = window.setInterval(async () => {
       const response = await fetch(`/api/sessions/${view.sessionId}/result`);
       if (response.ok) setView(await response.json());
     }, 2500);
     return () => window.clearInterval(timer);
-  }, [view.jobStatus, view.sessionId]);
+  }, [waiting, view.sessionId]);
 
-  const locked = view.entitlementStatus === "locked" || view.entitlementStatus === "unlocking";
+  const unpaid = view.entitlementStatus === "locked";
+  const shown = sections(view.fullContent);
+  const briefReady = view.kind !== "personality" || shown.length > 0;
+  const showPay = unpaid && view.priceMnt > 0 && briefReady;
 
   return (
     <article className="stack-form">
@@ -44,13 +49,24 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
       {view.summary.disclaimer ? <p className="note">{view.summary.disclaimer}</p> : null}
       {view.kind === "stress" ? <Help contacts={view.helpContacts} /> : null}
       {view.jobStatus === "pending" || view.jobStatus === "processing" ? (
-        <p role="status">Боловсруулж байна. Төлбөр баталгаажсан ч дуусаагүй бол бэлэн болмогц нээгдэнэ.</p>
+        <p role="status">{unpaid ? "Товч тайлан бэлтгэгдэж байна." : "Боловсруулж байна. Төлбөр баталгаажсан ч дуусаагүй бол бэлэн болмогц нээгдэнэ."}</p>
       ) : null}
       {view.jobStatus === "failed" ? <p role="alert">Боловсруулалт амжилтгүй. Техникийн дахин оролдлого шинэ төлбөр биш.</p> : null}
       {view.entitlementStatus === "unlocking" ? <p>Төлбөр баталгаажсан. Тайлан бэлтгэгдэж байна.</p> : null}
-      {locked && view.priceMnt > 0 ? (
+      {unpaid && shown.length > 0 ? <h2>Товч тайлан</h2> : null}
+      {paragraphs(view.fullContent).map((paragraph) => (
+        <p key={paragraph}>{paragraph}</p>
+      ))}
+      {shown.map((section) => (
+        <section key={section.heading}>
+          <h2 className="font-medium">{section.heading}</h2>
+          <p>{section.body}</p>
+        </section>
+      ))}
+      {showPay ? (
         <section className="pay">
-          <h2>Дэлгэрэнгүйд багтах зүйл</h2>
+          <h2>Дэлгэрэнгүй тайлан</h2>
+          <p>Товч тайлан нийт агуулгын 60%. Үлдсэн 40% төлбөр төлсний дараа нээгдэнэ.</p>
           <ul className="list-disc pl-5">
             {view.outline.map((item) => (
               <li key={item}>{item}</li>
@@ -67,15 +83,6 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
           )}
         </section>
       ) : null}
-      {paragraphs(view.fullContent).map((paragraph) => (
-        <p key={paragraph}>{paragraph}</p>
-      ))}
-      {sections(view.fullContent).map((section) => (
-        <section key={section.heading}>
-          <h2 className="font-medium">{section.heading}</h2>
-          <p>{section.body}</p>
-        </section>
-      ))}
       {view.assets?.map((asset) => (
         <img key={asset.url} src={asset.url} alt="Стайлын дүрслэл" className="frame" />
       ))}
@@ -112,7 +119,7 @@ function BuyButton({ sessionId, product }: { sessionId: string; product: string 
   return (
     <>
       <button type="button" onClick={() => void buy()} className="btn">
-        Төлбөр төлөх
+        Дэлгэрэнгүй тайлан үзэх
       </button>
       {error ? <p role="alert" className="alert">{error}</p> : null}
     </>

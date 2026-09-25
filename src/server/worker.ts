@@ -13,7 +13,8 @@ import { getStore } from "./store";
 export async function processJobById(jobId: string) {
   const store = getStore();
   const job = await store.getJob(jobId);
-  if (!job || job.status === "ready" || job.status === "expired" || job.status === "processing") return;
+  if (!job || job.status === "ready" || job.status === "expired") return;
+  if (job.status === "processing" && Date.now() - new Date(job.updatedAt).getTime() < 2 * 60 * 1000) return;
   if (job.attempt >= job.maxAttempts) {
     job.status = "failed";
     job.updatedAt = iso();

@@ -3,6 +3,7 @@ import { projectResult } from "@/domain/paywall";
 import { recordOnce } from "./events";
 import { effectiveVersion } from "./catalog";
 import { getStore } from "./store";
+import { enqueueJob } from "./enqueue";
 import { ownedSession } from "./session-service";
 import type { User } from "@/domain/types";
 
@@ -20,6 +21,7 @@ export async function present(user: User, reportId: string) {
   if (!report || report.ownerUid !== user.id) throw new AppError("not_found", 404);
   const versionStatus = report.versionId === "style-catalog-v1" ? "demo" : (await effectiveVersion(report.versionId)).status;
   const job = report.generationJobId ? await store.getJob(report.generationJobId) : null;
+  if (job && shouldResume(job)) await enqueueJob(job.id);
   const entitlement = (await store.listEntitlementsByOwner(user.id)).find((item) => item.targetId === report.id) ?? null;
   const site = await store.getSiteConfig();
   const reveal = report.priceMnt === 0 || entitlement?.status === "active";
@@ -47,6 +49,13 @@ export async function present(user: User, reportId: string) {
     });
   }
   return view;
+}
+
+function shouldResume(job: { status: string; attempt: number; maxAttempts: number; updatedAt: string }) {
+  if (job.status === "ready" || job.status === "expired") return false;
+  if (job.status === "failed" && job.attempt >= job.maxAttempts) return false;
+  if (job.status === "processing") return Date.now() - new Date(job.updatedAt).getTime() >= 2 * 60 * 1000;
+  return true;
 }
 
 export async function markRecommendationUsed(user: User, reportId: string) {

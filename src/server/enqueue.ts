@@ -23,7 +23,19 @@ export async function enqueueJob(jobId: string) {
     });
     return;
   }
-  if (process.env.NODE_ENV === "production") return;
-  const { processJobById } = await import("./worker");
-  void processJobById(jobId);
+  const run = async () => {
+    const { processJobById } = await import("./worker");
+    await processJobById(jobId);
+  };
+  try {
+    const { after } = await import("next/server");
+    after(() => {
+      void run().catch((error) => {
+        const message = error instanceof Error ? error.message : "failed";
+        console.error("job_failed", jobId, message);
+      });
+    });
+  } catch {
+    if (process.env.NODE_ENV !== "production") void run();
+  }
 }
