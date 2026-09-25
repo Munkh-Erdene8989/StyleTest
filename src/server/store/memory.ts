@@ -41,7 +41,6 @@ type Bag = {
   objects: Map<string, StoredObject>;
   media: Map<string, { path: string; exp: number }>;
   rates: Map<string, { count: number; reset: number }>;
-  claims: Map<string, string>;
   otps: Map<string, EmailOtp>;
   site: SiteConfig | null;
   chain: Promise<unknown>;
@@ -67,7 +66,6 @@ function bag(): Bag {
     objects: new Map(),
     media: new Map(),
     rates: new Map(),
-    claims: new Map(),
     otps: new Map(),
     site: null,
     chain: Promise.resolve(),
@@ -297,13 +295,6 @@ export class MemoryStore implements AppStore {
     if (current.count >= limit) return false;
     current.count += 1;
     return true;
-  }
-
-  async savePendingClaim(email: string, uid: string) {
-    this.db.claims.set(email.toLowerCase(), uid);
-  }
-  async getPendingClaim(email: string) {
-    return this.db.claims.get(email.toLowerCase()) ?? null;
   }
 
   async saveEmailOtp(otp: EmailOtp) {

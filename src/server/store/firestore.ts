@@ -313,14 +313,6 @@ export class FirestoreStore implements AppStore {
     });
   }
 
-  async savePendingClaim(email: string, uid: string) {
-    await this.put("pendingClaims", email.toLowerCase(), { email: email.toLowerCase(), uid });
-  }
-  async getPendingClaim(email: string) {
-    const row = await this.read<{ uid: string }>("pendingClaims", email.toLowerCase());
-    return row?.uid ?? null;
-  }
-
   async saveEmailOtp(otp: EmailOtp) {
     const email = otp.email.toLowerCase();
     await this.put("emailOtps", email, { ...otp, email });

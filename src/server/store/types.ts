@@ -92,8 +92,6 @@ export interface AppStore {
   resolveReadToken(token: string): Promise<string | null>;
 
   bumpRate(key: string, limit: number, windowMs: number, now: number): Promise<boolean>;
-  savePendingClaim(email: string, uid: string): Promise<void>;
-  getPendingClaim(email: string): Promise<string | null>;
 
   saveEmailOtp(otp: EmailOtp): Promise<void>;
   getEmailOtp(email: string): Promise<EmailOtp | null>;

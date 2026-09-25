@@ -18,10 +18,6 @@ export function verifyObservation(order: Pick<Order, "amount" | "currency">, obs
   return { ok: true as const };
 }
 
-export function isDuplicatePayment(order: Order, paymentId: string) {
-  return order.paymentStatus === "paid" && Boolean(order.qpayPaymentId) && order.qpayPaymentId === paymentId;
-}
-
 export function entitlementAfterPayment(job: Pick<GenerationJob, "status"> | null): EntitlementStatus {
   return job?.status === "ready" ? "active" : "unlocking";
 }

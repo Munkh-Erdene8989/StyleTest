@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isHeic } from "@/domain/images";
 
 type Example = { id: string; title: string; paletteFamily: string };
 
@@ -127,18 +128,18 @@ export function StyleWizard({
       ) : null}
       {step === 2 ? (
         <form onSubmit={finish} className="stack-form">
-          <p>Нүүр тод, гэрэл жигд, бүтэн бие хувцастай, хэт тайралтгүй зураг оруулна уу. Зөвхөн өөрийн зураг.</p>
+          <p>Нүүр тод, гэрэл жигд, бүтэн бие хувцастай, хэт тайралтгүй зураг оруулна уу. PNG, JPEG, WEBP болон iPhone-ийн HEIC зураг авна. Зөвхөн өөрийн зураг.</p>
           <label className="check">
             <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
             Өөрийн зургийг стайлын дүрслэлд ашиглахыг зөвшөөрч байна
           </label>
           <label>
             Нүүрний зураг
-            <input className="field" name="face" type="file" accept="image/png,image/jpeg,image/webp" required />
+            <input className="field" name="face" type="file" accept={PHOTO_ACCEPT} required />
           </label>
           <label>
             Бүтэн биеийн зураг
-            <input className="field" name="body" type="file" accept="image/png,image/jpeg,image/webp" required />
+            <input className="field" name="body" type="file" accept={PHOTO_ACCEPT} required />
           </label>
           <button type="submit" disabled={pending} className="btn">
             {pending ? "Боловсруулж байна…" : "Дуусгах"}
@@ -161,7 +162,7 @@ async function errorCode(response: Response) {
 
 function messageFor(code: string) {
   if (code === "consent_required") return "Зургийн зөвшөөрлөө тэмдэглэнэ үү.";
-  if (code === "invalid_image") return "PNG, JPEG эсвэл WEBP зураг оруулна уу.";
+  if (code === "invalid_image") return "PNG, JPEG, WEBP эсвэл iPhone-ийн HEIC зураг оруулна уу.";
   if (code === "file_too_large") return "Зураг хэт том байна. Бага хэмжээтэй зураг сонгоно уу.";
   if (code === "preference_required") return "Дуртай эсвэл өмсөж үзмээр жишээнээс нэгийг сонгоно уу.";
   if (code === "not_enough_directions") return "Сонголтоо өөрчилж дахин оролдоно уу.";
@@ -169,24 +170,41 @@ function messageFor(code: string) {
   return "Зураг, зөвшөөрөл, дуртай жишээгээ шалгаад дахин оролдоно уу.";
 }
 
+const PHOTO_ACCEPT = "image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif";
+
 async function prepareImage(file: File) {
-  if (file.size <= 1_500_000 && file.type === "image/jpeg") return file;
+  const source = isHeic(file.type, file.name) ? await convertHeic(file) : file;
+  if (source.size <= 1_500_000 && source.type === "image/jpeg") return source;
   try {
-    const bitmap = await createImageBitmap(file);
+    const bitmap = await createImageBitmap(source);
     const max = 1600;
     const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     const context = canvas.getContext("2d");
-    if (!context) return file;
+    if (!context) return source;
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
-    if (!blob) return file;
+    if (!blob) return source;
     return new File([blob], "photo.jpg", { type: "image/jpeg" });
   } catch {
-    return file;
+    if (source.type === "image/jpeg" || source.type === "image/png" || source.type === "image/webp") return source;
+    throw new Error("invalid_image");
+  }
+}
+
+async function convertHeic(file: File) {
+  try {
+    const heic2any = (await import("heic2any")).default;
+    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.82 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    if (!blob) throw new Error("invalid_image");
+    return new File([blob], "photo.jpg", { type: "image/jpeg" });
+  } catch (error) {
+    if (error instanceof Error && error.message === "invalid_image") throw error;
+    throw new Error("invalid_image");
   }
 }
 

@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "crypto";
-import { getAuth } from "firebase-admin/auth";
 import { getAppCheck } from "firebase-admin/app-check";
 import { AppError } from "@/domain/errors";
 import type { User, UserRole } from "@/domain/types";
@@ -58,19 +57,11 @@ export async function ensureGuest() {
   return user;
 }
 
-export async function currentUser(req: Request) {
-  const store = getStore();
-  const header = req.headers.get("authorization");
-  const token = header?.toLowerCase().startsWith("bearer ") ? header.slice(7) : null;
-  const app = adminApp();
-  if (token && app) {
-    const decoded = await getAuth(app).verifyIdToken(token);
-    return syncUser(decoded.uid, decoded.email ?? null, Boolean(decoded.firebase?.sign_in_provider === "anonymous" || !decoded.email));
-  }
+export async function currentUser(_req: Request) {
   const jar = await cookies();
   const uid = jar.get("sa_uid")?.value;
   if (!uid) throw new AppError("unauthorized", 401);
-  const user = await store.getUser(uid);
+  const user = await getStore().getUser(uid);
   if (!user) throw new AppError("unauthorized", 401);
   return user;
 }
@@ -80,17 +71,6 @@ export async function optionalUser() {
   const uid = jar.get("sa_uid")?.value;
   if (!uid) return null;
   return getStore().getUser(uid);
-}
-
-async function syncUser(id: string, email: string | null, anonymous: boolean) {
-  const store = getStore();
-  const existing = (await store.getUser(id)) ?? blankUser(id);
-  existing.email = email ? email.toLowerCase() : existing.email;
-  existing.anonymous = anonymous && !existing.email;
-  existing.role = roleForEmail(existing.email);
-  await store.saveUser(existing);
-  if (existing.email) await claimOwned(existing.id);
-  return existing;
 }
 
 export async function attachEmail(userId: string, email: string) {

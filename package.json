@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@google-cloud/tasks": "^7.1.1",
-    "firebase": "^12.19.0",
     "firebase-admin": "^14.4.0",
+    "heic2any": "^0.0.4",
     "next": "15.5.26",
     "react": "19.1.0",
     "react-dom": "19.1.0",
