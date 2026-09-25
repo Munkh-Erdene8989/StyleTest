@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import type { AppStore } from "./types";
+import type { AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -41,6 +41,7 @@ type Bag = {
   media: Map<string, { path: string; exp: number }>;
   rates: Map<string, { count: number; reset: number }>;
   claims: Map<string, string>;
+  otps: Map<string, EmailOtp>;
   site: SiteConfig | null;
   chain: Promise<unknown>;
 };
@@ -66,6 +67,7 @@ function bag(): Bag {
     media: new Map(),
     rates: new Map(),
     claims: new Map(),
+    otps: new Map(),
     site: null,
     chain: Promise.resolve(),
   };
@@ -300,5 +302,15 @@ export class MemoryStore implements AppStore {
   }
   async getPendingClaim(email: string) {
     return this.db.claims.get(email.toLowerCase()) ?? null;
+  }
+
+  async saveEmailOtp(otp: EmailOtp) {
+    this.db.otps.set(otp.email.toLowerCase(), otp);
+  }
+  async getEmailOtp(email: string) {
+    return this.db.otps.get(email.toLowerCase()) ?? null;
+  }
+  async deleteEmailOtp(email: string) {
+    this.db.otps.delete(email.toLowerCase());
   }
 }

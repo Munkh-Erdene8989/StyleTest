@@ -1,13 +1,18 @@
 import { cookies } from "next/headers";
-import { randomUUID } from "crypto";
+import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "crypto";
 import { getAuth } from "firebase-admin/auth";
 import { getAppCheck } from "firebase-admin/app-check";
 import { AppError } from "@/domain/errors";
 import type { User, UserRole } from "@/domain/types";
 import { iso } from "@/domain/time";
 import { adminApp } from "./firebase-admin";
+import { otpSender, sendEmail } from "./email";
+import { limit } from "./limit";
 import { getStore } from "./store";
-import { sendEmail } from "./email";
+
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_ATTEMPTS = 5;
+const OTP_SUBJECT = "1 удаагийн баталгаажуулах код";
 
 export function roleForEmail(email: string | null): UserRole {
   if (!email) return "user";
@@ -107,28 +112,75 @@ export async function attachEmail(userId: string, email: string) {
   return user;
 }
 
-export async function requestEmailLink(userId: string, email: string) {
+function normalizeEmail(email: string) {
   const normalized = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) throw new AppError("invalid_email", 400);
-  const app = adminApp();
+  return normalized;
+}
+
+function hashOtp(code: string, salt: string) {
+  return createHash("sha256").update(`${salt}:${code}`).digest("hex");
+}
+
+function codesMatch(code: string, salt: string, codeHash: string) {
+  const actual = Buffer.from(hashOtp(code, salt), "hex");
+  const expected = Buffer.from(codeHash, "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+export async function requestEmailOtp(userId: string, email: string) {
+  const normalized = normalizeEmail(email);
   const store = getStore();
-  await store.savePendingClaim(normalized, userId);
-  if (!app) {
-    if (process.env.NODE_ENV === "production") throw new AppError("auth_unconfigured", 500);
-    const user = await attachEmail(userId, normalized);
-    return { sent: false, development: true, userId: user.id };
+  const user = await store.getUser(userId);
+  if (!user) throw new AppError("unauthorized", 401);
+  await limit(userId, "email_otp_send", 5, OTP_TTL_MS);
+  await limit(normalized, "email_otp_send", 5, OTP_TTL_MS);
+  const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
+  const salt = randomBytes(16).toString("hex");
+  await store.saveEmailOtp({
+    email: normalized,
+    uid: userId,
+    codeHash: hashOtp(code, salt),
+    salt,
+    expiresAt: Date.now() + OTP_TTL_MS,
+    attempts: 0,
+  });
+  const configuredFrom = process.env.RESEND_FROM_EMAIL;
+  try {
+    const delivery = await sendEmail({
+      to: normalized,
+      subject: OTP_SUBJECT,
+      text: `Таны нэг удаагийн баталгаажуулах код: ${code}\n\nЭнэ код 10 минутын турш хүчинтэй. Бусдад бүү дамжуул.`,
+      ...(configuredFrom ? { from: otpSender(configuredFrom) } : {}),
+    });
+    if (delivery.skipped) return { sent: false as const, development: true as const, code };
+    return { sent: true as const, development: false as const };
+  } catch (error) {
+    await store.deleteEmailOtp(normalized);
+    throw error;
   }
-  const link = await getAuth(app).generateSignInWithEmailLink(normalized, {
-    url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/login/finish`,
-    handleCodeInApp: true,
-  });
-  const site = await store.getSiteConfig();
-  await sendEmail({
-    to: normalized,
-    subject: `${site.appName}: нэвтрэх холбоос`,
-    text: `Нэвтрэхийн тулд холбоосыг нээнэ үү:\n${link}\nХолбоосыг бусдад бүү дамжуул.`,
-  });
-  return { sent: true, development: false, userId };
+}
+
+export async function verifyEmailOtp(userId: string, email: string, code: string) {
+  const normalized = normalizeEmail(email);
+  const store = getStore();
+  const record = await store.getEmailOtp(normalized);
+  if (!record) throw new AppError("invalid_code", 400);
+  if (record.expiresAt <= Date.now()) {
+    await store.deleteEmailOtp(normalized);
+    throw new AppError("code_expired", 400);
+  }
+  if (record.attempts >= OTP_ATTEMPTS) throw new AppError("too_many_attempts", 429);
+  const entered = code.trim();
+  if (!/^\d{6}$/.test(entered) || !codesMatch(entered, record.salt, record.codeHash)) {
+    record.attempts += 1;
+    await store.saveEmailOtp(record);
+    throw new AppError("invalid_code", 400);
+  }
+  await store.deleteEmailOtp(normalized);
+  const account = await attachEmail(userId, normalized);
+  if (record.uid !== account.id) await moveOwnership(record.uid, account.id);
+  return account;
 }
 
 export async function moveOwnership(fromUid: string, toUid: string) {

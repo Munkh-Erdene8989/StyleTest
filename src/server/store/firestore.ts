@@ -2,7 +2,7 @@ import { getFirestore, type DocumentData, type Firestore } from "firebase-admin/
 import { getStorage } from "firebase-admin/storage";
 import { adminApp } from "../firebase-admin";
 import { AppError } from "@/domain/errors";
-import type { AppStore } from "./types";
+import type { AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -291,5 +291,16 @@ export class FirestoreStore implements AppStore {
   async getPendingClaim(email: string) {
     const row = await this.read<{ uid: string }>("pendingClaims", email.toLowerCase());
     return row?.uid ?? null;
+  }
+
+  async saveEmailOtp(otp: EmailOtp) {
+    const email = otp.email.toLowerCase();
+    await this.put("emailOtps", email, { ...otp, email });
+  }
+  async getEmailOtp(email: string) {
+    return this.read<EmailOtp>("emailOtps", email.toLowerCase());
+  }
+  async deleteEmailOtp(email: string) {
+    await this.database().collection("emailOtps").doc(email.toLowerCase()).delete();
   }
 }

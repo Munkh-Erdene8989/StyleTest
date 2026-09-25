@@ -1,8 +1,15 @@
 import { AppError } from "@/domain/errors";
 
-export async function sendEmail(input: { to: string; subject: string; text: string }) {
+export function otpSender(configured: string) {
+  const trimmed = configured.trim();
+  const wrapped = trimmed.match(/<([^>]+)>/);
+  const address = (wrapped?.[1] ?? trimmed).trim();
+  return `OTP <${address}>`;
+}
+
+export async function sendEmail(input: { to: string; subject: string; text: string; from?: string }) {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
+  const from = input.from ?? process.env.RESEND_FROM_EMAIL;
   if (!key || !from) {
     if (process.env.NODE_ENV === "production") throw new AppError("email_unconfigured", 500);
     return { skipped: true as const };
