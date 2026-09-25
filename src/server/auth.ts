@@ -163,6 +163,23 @@ export async function verifyEmailOtp(userId: string, email: string, code: string
   return account;
 }
 
+export async function loginWithPassword(userId: string, email: string, password: string) {
+  const expectedEmail = (process.env.BOOTSTRAP_ADMIN_EMAIL || "").trim().toLowerCase();
+  const expectedPassword = process.env.ADMIN_PASSWORD || "";
+  const normalized = normalizeEmail(email);
+  await limit(normalized, "password_login", 8, 15 * 60 * 1000);
+  const emailOk = Boolean(expectedEmail) && normalized === expectedEmail;
+  const passwordOk = Boolean(expectedPassword) && safeEqual(password, expectedPassword);
+  if (!emailOk || !passwordOk) throw new AppError("invalid_code", 400);
+  return attachEmail(userId, normalized);
+}
+
+function safeEqual(left: string, right: string) {
+  const a = createHash("sha256").update(left).digest();
+  const b = createHash("sha256").update(right).digest();
+  return timingSafeEqual(a, b);
+}
+
 export async function moveOwnership(fromUid: string, toUid: string) {
   if (fromUid === toUid) {
     await claimOwned(toUid);

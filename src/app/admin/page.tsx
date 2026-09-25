@@ -1,10 +1,5 @@
-import { AdminPanel } from "@/components/admin-panel";
+import { OverviewDesk } from "@/components/admin/overview-desk";
 
 export default function AdminPage() {
-  return (
-    <main className="grid gap-4">
-      <h1>Админ</h1>
-      <AdminPanel />
-    </main>
-  );
+  return <OverviewDesk />;
 }

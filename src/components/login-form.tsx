@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-function loginError(code: string, step: "email" | "code") {
+function loginError(code: string, step: "email" | "code" | "password") {
   if (code === "rate_limited") return "Хэт олон удаа илгээлээ. Түр хүлээнэ үү.";
+  if (code === "invalid_code" && step === "password") return "И-мэйл эсвэл нууц үг буруу байна.";
   if (code === "invalid_code") return "Код буруу байна.";
   if (code === "code_expired") return "Кодын хугацаа дууссан. Дахин авна уу.";
   if (code === "too_many_attempts") return "Оролдлого хэтэрсэн. Дахин код авна уу.";
@@ -17,9 +18,33 @@ export function LoginForm() {
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+
+  async function signIn() {
+    setError("");
+    setPending(true);
+    try {
+      await fetch("/api/auth/guest", { method: "POST" });
+      const response = await fetch("/api/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(loginError(String(data.error ?? ""), "password"));
+        return;
+      }
+      setMessage("Нэвтэрлээ.");
+      router.push(data.admin ? "/admin" : "/account");
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function sendCode() {
     setError("");
@@ -129,7 +154,7 @@ export function LoginForm() {
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        void sendCode();
+        void signIn();
       }}
       className="stack-form"
     >
@@ -145,7 +170,21 @@ export function LoginForm() {
           onChange={(event) => setEmail(event.target.value)}
         />
       </label>
+      <label htmlFor="password">
+        Нууц үг
+        <input
+          id="password"
+          className="field"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </label>
       <button type="submit" className="btn" disabled={pending}>
+        Нэвтрэх
+      </button>
+      <button type="button" className="btn-quiet" disabled={pending} onClick={() => void sendCode()}>
         Код авах
       </button>
       {message ? <p role="status">{message}</p> : null}

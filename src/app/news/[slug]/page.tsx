@@ -1,24 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatNewsDate, newsBySlug, NEWS_POSTS } from "@/domain/news";
+import { formatNewsDate } from "@/domain/news";
+import { publishedNews } from "@/server/catalog";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return NEWS_POSTS.map((post) => ({ slug: post.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = newsBySlug(slug);
+  const post = (await publishedNews()).find((item) => item.slug === slug);
   if (!post) return { title: "Мэдээ" };
   return { title: post.title, description: post.excerpt };
 }
 
 export default async function NewsArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = newsBySlug(slug);
+  const post = (await publishedNews()).find((item) => item.slug === slug);
   if (!post) notFound();
   return (
     <main className="article">

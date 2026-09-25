@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "crypto";
 import { canStartTest } from "@/domain/age";
-import { getTestBySlug, STYLE_DIRECTIONS, STYLE_EXAMPLES } from "@/domain/content";
+import { STYLE_DIRECTIONS, STYLE_EXAMPLES } from "@/domain/content";
 import { AppError } from "@/domain/errors";
 import { imageFormatOk } from "@/domain/images";
 import { stableId } from "@/domain/jobs";
@@ -9,16 +9,16 @@ import { bandFor, scoreAnswers } from "@/domain/score";
 import { rankDirections } from "@/domain/style-match";
 import { DAY_MS, iso, plus } from "@/domain/time";
 import type { GenerationJob, Report, Session, StyleInput, Upload, User } from "@/domain/types";
-import { effectiveVersion } from "./catalog";
+import { effectiveVersion, loadCatalog, testBySlug } from "./catalog";
 import { enqueueJob } from "./enqueue";
 import { recordOnce } from "./events";
 import { limit } from "./limit";
 import { getStore } from "./store";
 
 export async function createQuizSession(user: User, slug: string) {
-  const test = getTestBySlug(slug);
-  if (!test) throw new AppError("not_found", 404);
-  const version = await effectiveVersion(test.activeVersionId);
+  const row = await testBySlug(slug);
+  if (!row) throw new AppError("not_found", 404);
+  const { test, version } = row;
   if (!canStartTest(version.kind, user.ageBand)) throw new AppError("age_restricted", 403);
   await limit(user.id, "session_create", 40);
   const now = iso();
@@ -70,6 +70,9 @@ export async function completeQuiz(user: User, sessionId: string) {
   const band = bandFor(version, score.bandId);
   const site = await getStore().getSiteConfig();
   const override = version.kind === "fun" ? site.funCopy[band.id] : undefined;
+  const catalog = await loadCatalog();
+  const priced = catalog.find((item) => item.version.id === version.id);
+  const priceMnt = version.kind === "personality" ? (priced?.test.priceMnt ?? PRICES.personality_report) : 0;
   session.status = "completed";
   session.updatedAt = iso();
   const report: Report = {
@@ -89,7 +92,7 @@ export async function completeQuiz(user: User, sessionId: string) {
         ? null
         : { source: "template", paragraphs: band.detail, score: score.raw },
     assetPaths: [],
-    priceMnt: version.kind === "personality" ? PRICES.personality_report : 0,
+    priceMnt,
     createdAt: iso(),
   };
   const store = getStore();
@@ -313,8 +316,9 @@ export function newJob(input: {
 }
 
 export async function resumeSession(user: User, slug: string) {
-  const test = getTestBySlug(slug);
-  if (!test) return null;
+  const row = await testBySlug(slug);
+  if (!row) return null;
+  const test = row.test;
   const sessions = await getStore().listSessionsByOwner(user.id);
   return sessions.find((session) => session.testId === test.id && session.status === "in_progress") ?? null;
 }

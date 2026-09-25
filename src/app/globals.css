@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
 :root {
   color-scheme: light;
   --cream: #faf7f2;
@@ -1661,4 +1684,55 @@ main.studio {
     animation: none !important;
     transition: none !important;
   }
+}
+
+body:has(.admin-root) .top,
+body:has(.admin-root) > footer {
+  display: none;
+}
+
+body:has(.admin-root) .shell {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+body:has(.admin-root) .shell > main {
+  width: 100%;
+}
+
+.admin-root {
+  --background: #f3eee6;
+  --foreground: #1e1a18;
+  --card: #fffdfb;
+  --card-foreground: #1e1a18;
+  --primary: #7a2340;
+  --primary-foreground: #fffdfb;
+  --secondary: #efe6dc;
+  --secondary-foreground: #1e1a18;
+  --muted: #efe6dc;
+  --muted-foreground: #6e625c;
+  --accent: #f6ead8;
+  --accent-foreground: #3d3420;
+  --destructive: #8e2f2f;
+  --border: #e3d5c8;
+  --input: #e3d5c8;
+  --ring: #7a2340;
+  --radius: 0.7rem;
+  min-height: 100vh;
+  background: #f3eee6;
+  color: #1e1a18;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.admin-rail {
+  background: #5c1a30;
+  color: #faf7f2;
+}
+
+.admin-rail a {
+  color: inherit;
+  text-decoration: none;
 }

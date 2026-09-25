@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { getFirestore, type DocumentData, type Firestore } from "firebase-admin/firestore";
 import { adminApp } from "../firebase-admin";
+import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
 import type { AppStore, EmailOtp } from "./types";
@@ -60,6 +61,9 @@ export class FirestoreStore implements AppStore {
     const snap = await this.database().collection("users").where("email", "==", email.toLowerCase()).limit(1).get();
     return (snap.docs[0]?.data() as User | undefined) ?? null;
   }
+  async listUsers() {
+    return this.all<User>("users");
+  }
 
   async saveSession(session: Session) {
     await this.put("sessions", session.id, session);
@@ -84,6 +88,9 @@ export class FirestoreStore implements AppStore {
   }
   async getScore(sessionId: string) {
     return this.read<Score>("scores", sessionId);
+  }
+  async listScores() {
+    return this.all<Score>("scores");
   }
 
   async saveJob(job: GenerationJob) {
@@ -239,6 +246,13 @@ export class FirestoreStore implements AppStore {
   }
   async saveVersionOverride(override: VersionOverride) {
     await this.put("versionOverrides", override.versionId, override);
+  }
+
+  async getAdminLibrary() {
+    return (await this.read<AdminLibrary>("adminLibrary", "current")) ?? { tests: [], news: null };
+  }
+  async saveAdminLibrary(library: AdminLibrary) {
+    await this.put("adminLibrary", "current", library);
   }
 
   async saveStylePackage(pkg: StylePackage) {

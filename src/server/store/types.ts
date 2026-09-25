@@ -1,3 +1,4 @@
+import type { AdminLibrary } from "@/domain/admin-content";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -22,6 +23,7 @@ export interface AppStore {
   getUser(id: string): Promise<User | null>;
   saveUser(user: User): Promise<void>;
   findUserByEmail(email: string): Promise<User | null>;
+  listUsers(): Promise<User[]>;
 
   saveSession(session: Session): Promise<void>;
   getSession(id: string): Promise<Session | null>;
@@ -31,6 +33,7 @@ export interface AppStore {
 
   saveScore(score: Score): Promise<void>;
   getScore(sessionId: string): Promise<Score | null>;
+  listScores(): Promise<Score[]>;
 
   saveJob(job: GenerationJob): Promise<void>;
   getJob(id: string): Promise<GenerationJob | null>;
@@ -81,6 +84,9 @@ export interface AppStore {
 
   getVersionOverride(id: string): Promise<VersionOverride | null>;
   saveVersionOverride(override: VersionOverride): Promise<void>;
+
+  getAdminLibrary(): Promise<AdminLibrary>;
+  saveAdminLibrary(library: AdminLibrary): Promise<void>;
 
   saveStylePackage(pkg: StylePackage): Promise<void>;
   getStylePackage(sessionId: string): Promise<StylePackage | null>;

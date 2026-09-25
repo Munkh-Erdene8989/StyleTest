@@ -1,10 +1,12 @@
 import { randomUUID } from "crypto";
+import { catalogFromLibrary, sanitizeDraft, sanitizeNews, scoreSpan, bandIssues } from "@/domain/admin-content";
 import { AppError } from "@/domain/errors";
 import { iso } from "@/domain/time";
 import type { HelpContact, User, VersionStatus } from "@/domain/types";
 import { VERSIONS } from "@/domain/content";
+import { NEWS_POSTS } from "@/domain/news";
 import { canOperate, canReadSensitive } from "./auth";
-import { effectiveVersion } from "./catalog";
+import { effectiveVersion, loadCatalog } from "./catalog";
 import { getStore } from "./store";
 import { enqueueJob } from "./enqueue";
 import { limit } from "./limit";
@@ -164,3 +166,184 @@ async function audit(user: User, action: string, target: string, reason?: string
     createdAt: iso(),
   });
 }
+
+export async function adminDesk(user: User) {
+  assertOps(user);
+  const store = getStore();
+  const [orders, jobs, events, refunds, ledger, site, users, sessions, scores, reports, auditLogs, catalog, library] = await Promise.all([
+    store.listOrders(),
+    store.listJobs(),
+    store.listEvents(),
+    store.listRefunds(),
+    store.listLedger(),
+    store.getSiteConfig(),
+    store.listUsers(),
+    store.listSessions(),
+    store.listScores(),
+    store.listReports(),
+    store.listAudit(),
+    loadCatalog(),
+    store.getAdminLibrary(),
+  ]);
+  const scoreBySession = new Map(scores.map((score) => [score.sessionId, score]));
+  const tests = catalog.map((row) => {
+    const span = scoreSpan(row.version.questions);
+    return { ...row, span, issues: bandIssues(row.version.bands, span) };
+  });
+  return {
+    viewer: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      canReadSensitive: canReadSensitive(user.role),
+    },
+    appName: site.appName,
+    helpContacts: site.helpContacts,
+    funCopy: site.funCopy,
+    tests,
+    news: library.news ?? NEWS_POSTS,
+    users: users
+      .map((item) => ({
+        id: item.id,
+        email: item.email,
+        ageBand: item.ageBand,
+        anonymous: item.anonymous,
+        role: item.role,
+        createdAt: item.createdAt,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    sessions: sessions
+      .map((session) => {
+        const score = scoreBySession.get(session.id);
+        return {
+          id: session.id,
+          ownerUid: session.ownerUid,
+          kind: session.kind,
+          testId: session.testId,
+          versionId: session.versionId,
+          status: session.status,
+          answerCount: Object.keys(session.answers).length,
+          styleReady: Boolean(session.styleInput),
+          createdAt: session.createdAt,
+          score: score ? { raw: score.raw, bandId: score.bandId } : null,
+        };
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    reports: reports
+      .map((report) => ({
+        id: report.id,
+        sessionId: report.sessionId,
+        ownerUid: report.ownerUid,
+        versionId: report.versionId,
+        kind: report.kind,
+        title: report.summary.title,
+        body: report.summary.body,
+        disclaimer: report.summary.disclaimer ?? "",
+        outline: report.outline,
+        fullContent: report.fullContent,
+        priceMnt: report.priceMnt,
+        generationJobId: report.generationJobId ?? null,
+        createdAt: report.createdAt,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    orders: orders
+      .map((order) => ({
+        id: order.id,
+        ownerUid: order.ownerUid,
+        productCode: order.productCode,
+        amount: order.amount,
+        currency: order.currency,
+        paymentStatus: order.paymentStatus,
+        channel: order.channel,
+        sessionId: order.sessionId,
+        reportId: order.reportId,
+        paidAt: order.paidAt ?? null,
+        createdAt: order.createdAt,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    jobs: jobs
+      .map((job) => ({
+        id: job.id,
+        sessionId: job.sessionId,
+        kind: job.kind,
+        status: job.status,
+        attempt: job.attempt,
+        maxAttempts: job.maxAttempts,
+        costUsd: job.costUsd,
+        error: job.error ?? null,
+        model: job.model ?? null,
+        createdAt: job.createdAt,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    refunds: [...refunds].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt)),
+    events: [...events]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 40)
+      .map((event) => ({ name: event.name, product: event.product ?? null, createdAt: event.createdAt })),
+    ledger: [...ledger].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 40),
+    audit: [...auditLogs]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 40)
+      .map((log) => ({
+        id: log.id,
+        actorId: log.actorId,
+        role: log.role,
+        action: log.action,
+        target: log.target,
+        reason: log.reason ?? "",
+        createdAt: log.createdAt,
+      })),
+  };
+}
+
+export async function saveTestDraft(user: User, raw: unknown) {
+  assertOps(user);
+  const store = getStore();
+  const library = await store.getAdminLibrary();
+  const catalog = catalogFromLibrary(library);
+  const result = sanitizeDraft(raw, catalog);
+  if ("issues" in result) throw new AppError("invalid_test", 400, result.issues);
+  const draft = { ...result.draft, updatedAt: iso() };
+  if (draft.version.status === "approved" && draft.version.kind === "stress") {
+    const site = await store.getSiteConfig();
+    if (site.helpContacts.length === 0) {
+      throw new AppError("help_contacts_required", 400, ["Стрессийн тестийг баталгаажуулахаас өмнө тусламжийн холбоо оруулна."]);
+    }
+  }
+  library.tests = [...library.tests.filter((item) => item.version.id !== draft.version.id), draft];
+  await store.saveAdminLibrary(library);
+  await store.saveVersionOverride({
+    versionId: draft.version.id,
+    status: draft.version.status,
+    translationReview: draft.version.translationReview,
+    licenseRef: draft.version.licenseRef,
+  });
+  await audit(user, "test_save", draft.version.id);
+  return draft;
+}
+
+export async function removeTestDraft(user: User, versionId: string) {
+  assertOps(user);
+  if (VERSIONS.some((item) => item.id === versionId)) {
+    throw new AppError("builtin_locked", 400, ["Системийн тестийг устгахгүй. Сайт дээр харуулахыг унтрааж болно."]);
+  }
+  const store = getStore();
+  const library = await store.getAdminLibrary();
+  library.tests = library.tests.filter((item) => item.version.id !== versionId);
+  await store.saveAdminLibrary(library);
+  await audit(user, "test_remove", versionId);
+  return { ok: true };
+}
+
+export async function saveNewsPosts(user: User, raw: unknown) {
+  assertOps(user);
+  const result = sanitizeNews(raw);
+  if ("issues" in result) throw new AppError("invalid_news", 400, result.issues);
+  const store = getStore();
+  const library = await store.getAdminLibrary();
+  library.news = result.posts;
+  await store.saveAdminLibrary(library);
+  await audit(user, "news_save", "news");
+  return result.posts;
+}
+

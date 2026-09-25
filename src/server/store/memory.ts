@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import type { AppStore, EmailOtp } from "./types";
 import type {
@@ -43,6 +44,7 @@ type Bag = {
   rates: Map<string, { count: number; reset: number }>;
   otps: Map<string, EmailOtp>;
   site: SiteConfig | null;
+  library: AdminLibrary | null;
   chain: Promise<unknown>;
 };
 
@@ -68,6 +70,7 @@ function bag(): Bag {
     rates: new Map(),
     otps: new Map(),
     site: null,
+    library: null,
     chain: Promise.resolve(),
   };
 }
@@ -94,6 +97,9 @@ export class MemoryStore implements AppStore {
     const target = email.toLowerCase();
     return [...this.db.users.values()].find((user) => user.email?.toLowerCase() === target) ?? null;
   }
+  async listUsers() {
+    return [...this.db.users.values()];
+  }
 
   async saveSession(session: Session) {
     this.db.sessions.set(session.id, session);
@@ -117,6 +123,9 @@ export class MemoryStore implements AppStore {
   }
   async getScore(sessionId: string) {
     return this.db.scores.get(sessionId) ?? null;
+  }
+  async listScores() {
+    return [...this.db.scores.values()];
   }
 
   async saveJob(job: GenerationJob) {
@@ -257,6 +266,14 @@ export class MemoryStore implements AppStore {
   }
   async saveVersionOverride(override: VersionOverride) {
     this.db.overrides.set(override.versionId, override);
+  }
+
+  async getAdminLibrary() {
+    if (!this.db.library) this.db.library = { tests: [], news: null };
+    return structuredClone(this.db.library);
+  }
+  async saveAdminLibrary(library: AdminLibrary) {
+    this.db.library = structuredClone(library);
   }
 
   async saveStylePackage(pkg: StylePackage) {

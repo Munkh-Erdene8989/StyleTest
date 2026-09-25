@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { formatNewsDate, NEWS_POSTS } from "@/domain/news";
+import { formatNewsDate } from "@/domain/news";
+import { publishedNews } from "@/server/catalog";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Мэдээ, мэдээлэл",
   description: "Эмэгтэйчүүд болон загвар сонирхогчдод зориулсан энэ улирлын загварын чиглэл.",
 };
 
-export default function NewsPage() {
+export default async function NewsPage() {
+  const posts = await publishedNews();
   return (
     <main className="news-index">
       <p className="kicker">Мэдээ, мэдээлэл</p>
@@ -18,7 +22,7 @@ export default function NewsPage() {
         Эмэгтэйчүүд болон загвар сонирхогчдод зориулсан энэ улирлын чиглэл. Дэлгүүр, үнэ байхгүй. Өмсөх арга л байна.
       </p>
       <div className="news-grid">
-        {NEWS_POSTS.map((post) => (
+        {posts.map((post) => (
           <Link key={post.slug} href={`/news/${post.slug}`} className="news-card">
             <span className={`news-band swatch-${post.swatch}`} aria-hidden="true" />
             <span className="news-card-body">

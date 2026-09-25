@@ -3,7 +3,12 @@ import { assertAppCheck, currentUser } from "./auth";
 import type { User } from "@/domain/types";
 
 export function errorResponse(error: unknown) {
-  if (error instanceof AppError) return Response.json({ error: error.code }, { status: error.status });
+  if (error instanceof AppError) {
+    return Response.json(
+      error.issues?.length ? { error: error.code, issues: error.issues } : { error: error.code },
+      { status: error.status },
+    );
+  }
   const detail = error instanceof Error ? error.message : "unknown";
   console.error("request_failed", detail.slice(0, 180));
   return Response.json({ error: "server_error" }, { status: 500 });
