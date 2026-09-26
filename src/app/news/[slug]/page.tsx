@@ -19,9 +19,9 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
   if (!post) notFound();
   return (
     <main className="article">
-      <p className="kicker">
-        <Link href="/news">Мэдээ, мэдээлэл</Link>
-      </p>
+      <Link className="btn-quiet" href="/news">
+        Мэдээ рүү буцах
+      </Link>
       <span className={`article-rule swatch-${post.swatch}`} aria-hidden="true" />
       <h1>{post.title}</h1>
       <p className="row-meta">

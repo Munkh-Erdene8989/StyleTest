@@ -92,9 +92,11 @@ export function StyleWizard({
           <Picker title="Дуртай" examples={examples} selected={liked} onToggle={(id) => toggle(liked, id, setLiked)} />
           <Picker title="Өмсөж үзмээр" examples={examples} selected={aspire} onToggle={(id) => toggle(aspire, id, setAspire)} />
           <Picker title="Таалагддаггүй" examples={examples} selected={disliked} onToggle={(id) => toggle(disliked, id, setDisliked)} />
-          <button type="button" className="btn" onClick={() => setStep(1)}>
-            Үргэлжлүүлэх
-          </button>
+          <div className="actions">
+            <button type="button" className="btn" onClick={() => setStep(1)}>
+              Үргэлжлүүлэх
+            </button>
+          </div>
         </section>
       ) : null}
       {step === 1 ? (
@@ -121,9 +123,14 @@ export function StyleWizard({
               Зан төлөвийн тестийн үр дүнг тусад нь зөвшөөрч ашиглах
             </label>
           ) : null}
-          <button type="button" className="btn" onClick={() => void saveInput().then(() => setStep(2)).catch(() => setError("Сонголтоо шалгана уу."))}>
-            Үргэлжлүүлэх
-          </button>
+          <div className="actions">
+            <button type="button" className="btn-quiet" onClick={() => setStep(0)}>
+              Буцах
+            </button>
+            <button type="button" className="btn" onClick={() => void saveInput().then(() => setStep(2)).catch(() => setError("Сонголтоо шалгана уу."))}>
+              Үргэлжлүүлэх
+            </button>
+          </div>
         </section>
       ) : null}
       {step === 2 ? (
@@ -141,9 +148,14 @@ export function StyleWizard({
             Бүтэн биеийн зураг
             <input className="field" name="body" type="file" accept={PHOTO_ACCEPT} required />
           </label>
-          <button type="submit" disabled={pending} className="btn">
-            {pending ? "Боловсруулж байна…" : "Дуусгах"}
-          </button>
+          <div className="actions">
+            <button type="button" className="btn-quiet" onClick={() => setStep(1)}>
+              Буцах
+            </button>
+            <button type="submit" disabled={pending} className="btn">
+              {pending ? "Боловсруулж байна…" : "Дуусгах"}
+            </button>
+          </div>
         </form>
       ) : null}
       {error ? (

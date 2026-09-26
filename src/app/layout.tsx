@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
-import Link from "next/link";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { SiteHeader } from "@/components/site-header";
 import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sections";
@@ -84,22 +83,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="foot">
           <div className="bar foot-grid">
             <StudioFooterBrand />
-            <div>
-              <p className="foot-label">Хуудас</p>
-              <nav className="foot-links">
-                <Link href="/#about">Бидний тухай</Link>
-                <Link href="/#services">Үйлчилгээ</Link>
-                <Link href="/#training">Сургалт</Link>
-                <Link href="/#gallery">Галерей</Link>
-                <Link href="/#stories">Сэтгэгдэл</Link>
-                <Link href="/#contact">Холбоо барих</Link>
-                <Link href="/news">Мэдээ</Link>
-                <Link href="/account">Миний хэсэг</Link>
-                <Link href="/privacy">Нууцлал</Link>
-                <Link href="/terms">Үйлчилгээний нөхцөл</Link>
-                <Link href="/login">{user?.email ? "Нэвтэрсэн" : "Нэвтрэх"}</Link>
-              </nav>
-            </div>
             <StudioFooterContact />
           </div>
           <p className="bar foot-copy">© 2024 Naruka Styling Studio. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>

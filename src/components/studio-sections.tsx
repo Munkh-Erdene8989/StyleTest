@@ -301,11 +301,11 @@ export function StudioStories() {
             </article>
           ))}
         </div>
-        <p className="spread-note band-head">
-          <a className="inline-link" href={FACEBOOK} target="_blank" rel="noopener noreferrer">
-            Facebook дээр дэлгэрэнгүй сэтгэгдэл үзэх — 8.1K дагагч
+        <div className="link-row">
+          <a className="btn-quiet" href={FACEBOOK} target="_blank" rel="noopener noreferrer">
+            Facebook дээрх сэтгэгдэл
           </a>
-        </p>
+        </div>
       </div>
     </section>
   );
@@ -332,25 +332,21 @@ export function StudioContact() {
           </article>
           <article className="contact-card">
             <h3>Утас</h3>
-            <p>
-              <a className="inline-link" href={`tel:${PHONE}`}>
-                {PHONE_LABEL}
-              </a>
-            </p>
             <p>Цаг захиалга, сургалтын бүртгэл</p>
+            <a className="btn" href={`tel:${PHONE}`}>
+              {PHONE_LABEL}
+            </a>
           </article>
           <article className="contact-card">
             <h3>И-мэйл & Сошиал</h3>
-            <p>
-              <a className="inline-link" href={`mailto:${EMAIL}`}>
-                {EMAIL}
+            <div className="link-row">
+              <a className="btn-quiet" href={`mailto:${EMAIL}`}>
+                И-мэйл бичих
               </a>
-            </p>
-            <p>
-              <a className="inline-link" href={FACEBOOK} target="_blank" rel="noopener noreferrer">
-                Facebook · 8.1K дагагч
+              <a className="btn-quiet" href={FACEBOOK} target="_blank" rel="noopener noreferrer">
+                Facebook
               </a>
-            </p>
+            </div>
           </article>
         </div>
         <div className="contact-close">
@@ -374,19 +370,17 @@ export function StudioContact() {
             </a>
           </article>
         </div>
-        <p className="spread-note">
-          <Link className="inline-link" href="/login">
+        <div className="link-row">
+          <Link className="btn" href="/login">
             Нэвтрэх
           </Link>
-          {" · "}
-          <Link className="inline-link" href="/account">
+          <Link className="btn-quiet" href="/account">
             Миний хэсэг
           </Link>
-          {" · "}
-          <Link className="inline-link" href="/privacy">
+          <Link className="btn-quiet" href="/privacy">
             Нууцлал
           </Link>
-        </p>
+        </div>
       </div>
     </section>
   );

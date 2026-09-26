@@ -20,6 +20,9 @@ export const BRAND_EMAIL = "naruka.stylingstudio@gmail.com";
 export const BRAND_PHONE = "+97686106616";
 export const BRAND_FACEBOOK = "https://facebook.com/narukastylingstudio";
 
+export const PUBLIC_NOTICE =
+  "Тайлан, дүрслэлд хиймэл оюун (AI) ашиглана. Зурагтай стайл, төлбөртэй тайлан насанд хүрэгчдэд зориулагдсан.";
+
 export function resolveAppName(name: string | undefined | null) {
   const trimmed = name?.trim();
   if (!trimmed || trimmed === "StyleAI") return BRAND_NAME;

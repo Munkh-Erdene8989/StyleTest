@@ -76,8 +76,8 @@ export function CheckoutPanel({ initial }: { initial: OrderView }) {
         </button>
       ) : null}
       {order.paymentStatus === "paid" && order.reportId ? (
-        <Link className="inline-link" href={`/reports/${order.reportId}`}>
-          Тайлан руу орох
+        <Link className="btn" href={`/reports/${order.reportId}`}>
+          Тайлан харах
         </Link>
       ) : null}
       {notice ? <p role="status">{notice}</p> : null}

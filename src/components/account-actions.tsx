@@ -53,7 +53,7 @@ export function DeletePhotosButton() {
   }
   return (
     <div className="stack-form">
-      <button type="button" onClick={() => void run()} className="btn-quiet">
+      <button type="button" onClick={() => void run()} className="btn-danger">
         Эх зураг устгах
       </button>
       {message ? <p>{message}</p> : null}

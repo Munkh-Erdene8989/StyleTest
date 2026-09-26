@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function AgeForm() {
+export function AgeForm({ next }: { next?: string }) {
   const router = useRouter();
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [error, setError] = useState("");
@@ -19,14 +19,13 @@ export function AgeForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dateOfBirth }),
     });
-    const data = await response.json();
     setPending(false);
     if (!response.ok) {
       setError("Төрсөн өдрөө зөв оруулна уу.");
       return;
     }
+    if (next) router.push(next);
     router.refresh();
-    return data;
   }
 
   return (

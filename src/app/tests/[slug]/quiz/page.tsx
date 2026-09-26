@@ -14,7 +14,7 @@ export default async function QuizPage({ params }: { params: Promise<{ slug: str
   const row = await testBySlug(slug);
   if (!row) notFound();
   const user = await optionalUser();
-  if (!user || user.ageBand === "unknown") redirect("/");
+  if (!user || user.ageBand === "unknown") redirect(`/tests/${slug}`);
   const version = row.version;
   try {
     const session = (await resumeSession(user, slug)) ?? (await createQuizSession(user, slug));

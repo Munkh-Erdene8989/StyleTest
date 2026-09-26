@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { formatDay, formatMnt } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { TrackProgress } from "@/domain/progress";
 import { ShareCard } from "./share-card";
+import { StatusBar } from "./status-bar";
 
 type View = {
   reportId: string;
@@ -20,6 +22,7 @@ type View = {
   assets?: { url: string }[];
   helpContacts: { name: string; phone: string; note: string; source: string }[];
   expiresAt?: string;
+  progress: TrackProgress;
 };
 
 export function ResultLive({ initial, appName, email }: { initial: View; appName: string; email: string | null }) {
@@ -45,6 +48,7 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
     <article className="stack-form">
       {view.demo ? <p className="banner">Үзүүлэх агуулга. Баталгаажсан аргачлал биш.</p> : null}
       <h1>{view.summary.title}</h1>
+      <StatusBar progress={view.progress} />
       <p>{view.summary.body}</p>
       {view.summary.disclaimer ? <p className="note">{view.summary.disclaimer}</p> : null}
       {view.kind === "stress" ? <Help contacts={view.helpContacts} /> : null}
@@ -77,8 +81,8 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
           {email ? (
             <BuyButton sessionId={view.sessionId} product={view.kind === "style_package" ? "style_package" : "personality_report"} />
           ) : (
-            <Link className="inline-link" href="/login">
-              Төлбөр төлөхийн өмнө нэвтэрнэ үү
+            <Link className="btn" href="/login">
+              Нэвтэрч төлбөр төлөх
             </Link>
           )}
         </section>

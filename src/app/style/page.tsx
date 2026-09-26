@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { AgeForm } from "@/components/age-form";
 import { StyleWizard } from "@/components/style-wizard";
 import { STYLE_EXAMPLES } from "@/domain/content";
 import { optionalUser } from "@/server/auth";
@@ -7,7 +7,15 @@ import { createStyleSession } from "@/server/session-service";
 
 export default async function StylePage() {
   const user = await optionalUser();
-  if (!user || user.ageBand === "unknown") redirect("/");
+  if (!user || user.ageBand === "unknown") {
+    return (
+      <main>
+        <h1>Стайлын зөвлөмж</h1>
+        <p>Төрсөн өдрөө нэг удаа оруулна. Таны нас хэрэглэгчийн мэдээлэлд хадгалагдаж, дараагийн тестэд дахин асуухгүй.</p>
+        <AgeForm />
+      </main>
+    );
+  }
   if (user.ageBand !== "adult") {
     return (
       <main>

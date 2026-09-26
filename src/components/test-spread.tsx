@@ -40,29 +40,28 @@ export type SpreadItem = {
   priceMnt: number;
 };
 
-export async function spreadFor(age: AgeBand, gate: string) {
+export async function spreadFor(age: AgeBand) {
   const preview: AgeBand = age === "unknown" ? "adult" : age;
   const tests = await testsForAge(preview);
-  const locked = age === "unknown";
-  const items: SpreadItem[] = tests.map(({ test, version }) => toItem(test, version, locked, gate));
+  const items: SpreadItem[] = tests.map(({ test, version }) => toItem(test, version));
   if (preview === "adult") {
     items.push({
       kind: "style",
-      href: locked ? gate : "/style",
+      href: "/style",
       kicker: FACES.style.kicker,
       title: "Стайлын зөвлөмж",
       description: `Товч чиглэл үнэгүй. Бүтэн багц зурагтай, ${formatMnt(PRICES.style_package)}₮.`,
       points: ["Гурван алхам", "Өнгө, силуэт, тух", "Зурагтай багц насанд хүрэгчдэд"],
       image: FACES.style.image,
-      action: locked ? "Насаа оруулаад эхлэх" : "Эхлүүлэх",
+      action: "Эхлүүлэх",
       badge: `${formatMnt(PRICES.style_package)}₮`,
       priceMnt: PRICES.style_package,
     });
   }
-  return { items, locked, under18: age === "under18" };
+  return { items, under18: age === "under18" };
 }
 
-function toItem(test: TestDefinition, version: MethodologyVersion, locked: boolean, gate: string): SpreadItem {
+function toItem(test: TestDefinition, version: MethodologyVersion): SpreadItem {
   const face = FACES[version.kind];
   const points = [`${version.questions.length} асуулт`, `${version.minutes} минут`];
   if (test.priceMnt > 0) {
@@ -72,14 +71,14 @@ function toItem(test: TestDefinition, version: MethodologyVersion, locked: boole
     points.push("Үр дүн үнэгүй");
   }
   return {
-    href: locked ? gate : `/tests/${test.slug}`,
+    href: `/tests/${test.slug}`,
     kind: version.kind,
     kicker: face.kicker,
     title: version.title,
     description: version.description,
     points,
     image: face.image,
-    action: locked ? "Насаа оруулаад эхлэх" : "Эхлүүлэх",
+    action: "Эхлүүлэх",
     badge: test.priceMnt > 0 ? `${test.priceMnt.toLocaleString("mn-MN")}₮` : "Үнэгүй",
     priceMnt: test.priceMnt,
   };
