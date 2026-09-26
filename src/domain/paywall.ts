@@ -36,8 +36,12 @@ export function projectResult(input: {
     versionId: input.report.versionId,
     versionStatus: input.versionStatus,
     demo: input.versionStatus === "demo",
-    summary: input.report.summary,
-    outline: input.report.outline,
+    summary: {
+      title: withoutModelNames(input.report.summary.title),
+      body: withoutModelNames(input.report.summary.body),
+      disclaimer: input.report.summary.disclaimer ? withoutModelNames(input.report.summary.disclaimer) : undefined,
+    },
+    outline: input.report.outline.map(withoutModelNames),
     priceMnt: input.report.priceMnt,
     jobStatus: input.jobStatus,
     entitlementStatus: status,
@@ -52,6 +56,17 @@ export function projectResult(input: {
     if (preview) view.fullContent = preview;
   }
   return view;
+}
+
+export function withoutModelNames(text: string) {
+  return text
+    .replace(/хиймэл оюуны?(?:\s*\(AI\))?/gi, "")
+    .replace(/\(\s*AI\s*\)/gi, "")
+    .replace(/\bAI\b/gi, "")
+    .replace(/\bClaude\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.:])/g, "$1")
+    .trim();
 }
 
 const PREVIEW_RATIO = 0.6;

@@ -3,10 +3,11 @@ import { ageBandFromDob, canStartTest } from "./age";
 import { accountDeletion, originalPhotoDeletion } from "./deletion";
 import { sanitizeEvent } from "./events";
 import { verifyObservation } from "./payment";
-import { projectResult } from "./paywall";
+import { projectResult, withoutModelNames } from "./paywall";
+import { reportCounts } from "./progress";
 import { retentionPlan } from "./retention";
 import { scoreAnswers } from "./score";
-import { isNearDuplicate, rankDirections } from "./style-match";
+import { isNearDuplicate, pickDirections, rankDirections } from "./style-match";
 import { getVersion, STYLE_DIRECTIONS, STYLE_EXAMPLES } from "./content";
 import type { Report, Session, Upload } from "./types";
 
@@ -61,6 +62,37 @@ describe("style match", () => {
     });
     expect(next.some((item) => isNearDuplicate(item, delivered))).toBe(false);
   });
+
+  it("fills three directions when a shared-palette dislike drops most scores under the floor", () => {
+    const input = {
+      directions: STYLE_DIRECTIONS,
+      examples: STYLE_EXAMPLES,
+      likedIds: ["ex-neutral-shirt"],
+      aspireIds: ["ex-mono-tee"],
+      dislikedIds: ["ex-soft-trouser"],
+      lifestyle: "mixed" as const,
+      delivered: [],
+    };
+    expect(rankDirections({ ...input, limit: 3 })).toHaveLength(1);
+    const picked = pickDirections({ ...input, limit: 3 });
+    expect(picked).toHaveLength(3);
+    expect(picked[0]?.id).toBe("clear-line");
+  });
+});
+
+describe("report progress", () => {
+  it("shows an incomplete report as a percent and does not fill a failed bar", () => {
+    expect(reportCounts({ jobStatus: null, ready: false })).toMatchObject({ reportDone: 0, reportTotal: 3, reportLabel: "Тайлан 0%" });
+    expect(reportCounts({ jobStatus: "pending", ready: false })).toMatchObject({ reportDone: 1, reportLabel: "Тайлан 33%" });
+    expect(reportCounts({ jobStatus: "processing", ready: false })).toMatchObject({ reportDone: 2, reportLabel: "Тайлан 67%" });
+    expect(reportCounts({ jobStatus: "ready", ready: true })).toMatchObject({ reportDone: 3, reportLabel: "Тайлан 100%" });
+    expect(reportCounts({ jobStatus: "failed", ready: false })).toMatchObject({
+      reportDone: 0,
+      reportTotal: 3,
+      reportLabel: "Тайлан амжилтгүй",
+      failed: true,
+    });
+  });
 });
 
 describe("paywall", () => {
@@ -82,6 +114,19 @@ describe("paywall", () => {
     expect(preview.sections.at(-1)?.heading).not.toBe("дөрөв");
     expect(shown.length).toBeLessThan(JSON.stringify(report.fullContent).length);
     expect(JSON.stringify(locked)).not.toContain("дөрөв");
+    expect(withoutModelNames("Бүтэн багц, AI дүрслэл төлбөртэй.")).toBe("Бүтэн багц, дүрслэл төлбөртэй.");
+    report.summary.disclaimer = "Товч чиглэл үнэгүй. Бүтэн багц, AI дүрслэл төлбөртэй.";
+    report.outline = ["3 AI дүрслэл"];
+    const cleaned = projectResult({
+      report,
+      entitlement: null,
+      jobStatus: "ready",
+      versionStatus: "demo",
+      helpContacts: [],
+    });
+    expect(cleaned.summary.disclaimer).toBe("Товч чиглэл үнэгүй. Бүтэн багц, дүрслэл төлбөртэй.");
+    expect(cleaned.outline).toEqual(["3 дүрслэл"]);
+    expect(JSON.stringify(cleaned)).not.toMatch(/\bAI\b/);
     const open = projectResult({
       report,
       entitlement: { id: "ent", ownerUid: "u", orderId: "o", targetId: report.id, status: "active" },

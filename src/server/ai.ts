@@ -70,9 +70,10 @@ export const providers = {
       personalitySummary: input.personalitySummary ?? null,
     });
     const parsed = styleSchema.safeParse(result.json);
-    if (!parsed.success) throw new Error("schema_invalid");
-    const ids = parsed.data.directions.map((item) => item.id);
-    if (ids.join() !== input.directions.map((item) => item.id).join()) throw new Error("schema_invalid");
+    const ids = parsed.success ? parsed.data.directions.map((item) => item.id) : [];
+    if (!parsed.success || ids.join() !== input.directions.map((item) => item.id).join()) {
+      return { draft: template, costUsd: textCostUsd(result.inputTokens, result.outputTokens), model };
+    }
     return { draft: { ...parsed.data, source: "model" }, costUsd: textCostUsd(result.inputTokens, result.outputTokens), model };
   },
 
@@ -106,7 +107,7 @@ function styleTemplate(directions: StyleDirection[], comfort: string): StyleDraf
       id: direction.id,
       why: direction.reasonHint,
       cuts: direction.silhouette === "straight" ? "Шулуун эсгүүр, цэвэр мөр." : "Сул, хөдөлгөөнд тухтай эсгүүр.",
-      colors: direction.paletteFamily,
+      colors: paletteLabel(direction.paletteFamily),
       accessories: "Жижиг, логогүй аксессуар.",
       combos: `Тухтай гэж тэмдэглэсэн зүйл: ${comfort || "өдөр тутмын суурь хувцас"}.`,
     })),
@@ -209,7 +210,14 @@ async function openaiImageEdit(
   });
 }
 
+function paletteLabel(palette: StyleDirection["paletteFamily"]) {
+  if (palette === "warm") return "Дулаан өнгө";
+  if (palette === "contrast") return "Ялгаралтай өнгө";
+  if (palette === "earth") return "Шороон өнгө";
+  return "Нам өнгө";
+}
+
 function demoSvg(title: string) {
   const safe = title.replace(/[<&>]/g, "");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000"><rect width="100%" height="100%" fill="#f4f1ea"/><text x="40" y="120" font-size="36" fill="#1c1917">${safe}</text><text x="40" y="180" font-size="22" fill="#57534e">Үзүүлэх дүрслэл. AI зураг биш.</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000"><rect width="100%" height="100%" fill="#f4f1ea"/><text x="40" y="120" font-size="36" fill="#1c1917">${safe}</text><text x="40" y="180" font-size="22" fill="#57534e">Үзүүлэх дүрслэл.</text></svg>`;
 }

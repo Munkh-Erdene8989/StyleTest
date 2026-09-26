@@ -14,16 +14,33 @@ export type StyleRankInput = {
 };
 
 export function rankDirections(input: StyleRankInput): StyleDirection[] {
+  return rankedDirections(input)
+    .filter((item) => item.score >= MIN_DIRECTION_SCORE)
+    .slice(0, input.limit)
+    .map((item) => item.direction);
+}
+
+/** Fills up to `limit` from the next-best directions when fewer than that clear the score floor. */
+export function pickDirections(input: StyleRankInput): StyleDirection[] {
+  const ranked = rankedDirections(input);
+  const chosen = ranked.filter((item) => item.score >= MIN_DIRECTION_SCORE).slice(0, input.limit);
+  for (const item of ranked) {
+    if (chosen.length >= input.limit) break;
+    if (chosen.some((picked) => picked.direction.id === item.direction.id)) continue;
+    chosen.push(item);
+  }
+  return chosen.map((item) => item.direction);
+}
+
+function rankedDirections(input: StyleRankInput) {
   const byId = new Map(input.examples.map((item) => [item.id, item]));
-  const ranked = input.directions
+  return input.directions
     .map((direction) => ({
       direction,
       score: scoreDirection(direction, byId, input),
     }))
-    .filter((item) => item.score >= MIN_DIRECTION_SCORE)
     .filter((item) => !isBlocked(item.direction, input.delivered))
     .sort((a, b) => b.score - a.score || a.direction.id.localeCompare(b.direction.id));
-  return ranked.slice(0, input.limit).map((item) => item.direction);
 }
 
 export function nextAddonDirection(

@@ -25,16 +25,16 @@ export function answerCounts(session: Pick<Session, "kind" | "answers" | "styleI
 
 export function reportCounts(input: { jobStatus: string | null; ready: boolean }): Pick<TrackProgress, "reportDone" | "reportTotal" | "reportLabel" | "failed"> {
   if (input.jobStatus === "failed") {
-    return { reportDone: 1, reportTotal: 1, reportLabel: "Тайлан амжилтгүй", failed: true };
+    return { reportDone: 0, reportTotal: 3, reportLabel: "Тайлан амжилтгүй", failed: true };
   }
   if (input.jobStatus === "processing") {
-    return { reportDone: 2, reportTotal: 3, reportLabel: "Тайлан бэлтгэгдэж байна", failed: false };
+    return { reportDone: 2, reportTotal: 3, reportLabel: "Тайлан 67%", failed: false };
   }
   if (input.jobStatus === "pending") {
-    return { reportDone: 1, reportTotal: 3, reportLabel: "Тайлан хүлээгдэж байна", failed: false };
+    return { reportDone: 1, reportTotal: 3, reportLabel: "Тайлан 33%", failed: false };
   }
   if (input.ready || input.jobStatus === "ready") {
-    return { reportDone: 1, reportTotal: 1, reportLabel: "Тайлан бэлэн", failed: false };
+    return { reportDone: 3, reportTotal: 3, reportLabel: "Тайлан 100%", failed: false };
   }
-  return { reportDone: 0, reportTotal: 1, reportLabel: "Тайлан хараахан гараагүй", failed: false };
+  return { reportDone: 0, reportTotal: 3, reportLabel: "Тайлан 0%", failed: false };
 }

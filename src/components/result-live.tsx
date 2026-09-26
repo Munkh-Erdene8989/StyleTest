@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatDay, formatMnt } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { STYLE_DIRECTIONS } from "@/domain/content";
 import type { TrackProgress } from "@/domain/progress";
 import { ShareCard } from "./share-card";
 import { StatusBar } from "./status-bar";
@@ -56,7 +57,7 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
         <p role="status">{unpaid ? "Товч тайлан бэлтгэгдэж байна." : "Боловсруулж байна. Төлбөр баталгаажсан ч дуусаагүй бол бэлэн болмогц нээгдэнэ."}</p>
       ) : null}
       {view.jobStatus === "failed" ? <p role="alert">Боловсруулалт амжилтгүй. Техникийн дахин оролдлого шинэ төлбөр биш.</p> : null}
-      {view.entitlementStatus === "unlocking" ? <p>Төлбөр баталгаажсан. Тайлан бэлтгэгдэж байна.</p> : null}
+      {view.entitlementStatus === "unlocking" && view.jobStatus !== "failed" ? <p>Төлбөр баталгаажсан. Тайлан бэлтгэгдэж байна.</p> : null}
       {unpaid && shown.length > 0 ? <h2>Товч тайлан</h2> : null}
       {paragraphs(view.fullContent).map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
@@ -67,6 +68,7 @@ export function ResultLive({ initial, appName, email }: { initial: View; appName
           <p>{section.body}</p>
         </section>
       ))}
+      <StyleDraft content={view.fullContent} />
       {showPay ? (
         <section className="pay">
           <h2>Дэлгэрэнгүй тайлан</h2>
@@ -128,6 +130,68 @@ function BuyButton({ sessionId, product }: { sessionId: string; product: string 
       {error ? <p role="alert" className="alert">{error}</p> : null}
     </>
   );
+}
+
+function StyleDraft({ content }: { content: unknown }) {
+  const draft = styleDraft(content);
+  if (!draft) return null;
+  return (
+    <>
+      {draft.directions.map((direction) => {
+        const title = STYLE_DIRECTIONS.find((item) => item.id === direction.id)?.title ?? direction.why;
+        return (
+          <section key={direction.id}>
+            <h2 className="font-medium">{title}</h2>
+            <p>{direction.why}</p>
+            <p>Эсгүүр: {direction.cuts}</p>
+            <p>Өнгө: {direction.colors}</p>
+            <p>Аксессуар: {direction.accessories}</p>
+            <p>Хослол: {direction.combos}</p>
+          </section>
+        );
+      })}
+      {draft.starter.length > 0 ? (
+        <section>
+          <h2 className="font-medium">Эхлэх хувцас</h2>
+          <ul>
+            {draft.starter.map((item) => (
+              <li key={item.item}>
+                {item.item}. {item.note}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function styleDraft(content: unknown) {
+  if (!content || typeof content !== "object" || !("directions" in content)) return null;
+  const directions = (content as { directions?: unknown }).directions;
+  const starter = (content as { starter?: unknown }).starter;
+  if (!Array.isArray(directions)) return null;
+  const rows = directions.filter(isDirection);
+  if (rows.length === 0) return null;
+  const outfits = Array.isArray(starter) ? starter.filter(isOutfit) : [];
+  return { directions: rows, starter: outfits };
+}
+
+function isDirection(value: unknown): value is { id: string; why: string; cuts: string; colors: string; accessories: string; combos: string } {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "id" in value &&
+      "why" in value &&
+      "cuts" in value &&
+      "colors" in value &&
+      "accessories" in value &&
+      "combos" in value,
+  );
+}
+
+function isOutfit(value: unknown): value is { item: string; note: string } {
+  return Boolean(value && typeof value === "object" && "item" in value && "note" in value);
 }
 
 function paragraphs(content: unknown) {

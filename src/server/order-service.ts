@@ -171,7 +171,7 @@ async function grant(order: Order) {
         versionId: "style-catalog-v1",
         kind: "style_addon",
         summary: { title: "Нэмэлт стайлын чиглэл", body: "Төлбөр баталгаажсан. Дүрслэл бэлтгэгдэж байна." },
-        outline: ["Шинэ чиглэл", "Нэг AI дүрслэл"],
+        outline: ["Шинэ чиглэл", "Нэг дүрслэл"],
         fullContent: null,
         assetPaths: [],
         generationJobId: job.id,

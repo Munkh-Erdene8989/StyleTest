@@ -15,6 +15,10 @@ export async function processJobById(jobId: string) {
   const job = await store.getJob(jobId);
   if (!job || job.status === "ready" || job.status === "expired") return;
   if (job.status === "processing" && Date.now() - new Date(job.updatedAt).getTime() < 2 * 60 * 1000) return;
+  if (job.status === "failed" && job.error === "image_unconfigured" && job.attempt >= job.maxAttempts) {
+    job.attempt = job.maxAttempts - 1;
+    job.status = "pending";
+  }
   if (job.attempt >= job.maxAttempts) {
     job.status = "failed";
     job.updatedAt = iso();
@@ -87,18 +91,20 @@ async function runStylePackage(job: GenerationJob) {
     request: session.styleInput.request,
     personalitySummary,
   });
-  const face = await uploadBytes(session.styleInput.faceUploadId);
-  const body = await uploadBytes(session.styleInput.bodyUploadId);
   const paths: string[] = [];
   let imageCost = 0;
   let provider = explained.draft.source === "model" ? "openai" : "template";
-  for (const direction of directions) {
-    const image = await providers.renderImage({ direction, face, body });
-    if (image.provider !== "demo") provider = image.provider;
-    const path = `private/${job.ownerUid}/reports/${job.sessionId}/${direction.id}.${extensionFor(image.contentType)}`;
-    await store.putObject(path, image.bytes, image.contentType);
-    paths.push(path);
-    imageCost += image.costUsd;
+  if (process.env.OPENAI_API_KEY) {
+    const face = await uploadBytes(session.styleInput.faceUploadId);
+    const body = await uploadBytes(session.styleInput.bodyUploadId);
+    for (const direction of directions) {
+      const image = await providers.renderImage({ direction, face, body });
+      if (image.provider !== "demo") provider = image.provider;
+      const path = `private/${job.ownerUid}/reports/${job.sessionId}/${direction.id}.${extensionFor(image.contentType)}`;
+      await store.putObject(path, image.bytes, image.contentType);
+      paths.push(path);
+      imageCost += image.costUsd;
+    }
   }
   job.provider = provider;
   job.model = explained.model;
@@ -129,20 +135,28 @@ async function runStyleAddon(job: GenerationJob) {
     lifestyle: session.styleInput.lifestyle,
     request: session.styleInput.request,
   });
-  const face = await uploadBytes(session.styleInput.faceUploadId);
-  const body = await uploadBytes(session.styleInput.bodyUploadId);
-  const image = await providers.renderImage({ direction, face, body });
-  const path = `private/${job.ownerUid}/reports/${job.id}/${direction.id}.${extensionFor(image.contentType)}`;
-  await store.putObject(path, image.bytes, image.contentType);
+  const paths: string[] = [];
+  let imageCost = 0;
+  if (process.env.OPENAI_API_KEY) {
+    const face = await uploadBytes(session.styleInput.faceUploadId);
+    const body = await uploadBytes(session.styleInput.bodyUploadId);
+    const image = await providers.renderImage({ direction, face, body });
+    const path = `private/${job.ownerUid}/reports/${job.id}/${direction.id}.${extensionFor(image.contentType)}`;
+    await store.putObject(path, image.bytes, image.contentType);
+    paths.push(path);
+    imageCost = image.costUsd;
+    job.provider = image.provider;
+  } else {
+    job.provider = explained.draft.source === "model" ? "openai" : "template";
+  }
   const report = await requireReport(job);
-  report.fullContent = { ...explained.draft, demoImage: image.provider === "demo" };
-  report.assetPaths = [path];
+  report.fullContent = explained.draft;
+  report.assetPaths = paths;
   await store.saveReport(report);
   pkg.deliveredDirectionIds = [...new Set([...pkg.deliveredDirectionIds, direction.id])];
-  pkg.imagePaths = [...pkg.imagePaths, path];
+  pkg.imagePaths = [...pkg.imagePaths, ...paths];
   await store.saveStylePackage(pkg);
-  job.provider = image.provider;
-  return roundUsd(explained.costUsd + image.costUsd);
+  return roundUsd(explained.costUsd + imageCost);
 }
 
 async function publishReady(job: GenerationJob) {

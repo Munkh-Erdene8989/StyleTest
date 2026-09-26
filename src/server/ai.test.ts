@@ -68,6 +68,20 @@ describe("openai providers", () => {
     delete process.env.OPENAI_OUTPUT_USD_PER_MTOK;
   });
 
+  it("keeps the style template when the model JSON does not match", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const fetchMock = vi.fn(async () => jsonResponse({ choices: [{ message: { content: "{\"unexpected\":true}" } }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await providers.explainStyle({
+      directions: [STYLE_DIRECTIONS[0]],
+      comfort: "сул",
+      lifestyle: "mixed",
+      request: "",
+    });
+    expect(result.draft.source).toBe("template");
+    expect(result.draft.directions[0]?.id).toBe(STYLE_DIRECTIONS[0].id);
+  });
+
   it("generates without a photo and edits when a photo is present", async () => {
     process.env.OPENAI_API_KEY = "test-key";
     const direction = STYLE_DIRECTIONS[0];

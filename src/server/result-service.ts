@@ -57,8 +57,9 @@ export async function present(user: User, reportId: string) {
   return view;
 }
 
-function shouldResume(job: { status: string; attempt: number; maxAttempts: number; updatedAt: string }) {
+function shouldResume(job: { status: string; attempt: number; maxAttempts: number; updatedAt: string; error?: string }) {
   if (job.status === "ready" || job.status === "expired") return false;
+  if (job.status === "failed" && job.error === "image_unconfigured") return true;
   if (job.status === "failed" && job.attempt >= job.maxAttempts) return false;
   if (job.status === "processing") return Date.now() - new Date(job.updatedAt).getTime() >= 2 * 60 * 1000;
   return true;

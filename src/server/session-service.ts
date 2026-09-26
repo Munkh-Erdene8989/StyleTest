@@ -6,7 +6,7 @@ import { imageFormatOk } from "@/domain/images";
 import { stableId } from "@/domain/jobs";
 import { PRICES } from "@/domain/money";
 import { bandFor, scoreAnswers } from "@/domain/score";
-import { rankDirections } from "@/domain/style-match";
+import { pickDirections } from "@/domain/style-match";
 import { DAY_MS, iso, plus } from "@/domain/time";
 import type { GenerationJob, Report, Session, StyleInput, Upload, User } from "@/domain/types";
 import { effectiveVersion, loadCatalog, testBySlug } from "./catalog";
@@ -216,7 +216,7 @@ export async function completeStyle(user: User, sessionId: string) {
   const input = session.styleInput;
   if (!input.consentAt || !input.faceUploadId || !input.bodyUploadId) throw new AppError("consent_required", 400);
   if (input.likedIds.length + input.aspireIds.length === 0) throw new AppError("preference_required", 400);
-  const selected = rankDirections({
+  const selected = pickDirections({
     directions: STYLE_DIRECTIONS,
     examples: STYLE_EXAMPLES,
     likedIds: input.likedIds,
@@ -248,12 +248,12 @@ export async function completeStyle(user: User, sessionId: string) {
     summary: {
       title: "Стайлын товч чиглэл",
       body: selected.map((item) => item.title).join(", "),
-      disclaimer: "Товч чиглэл үнэгүй. Бүтэн багц, AI дүрслэл төлбөртэй. Нүүр хадгалалтыг баталгаажуулахгүй.",
+      disclaimer: "Товч чиглэл үнэгүй. Бүтэн багц төлбөртэй. Нүүр хадгалалтыг баталгаажуулахгүй.",
     },
     outline: [
       "Санал болгосон 3 стайлийн чиглэл",
       "Эсгүүр, өнгө, аксессуар, хослол",
-      "3 AI дүрслэл",
+      "3 дүрслэл",
       "Эхлэх 5 хувцас",
     ],
     fullContent: null,

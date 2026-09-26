@@ -184,6 +184,35 @@ describe("product flow", () => {
     expect((await store.listOrders()).every((order) => order.ownerUid.startsWith("deleted:"))).toBe(true);
   });
 
+  it("saves the written style report when image generation is not configured", async () => {
+    const adult = await adultUser();
+    const session = await styleReady(adult.id);
+    const reportId = `rep_${session.id}`;
+    const jobId = (await getStore().getReport(reportId))!.generationJobId!;
+    await processJobById(jobId);
+    const job = await getStore().getJob(jobId);
+    const report = await getStore().getReport(reportId);
+    expect(job?.status).toBe("ready");
+    expect(job?.error).toBeUndefined();
+    expect(report?.assetPaths).toEqual([]);
+    expect(report?.fullContent).toMatchObject({ source: "template" });
+  });
+
+  it("reruns a style job that failed because images were not configured", async () => {
+    const adult = await adultUser();
+    const session = await styleReady(adult.id);
+    const reportId = `rep_${session.id}`;
+    const jobId = (await getStore().getReport(reportId))!.generationJobId!;
+    const job = (await getStore().getJob(jobId))!;
+    job.status = "failed";
+    job.attempt = job.maxAttempts;
+    job.error = "image_unconfigured";
+    await getStore().saveJob(job);
+    await processJobById(jobId);
+    expect((await getStore().getJob(jobId))?.status).toBe("ready");
+    expect((await getStore().getReport(reportId))?.fullContent).toBeTruthy();
+  });
+
   it("blocks a new addon direction that duplicates the package", async () => {
     const adult = await attachEmail((await adultUser()).id, "style@example.com");
     const session = await styleReady(adult.id);
