@@ -4,6 +4,7 @@ import { adminApp } from "../firebase-admin";
 import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
+import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type { AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
@@ -324,6 +325,28 @@ export class FirestoreStore implements AppStore {
       if (current.count >= limit) return false;
       tx.set(ref, { count: current.count + 1, reset: current.reset });
       return true;
+    });
+  }
+
+  async saveStyleQuiz(quiz: StyleQuizRecord) {
+    await this.put("styleQuizzes", quiz.id, quiz);
+  }
+  async getStyleQuiz(id: string) {
+    return this.read<StyleQuizRecord>("styleQuizzes", id);
+  }
+  async findStyleQuizByInvoice(invoiceId: string) {
+    const snap = await this.database().collection("styleQuizzes").where("qpayInvoiceId", "==", invoiceId).limit(1).get();
+    return (snap.docs[0]?.data() as StyleQuizRecord | undefined) ?? null;
+  }
+  async updateStyleQuiz(id: string, update: (current: StyleQuizRecord) => StyleQuizRecord) {
+    const ref = this.database().collection("styleQuizzes").doc(id);
+    return this.database().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new AppError("not_found", 404);
+      const previous = snap.data() as StyleQuizRecord;
+      const next = update(previous);
+      tx.set(ref, clean(next));
+      return { previous, next };
     });
   }
 

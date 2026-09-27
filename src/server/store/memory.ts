@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
+import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type { AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
@@ -43,6 +44,7 @@ type Bag = {
   media: Map<string, { path: string; exp: number }>;
   rates: Map<string, { count: number; reset: number }>;
   otps: Map<string, EmailOtp>;
+  styleQuizzes: Map<string, StyleQuizRecord>;
   site: SiteConfig | null;
   library: AdminLibrary | null;
   chain: Promise<unknown>;
@@ -69,6 +71,7 @@ function bag(): Bag {
     media: new Map(),
     rates: new Map(),
     otps: new Map(),
+    styleQuizzes: new Map(),
     site: null,
     library: null,
     chain: Promise.resolve(),
@@ -312,6 +315,25 @@ export class MemoryStore implements AppStore {
     if (current.count >= limit) return false;
     current.count += 1;
     return true;
+  }
+
+  async saveStyleQuiz(quiz: StyleQuizRecord) {
+    this.db.styleQuizzes.set(quiz.id, quiz);
+  }
+  async getStyleQuiz(id: string) {
+    return this.db.styleQuizzes.get(id) ?? null;
+  }
+  async findStyleQuizByInvoice(invoiceId: string) {
+    return [...this.db.styleQuizzes.values()].find((quiz) => quiz.qpayInvoiceId === invoiceId) ?? null;
+  }
+  async updateStyleQuiz(id: string, update: (current: StyleQuizRecord) => StyleQuizRecord) {
+    return this.lock(async () => {
+      const previous = this.db.styleQuizzes.get(id);
+      if (!previous) throw new AppError("not_found", 404);
+      const next = update(structuredClone(previous));
+      this.db.styleQuizzes.set(id, next);
+      return { previous, next };
+    });
   }
 
   async saveEmailOtp(otp: EmailOtp) {

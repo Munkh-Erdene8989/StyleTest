@@ -45,7 +45,7 @@ const SERVICES = [
     includes: ["6 асуулт — 5 минут", "Стайл архетипийн тодорхойлолт", "Өнгөний палитрын зөвлөмж", "Хувийн стайлинг зөвлөгөө", "Тайланг и-мэйлээр авна"],
     img: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&h=900&fit=crop&auto=format",
     tag: "Онлайн",
-    href: "#tests",
+    href: "/quiz",
     action: "Онлайн тест авах",
   },
 ];
@@ -87,12 +87,12 @@ export function StudioHero() {
           Мэргэжлийн өнгө тодорхойлох үйлчилгээ. Таны өвөрмөц гоо үзэсгэлэнг нээж, хэзээч өөрчлөгдөхгүй өнгөний палитрыг бүтээнэ.
         </p>
         <div className="stage-actions">
-          <a className="btn" href={`tel:${PHONE}`}>
+          <Link className="btn" href="/quiz">
             Яг одоо тодорхойлох
-          </a>
-          <a className="btn-ghost" href="#tests">
+          </Link>
+          <Link className="btn-ghost" href="/quiz">
             Стайл тест авах
-          </a>
+          </Link>
         </div>
       </div>
       <div className="stage-stats">
@@ -164,7 +164,7 @@ export function StudioAbout() {
   );
 }
 
-export function StudioServices({ featured, children }: { featured?: ReactNode; children: ReactNode }) {
+export function StudioServices({ featured, children }: { featured?: ReactNode; children?: ReactNode }) {
   return (
     <section className="band band-sand" id="services">
       <div className="bar">
@@ -202,9 +202,9 @@ export function StudioServices({ featured, children }: { featured?: ReactNode; c
             <h2>Сэтгэлзүйн стайл тест</h2>
             <p>6 асуултаар стайл архетипаа тодорхойл — үр дүнг и-мэйлээр авна</p>
           </div>
-          <a className="btn btn-gold" href="#tests">
+          <Link className="btn btn-gold" href="/quiz">
             Тест эхлүүлэх
-          </a>
+          </Link>
         </div>
         {children}
       </div>

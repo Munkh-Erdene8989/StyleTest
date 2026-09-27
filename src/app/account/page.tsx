@@ -13,7 +13,7 @@ export default async function AccountPage() {
       <main>
         <h1>Миний хэсэг</h1>
         <p>Тест эхлүүлэхэд төрсөн өдөр нэг удаа бүртгэгдэнэ. Нэвтэрсний дараа энд харагдана.</p>
-        <Link className="btn" href="/#tests">
+        <Link className="btn" href="/quiz">
           Тест эхлүүлэх
         </Link>
       </main>
@@ -33,7 +33,7 @@ export default async function AccountPage() {
         {tracks.length === 0 ? (
           <>
             <p>Хадгалсан тайлан алга. Тест эхлүүлбэл явц энд гарна.</p>
-            <Link className="btn" href="/#tests">
+            <Link className="btn" href="/quiz">
               Тест эхлүүлэх
             </Link>
           </>

@@ -1,4 +1,5 @@
 import type { AdminLibrary } from "@/domain/admin-content";
+import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -98,6 +99,14 @@ export interface AppStore {
   resolveReadToken(token: string): Promise<string | null>;
 
   bumpRate(key: string, limit: number, windowMs: number, now: number): Promise<boolean>;
+
+  saveStyleQuiz(quiz: StyleQuizRecord): Promise<void>;
+  getStyleQuiz(id: string): Promise<StyleQuizRecord | null>;
+  findStyleQuizByInvoice(invoiceId: string): Promise<StyleQuizRecord | null>;
+  updateStyleQuiz(
+    id: string,
+    update: (current: StyleQuizRecord) => StyleQuizRecord,
+  ): Promise<{ previous: StyleQuizRecord; next: StyleQuizRecord }>;
 
   saveEmailOtp(otp: EmailOtp): Promise<void>;
   getEmailOtp(email: string): Promise<EmailOtp | null>;

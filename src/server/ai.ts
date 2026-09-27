@@ -9,6 +9,17 @@ const personalitySchema = z.object({
     .length(4),
 });
 
+const quizHeadings = ["Өнгөний палитр", "Силуэт ба пропорц", "Өдөр тутмын хослол", "Худалдан авалтын зөвлөгөө"] as const;
+
+const quizReportSchema = z.object({
+  season: z.string().min(1),
+  summary: z.string().min(1),
+  palette: z.array(z.string().min(1)).min(3).max(8),
+  sections: z
+    .array(z.object({ heading: z.string().min(1), body: z.string().min(1) }))
+    .length(4),
+});
+
 const styleSchema = z.object({
   directions: z.array(
     z.object({
@@ -23,6 +34,7 @@ const styleSchema = z.object({
   starter: z.array(z.object({ item: z.string().min(1), note: z.string().min(1) })).length(5),
 });
 
+export type StyleQuizDraft = z.infer<typeof quizReportSchema> & { source: "model" | "template" };
 export type PersonalityDraft = z.infer<typeof personalitySchema> & { source: "model" | "template" };
 export type StyleDraft = z.infer<typeof styleSchema> & { source: "model" | "template" };
 export type RenderedImage = { bytes: Buffer; contentType: string; provider: string; costUsd: number };
@@ -77,6 +89,38 @@ export const providers = {
     return { draft: { ...parsed.data, source: "model" }, costUsd: textCostUsd(result.inputTokens, result.outputTokens), model };
   },
 
+  async explainStyleQuiz(input: {
+    name: string;
+    answers: { key: string; value: string; label: string; insight: string }[];
+  }): Promise<{ draft: StyleQuizDraft; costUsd: number; model?: string }> {
+    const template = quizTemplate(input.answers);
+    if (!process.env.OPENAI_API_KEY) return { draft: template, costUsd: 0 };
+    const model = process.env.OPENAI_TEXT_MODEL || "gpt-4.1";
+    try {
+      const result = await openaiJson(model, {
+        task: "style_quiz_report",
+        name: input.name,
+        headings: quizHeadings,
+        answers: input.answers.map((item) => ({ key: item.key, answer: item.label, note: item.insight })),
+        instructions:
+          "Монгол хэлээр хувийн стайл тайлан бич. Гарчигуудыг яг өгсөн дарааллаар нь ашигла. Өнгө, силуэт, хослол, худалдан авалтын зөвлөгөө өг. Эрүүл мэнд, сэтгэл зүйн онош бүү тавь.",
+      });
+      const parsed = quizReportSchema.safeParse(result.json);
+      const headingsMatch =
+        parsed.success && parsed.data.sections.every((section, index) => section.heading === quizHeadings[index]);
+      if (!parsed.success || !headingsMatch) {
+        return { draft: template, costUsd: textCostUsd(result.inputTokens, result.outputTokens), model };
+      }
+      return {
+        draft: { ...parsed.data, source: "model" },
+        costUsd: textCostUsd(result.inputTokens, result.outputTokens),
+        model,
+      };
+    } catch {
+      return { draft: template, costUsd: 0 };
+    }
+  },
+
   async renderImage(input: { direction: StyleDirection; face?: Buffer; body?: Buffer }): Promise<RenderedImage> {
     if (process.env.OPENAI_API_KEY) return openaiImage(input);
     if (process.env.NODE_ENV === "production") throw new Error("image_unconfigured");
@@ -95,6 +139,44 @@ function personalityTemplate(band: ResultBand, answers: { question: string; answ
       {
         heading: "Өдөр тутмын жишээ",
         body: answers.slice(0, 2).map((item) => `${item.question} — ${item.answer}`).join(" "),
+      },
+    ],
+  };
+}
+
+function quizTemplate(answers: { key: string; value: string; label: string; insight: string }[]): StyleQuizDraft {
+  const byKey = new Map(answers.map((item) => [item.key, item]));
+  const undertone = byKey.get("undertone")?.value || "neutral";
+  const season = undertone === "warm" ? "Дулаан Намар" : undertone === "cool" ? "Зөөлөн Зун" : "Цэвэр Хавар";
+  const palette =
+    undertone === "warm"
+      ? ["Терракотта", "Крем", "Зөгийн бал", "Олив", "Дулаан хүрэн"]
+      : undertone === "cool"
+        ? ["Бордо", "Зөөлөн цэнхэр", "Саарал ягаан", "Мөнгөлөг саарал", "Хүйтэн цагаан"]
+        : ["Бордо", "Зөөлөн алт", "Шалны ногоон", "Ягаан шаргал", "Цайвар крем"];
+  const pick = (key: string) => byKey.get(key)?.label;
+  const note = (key: string) => byKey.get(key)?.insight;
+  return {
+    source: "template",
+    season,
+    summary: `Таны хариултаас ${season} өнгөний улирал, ${pick("preference") || "хувийн"} стайлын чиглэл тодорхойлогдлоо.`,
+    palette,
+    sections: [
+      {
+        heading: quizHeadings[0],
+        body: `${note("undertone") || "Арьсны доод өнгөнд тааруулсан палитр."} Нүд: ${pick("eye") || "тодорхойгүй"}. Үс: ${pick("hair") || "тодорхойгүй"}. Арьс: ${pick("skin") || "тодорхойгүй"}. Дуртай өнгө: ${pick("colors") || "сонгоогүй"}.`,
+      },
+      {
+        heading: quizHeadings[1],
+        body: `${note("bodyShape") || "Пропорцыг тэнцвэржүүлэх силуэт."} Хэмжээ: ${pick("measurements") || "оруулаагүй"}. Загварын чиглэл: ${pick("preference") || "сонгоогүй"}.`,
+      },
+      {
+        heading: quizHeadings[2],
+        body: `${note("occasions") || "Өдөр тутмын бэлэн хослол хэрэгтэй."} Хувцаснаас хүсэж буй мэдрэмж: ${pick("feel") || "сонгоогүй"}. Хамгийн хэцүү мөч: ${pick("occasions") || "өдөр тутмын сонголт"}.`,
+      },
+      {
+        heading: quizHeadings[3],
+        body: `${note("budget") || "Төсвөө суурь хувцас руу чиглүүл."} Өмсөлгүй үлдэх худалдан авалт: ${pick("unused") || "тодорхойгүй"}. Идэвхтэй өмсдөг хувь: ${pick("wardrobeSlider") || "тодорхойгүй"}. ${note("budgetHelp") || ""}`.trim(),
       },
     ],
   };

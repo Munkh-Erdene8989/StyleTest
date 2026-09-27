@@ -15,6 +15,8 @@ export const PRICES: Record<ProductCode, number> = {
   style_addon: Math.round(LIST_PRICES.style_addon * TEMP_PRICE_FACTOR),
 };
 
+export const STYLE_QUIZ_PRICE_MNT = 150;
+
 export function textCostUsd(inputTokens: number, outputTokens: number) {
   const inputRate = numberEnv("OPENAI_INPUT_USD_PER_MTOK", 2);
   const outputRate = numberEnv("OPENAI_OUTPUT_USD_PER_MTOK", 8);
