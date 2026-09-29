@@ -80,6 +80,7 @@ export function SiteHeader({
           )}
         </nav>
         <div className="bar-end">
+          <ColorPlate navOpen={open} onNavigate={() => setOpen(false)} />
           {loggedIn ? <ProfileMenu email={email} pathname={pathname} navOpen={open} onNavigate={() => setOpen(false)} /> : null}
           <button
             type="button"
@@ -95,6 +96,137 @@ export function SiteHeader({
         </div>
       </div>
     </header>
+  );
+}
+
+const PLATE_CODE = "NARUKA";
+
+function PlateMark() {
+  return (
+    <svg className="plate-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <path className="plate-mark-main" d="M15 3.2 17.1 12.2 26.2 14.2 17.1 16.2 15 25.2 12.9 16.2 3.8 14.2 12.9 12.2Z" />
+      <path className="plate-mark-a" d="M25.2 5.2 26.1 7.6 28.6 8.4 26.1 9.2 25.2 11.6 24.3 9.2 21.8 8.4 24.3 7.6Z" />
+      <path className="plate-mark-b" d="M8.4 20.4 9.1 22.2 11 22.8 9.1 23.4 8.4 25.2 7.7 23.4 5.8 22.8 7.7 22.2Z" />
+    </svg>
+  );
+}
+
+function ColorPlate({ navOpen, onNavigate }: { navOpen: boolean; onNavigate: () => void }) {
+  const pathname = usePathname();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const downloaded = useRef(false);
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [status, setStatus] = useState<"idle" | "bad" | "ok">("idle");
+
+  function close() {
+    setOpen(false);
+    setCode("");
+    setStatus("idle");
+    downloaded.current = false;
+  }
+
+  useEffect(() => {
+    close();
+  }, [pathname]);
+
+  useEffect(() => {
+    if (navOpen) close();
+  }, [navOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus();
+    function onPointer(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) close();
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") close();
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function onCode(raw: string) {
+    const next = raw.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6);
+    setCode(next);
+    if (next.length < 6) {
+      setStatus("idle");
+      downloaded.current = false;
+      return;
+    }
+    if (next !== PLATE_CODE) {
+      setStatus("bad");
+      downloaded.current = false;
+      return;
+    }
+    setStatus("ok");
+    if (downloaded.current) return;
+    downloaded.current = true;
+    const link = document.createElement("a");
+    link.href = "/Pantone-color-chart.pdf";
+    link.download = "Pantone-color-chart.pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  const hint = status === "ok" ? "Файл татагдаж байна" : status === "bad" ? "Код буруу байна" : "6 тэмдэгт код оруулна уу";
+
+  return (
+    <div className="color-plate" ref={rootRef}>
+      <button
+        type="button"
+        className="color-plate-btn"
+        aria-expanded={open}
+        aria-controls="color-plate-pop"
+        onClick={() => {
+          if (open) {
+            close();
+            return;
+          }
+          onNavigate();
+          setOpen(true);
+        }}
+      >
+        <PlateMark />
+        <span>Color Plate</span>
+        <i className="plate-sweep" />
+      </button>
+      {open ? (
+        <div id="color-plate-pop" className="color-plate-pop" role="dialog" aria-label="Color Plate">
+          <span className="plate-speck plate-speck-a" />
+          <span className="plate-speck plate-speck-b" />
+          <span className="plate-speck plate-speck-c" />
+          <label className="plate-field">
+            <span className="sr-only">Код</span>
+            <input
+              ref={inputRef}
+              value={code}
+              maxLength={6}
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="text"
+              aria-invalid={status === "bad"}
+              aria-describedby="color-plate-hint"
+              placeholder="••••••"
+              onChange={(event) => onCode(event.target.value)}
+            />
+          </label>
+          <p id="color-plate-hint" className={`plate-hint plate-hint-${status}`} role="status">
+            {hint}
+          </p>
+          <i className="plate-sweep" />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
