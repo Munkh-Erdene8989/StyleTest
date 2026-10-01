@@ -489,7 +489,8 @@ body {
   text-align: center;
 }
 
-.plate-hint-bad {
+.plate-hint-bad,
+.plate-hint-fail {
   color: #ffe4e6;
 }
 

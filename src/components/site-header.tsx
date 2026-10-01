@@ -99,7 +99,7 @@ export function SiteHeader({
   );
 }
 
-const PLATE_CODE = "NARUKA";
+const PLATE_LENGTH = 2;
 
 function PlateMark() {
   return (
@@ -115,16 +115,16 @@ function ColorPlate({ navOpen, onNavigate }: { navOpen: boolean; onNavigate: () 
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const downloaded = useRef(false);
+  const request = useRef(0);
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
-  const [status, setStatus] = useState<"idle" | "bad" | "ok">("idle");
+  const [status, setStatus] = useState<"idle" | "bad" | "ok" | "fail">("idle");
 
   function close() {
+    request.current += 1;
     setOpen(false);
     setCode("");
     setStatus("idle");
-    downloaded.current = false;
   }
 
   useEffect(() => {
@@ -153,30 +153,49 @@ function ColorPlate({ navOpen, onNavigate }: { navOpen: boolean; onNavigate: () 
   }, [open]);
 
   function onCode(raw: string) {
-    const next = raw.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6);
+    const next = raw.toUpperCase().replace(/[^A-Z]/g, "").slice(0, PLATE_LENGTH);
     setCode(next);
-    if (next.length < 6) {
+    const ticket = ++request.current;
+    if (next.length < PLATE_LENGTH) {
       setStatus("idle");
-      downloaded.current = false;
-      return;
-    }
-    if (next !== PLATE_CODE) {
-      setStatus("bad");
-      downloaded.current = false;
       return;
     }
     setStatus("ok");
-    if (downloaded.current) return;
-    downloaded.current = true;
-    const link = document.createElement("a");
-    link.href = "/Pantone-color-chart.pdf";
-    link.download = "Pantone-color-chart.pdf";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    void downloadPlate(next, ticket);
   }
 
-  const hint = status === "ok" ? "Файл татагдаж байна" : status === "bad" ? "Код буруу байна" : "6 тэмдэгт код оруулна уу";
+  async function downloadPlate(plateCode: string, ticket: number) {
+    try {
+      const res = await fetch(`/api/color-plate/${plateCode}`);
+      if (ticket !== request.current) return;
+      if (res.status === 404) {
+        setStatus("bad");
+        return;
+      }
+      if (!res.ok) {
+        setStatus("fail");
+        return;
+      }
+      const blob = await res.blob();
+      if (ticket !== request.current) return;
+      const header = res.headers.get("Content-Disposition");
+      const encoded = header?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+      const filename = encoded ? decodeURIComponent(encoded) : `${plateCode}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      if (ticket === request.current) setStatus("fail");
+    }
+  }
+
+  const hint =
+    status === "ok" ? "Файл татагдаж байна" : status === "bad" ? "Код буруу байна" : status === "fail" ? "Татаж чадсангүй" : "2 тэмдэгт код оруулна уу";
 
   return (
     <div className="color-plate" ref={rootRef}>
@@ -208,7 +227,7 @@ function ColorPlate({ navOpen, onNavigate }: { navOpen: boolean; onNavigate: () 
             <input
               ref={inputRef}
               value={code}
-              maxLength={6}
+              maxLength={PLATE_LENGTH}
               autoComplete="off"
               autoCapitalize="characters"
               autoCorrect="off"
@@ -216,7 +235,7 @@ function ColorPlate({ navOpen, onNavigate }: { navOpen: boolean; onNavigate: () 
               inputMode="text"
               aria-invalid={status === "bad"}
               aria-describedby="color-plate-hint"
-              placeholder="••••••"
+              placeholder="••"
               onChange={(event) => onCode(event.target.value)}
             />
           </label>
