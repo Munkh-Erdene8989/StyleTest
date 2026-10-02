@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
+import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type { AppStore, EmailOtp } from "./types";
 import type {
@@ -45,6 +46,7 @@ type Bag = {
   rates: Map<string, { count: number; reset: number }>;
   otps: Map<string, EmailOtp>;
   styleQuizzes: Map<string, StyleQuizRecord>;
+  aiQuizzes: Map<string, AiQuizRecord>;
   site: SiteConfig | null;
   library: AdminLibrary | null;
   chain: Promise<unknown>;
@@ -72,6 +74,7 @@ function bag(): Bag {
     rates: new Map(),
     otps: new Map(),
     styleQuizzes: new Map(),
+    aiQuizzes: new Map(),
     site: null,
     library: null,
     chain: Promise.resolve(),
@@ -332,6 +335,25 @@ export class MemoryStore implements AppStore {
       if (!previous) throw new AppError("not_found", 404);
       const next = update(structuredClone(previous));
       this.db.styleQuizzes.set(id, next);
+      return { previous, next };
+    });
+  }
+
+  async saveAiQuiz(quiz: AiQuizRecord) {
+    this.db.aiQuizzes.set(quiz.id, quiz);
+  }
+  async getAiQuiz(id: string) {
+    return this.db.aiQuizzes.get(id) ?? null;
+  }
+  async findAiQuizByInvoice(invoiceId: string) {
+    return [...this.db.aiQuizzes.values()].find((quiz) => quiz.qpayInvoiceId === invoiceId) ?? null;
+  }
+  async updateAiQuiz(id: string, update: (current: AiQuizRecord) => AiQuizRecord) {
+    return this.lock(async () => {
+      const previous = this.db.aiQuizzes.get(id);
+      if (!previous) throw new AppError("not_found", 404);
+      const next = update(structuredClone(previous));
+      this.db.aiQuizzes.set(id, next);
       return { previous, next };
     });
   }

@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch {
     newsPaths = NEWS_POSTS.map((post) => `/news/${post.slug}`);
   }
-  const paths = ["", "/quiz", "/news", "/privacy", "/terms", ...newsPaths];
+  const paths = ["", "/quiz", "/tests", "/tests/face", "/tests/body", "/tests/archetype", "/news", "/privacy", "/terms", ...newsPaths];
   return paths.map((path) => ({
     url: `${base}${path || "/"}`,
     changeFrequency: path === "" ? "weekly" : "monthly",

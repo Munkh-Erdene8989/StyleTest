@@ -5,6 +5,7 @@
   --color-cream-dark: #f0ebe3;
   --color-bordeaux: #7a2340;
   --color-bordeaux-dark: #5c1a30;
+  --color-bordeaux-light: #9a3a56;
   --color-gold: #c4956a;
   --color-gold-light: #e8d3b0;
   --color-charcoal: #1e1a18;
@@ -60,6 +61,39 @@
   --fabric-warm: #c4956a;
   --fabric-contrast: #1e1a18;
   --fabric-earth: #8b5e3c;
+}
+
+@utility font-display {
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+}
+
+.quiz-shell h2 {
+  margin: 0;
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.quiz-shell .quiz-hero {
+  font-size: clamp(2.4rem, 6vw, 3.75rem);
+  line-height: 0.95;
+}
+
+.quiz-shell .quiz-question {
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  line-height: 1.25;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 body {

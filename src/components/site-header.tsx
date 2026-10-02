@@ -56,6 +56,7 @@ export function SiteHeader({
     { href: here("services"), label: "Үйлчилгээ", section: "services" },
     { href: here("training"), label: "Сургалт", section: "training" },
     { href: "/news", label: "Мэдээ", section: "" },
+    { href: "/tests", label: "Тест", section: "" },
   ];
 
   return (
@@ -66,7 +67,11 @@ export function SiteHeader({
         </Link>
         <nav className={`nav${open ? " nav-open" : ""}`}>
           {links.map((link) => {
-            const current = link.section ? pathname === "/" && active === link.section : pathname === link.href;
+            const current = link.section
+              ? pathname === "/" && active === link.section
+              : link.href === "/tests"
+                ? pathname.startsWith("/tests")
+                : pathname === link.href;
             return (
               <Link key={link.label} href={link.href} className={current ? "nav-current" : undefined} onClick={() => setOpen(false)}>
                 {link.label}

@@ -1,0 +1,1389 @@
+{
+  "schema_version": "2.0.0",
+  "test": {
+    "id": "body_shape_mn",
+    "version": "2.0.0",
+    "language": "mn-MN",
+    "title": "Миний биеийн хэлбэр",
+    "question_count": 24,
+    "shape_question_count": 6,
+    "optional_measurement_question_count": 3,
+    "minimum_age": 18,
+    "status": "prototype",
+    "estimated_duration_minutes": {
+      "min": 6,
+      "max": 10,
+      "validated": false
+    },
+    "description": "Зураг, энгийн асуулт болон хүсвэл оруулах хэмжээгээр биеийн хэлбэрээ таньж, хувцас сонгох зөвлөгөө авна.",
+    "disclaimer": "Алим, лийр зэрэг биеийн хэлбэрийн ангилал нь Kibbe-ийн ангиллаас тусдаа. Үр дүн нь хувцас сонголтын ойролцоо чиглэл бөгөөд эрүүл мэнд, гоо сайхны үнэлгээ биш."
+  },
+  "flow": {
+    "steps": [
+      "consent",
+      "photo_upload",
+      "photo_review",
+      "profile",
+      "quiz",
+      "review_answers",
+      "processing",
+      "result"
+    ],
+    "quiz_entry_requirements": {
+      "consent_accepted": true,
+      "age_18_plus_self_confirmed": true,
+      "front_photo_uploaded": true,
+      "front_photo_quality_status": "passed"
+    },
+    "preview_identity_before_quiz": false,
+    "decline_consent_action": "exit",
+    "processing_error_action": "preserve_answers_and_allow_retry"
+  },
+  "consent": {
+    "version": "1.0.0",
+    "required": true,
+    "label": "Энэ нь миний өөрийн зураг. Би 18 нас хүрсэн. Зураг боловсруулах зорилго, хадгалах хугацаа, устгах нөхцөлийг уншиж зөвшөөрч байна.",
+    "result_history_opt_in": {
+      "required": false,
+      "default": false,
+      "label": "Үр дүнг миний түүхэнд хадгалах"
+    },
+    "policy_publication_gate": "Хадгалах ба устгах бодлого backend-д хэрэгжсэн үед зөвшөөрлийн текстийг нийтэлнэ."
+  },
+  "photo_upload": {
+    "title": "Эхлээд бүтэн биеийн зургаа оруулна уу",
+    "description": "Таны зураг болон хариултыг хамтад нь харж, биеийн хэлбэрт ойр хувцасны зөвлөгөө гаргана. Нүүрээ харуулах шаардлагагүй.",
+    "before_questions": true,
+    "min_files": 1,
+    "max_files": 3,
+    "slots": [
+      {
+        "id": "front",
+        "label": "Урдаас авсан бүтэн бие",
+        "required": true
+      },
+      {
+        "id": "side",
+        "label": "Хажуугаас авсан бүтэн бие",
+        "required": false
+      },
+      {
+        "id": "back",
+        "label": "Араас авсан бүтэн бие",
+        "required": false
+      }
+    ],
+    "accepted_mime_types": [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ],
+    "max_file_size_bytes": 10000000,
+    "heic_handling": "convert_or_request_jpeg",
+    "instructions": [
+      "Биеийн хэлбэрийг харахад тохиромжтой, хэт сул биш футболк болон өмд өмсөнө.",
+      "Нүцгэн эсвэл дотуур хувцастай зураг шаардлагагүй.",
+      "Эгц зогсож, мөрөө суллана. Гараа биеэсээ бага зэрэг зайтай байлгана.",
+      "Камераа тогтвортой тавьж, хэт дээрээс эсвэл доороос авахгүй.",
+      "Толгойноос хөл хүртэл бүх бие зурагт багтсан байна.",
+      "Гэрэл сайтай, энгийн хананы өмнө авна. Зурагт биеийн хэмжээг өөрчилдөг фильтер ашиглахгүй."
+    ],
+    "face_required": false,
+    "face_obscuring_allowed": true,
+    "preview_actions": [
+      "replace",
+      "delete",
+      "confirm_and_continue"
+    ],
+    "quality_check_statuses": [
+      "passed",
+      "failed",
+      "unknown"
+    ],
+    "required_front_checks": [
+      "single_person",
+      "full_body_visible",
+      "front_view",
+      "adequate_lighting",
+      "not_blurred",
+      "body_not_obscured"
+    ],
+    "unknown_check_action": "request_review_or_reupload_do_not_mark_passed",
+    "error_messages": {
+      "full_body_visible": "Хөлийн хэсэг тасарсан байна. Бүтэн бие багтсан зураг дахин оруулна уу.",
+      "missing_front": "Урдаас авсан бүтэн биеийн зураг оруулна уу.",
+      "quality_unknown": "Зургийн чанарыг шалгаж чадсангүй. Дахин зураг оруулах эсвэл шалгалтыг давтана уу."
+    }
+  },
+  "privacy": {
+    "implementation_status": "requirements_not_implemented_by_this_file",
+    "storage_visibility": "private",
+    "access_control": "owner_session_or_user",
+    "url_access": "short_lived_signed_url",
+    "strip_exif": true,
+    "verify_mime_and_bytes": true,
+    "safe_image_decode": true,
+    "exclude_photos_from": [
+      "analytics",
+      "application_logs",
+      "automatic_email_attachments"
+    ],
+    "retention_policy": {
+      "status": "proposed",
+      "completed_session_delete_within_hours_after_report": 24,
+      "failed_or_abandoned_delete_within_hours_after_upload": 24,
+      "user_can_delete_immediately": true
+    }
+  },
+  "profile": {
+    "fields": [
+      {
+        "id": "clothing_preference",
+        "label": "Хувцасны сонголт",
+        "type": "single_choice",
+        "required": false,
+        "affects_scoring": false,
+        "options": [
+          {
+            "id": "womenswear",
+            "label": "Эмэгтэй загвар"
+          },
+          {
+            "id": "menswear",
+            "label": "Эрэгтэй загвар"
+          },
+          {
+            "id": "unisex",
+            "label": "Унисекс"
+          },
+          {
+            "id": "mixed",
+            "label": "Холимог"
+          }
+        ]
+      }
+    ],
+    "collect_weight": false,
+    "collect_bmi": false
+  },
+  "ui": {
+    "instructions": "Өөрийн зургаа хараад хамгийн ойр санагдсан хариултаа сонгоорой. Зөв, буруу хариулт байхгүй. Ялгахад хэцүү бол “Мэдэхгүй” гэж сонгож болно.",
+    "questions_per_screen": 1,
+    "auto_advance": false,
+    "allow_back": true,
+    "preserve_answers": true,
+    "progress_total": 24,
+    "show_private_photo_preview": true,
+    "interrupt_with_ads": false
+  },
+  "sections": [
+    {
+      "id": "shape",
+      "title": "Биеийн хэлбэрээ ажиглах",
+      "question_ids": [
+        "q01",
+        "q02",
+        "q03",
+        "q04",
+        "q05",
+        "q06"
+      ]
+    },
+    {
+      "id": "fit",
+      "title": "Хувцас өмсөхөд",
+      "question_ids": [
+        "q07",
+        "q08"
+      ]
+    },
+    {
+      "id": "measurements",
+      "title": "Хэмжээгээ мэддэг бол",
+      "question_ids": [
+        "q09",
+        "q10",
+        "q11",
+        "q12"
+      ]
+    },
+    {
+      "id": "preferences",
+      "title": "Танд тохирох хувцас",
+      "question_ids": [
+        "q13",
+        "q14",
+        "q15",
+        "q16",
+        "q17",
+        "q18",
+        "q19",
+        "q20",
+        "q21",
+        "q22",
+        "q23",
+        "q24"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q01",
+      "order": 1,
+      "section_id": "shape",
+      "title": "Урдаас харахад мөр тань ташаанаасаа өргөн үү?",
+      "type": "single_choice",
+      "required": true,
+      "allow_skip": false,
+      "affects_shape": true,
+      "options": [
+        {
+          "id": "q01_o1",
+          "label": "Мөр илүү өргөн",
+          "feature_value": "upper_wider"
+        },
+        {
+          "id": "q01_o2",
+          "label": "Мөр, ташаа ойролцоо өргөн",
+          "feature_value": "similar"
+        },
+        {
+          "id": "q01_o3",
+          "label": "Ташаа илүү өргөн",
+          "feature_value": "lower_wider"
+        },
+        {
+          "id": "q01_o4",
+          "label": "Мэдэхгүй",
+          "feature_value": null
+        }
+      ],
+      "help": "Зургаа эгц урдаас хараарай. Мөрний хоёр захын өргөнийг ташааны хоёр захтай харьцуулна.",
+      "feature": "shoulder_hip"
+    },
+    {
+      "id": "q02",
+      "order": 2,
+      "section_id": "shape",
+      "title": "Цээж болон ташааны аль нь илүү өргөн харагддаг вэ?",
+      "type": "single_choice",
+      "required": true,
+      "allow_skip": false,
+      "affects_shape": true,
+      "options": [
+        {
+          "id": "q02_o1",
+          "label": "Цээж илүү өргөн",
+          "feature_value": "upper_wider"
+        },
+        {
+          "id": "q02_o2",
+          "label": "Ойролцоо өргөн",
+          "feature_value": "similar"
+        },
+        {
+          "id": "q02_o3",
+          "label": "Ташаа илүү өргөн",
+          "feature_value": "lower_wider"
+        },
+        {
+          "id": "q02_o4",
+          "label": "Мэдэхгүй",
+          "feature_value": null
+        }
+      ],
+      "help": "Цээжний хамгийн өргөн хэсгийг ташааны хамгийн өргөн хэсэгтэй харьцуулна. Хөхний даруулгын размер асууж байгаа биш.",
+      "feature": "chest_hip"
+    },
+    {
+      "id": "q03",
+      "order": 3,
+      "section_id": "shape",
+      "title": "Бэлхүүс тань цээж, ташаанаасаа хэр нарийн харагддаг вэ?",
+      "type": "single_choice",
+      "required": true,
+      "allow_skip": false,
+      "affects_shape": true,
+      "options": [
+        {
+          "id": "q03_o1",
+          "label": "Хоёулангаас нь илт нарийн",
+          "feature_value": "defined"
+        },
+        {
+          "id": "q03_o2",
+          "label": "Бага зэрэг нарийн",
+          "feature_value": "slight"
+        },
+        {
+          "id": "q03_o3",
+          "label": "Бараг адил өргөн",
+          "feature_value": "straight"
+        },
+        {
+          "id": "q03_o4",
+          "label": "Бэлхүүс эсвэл хэвлийн хэсэг илүү өргөн",
+          "feature_value": "mid_wider"
+        },
+        {
+          "id": "q03_o5",
+          "label": "Мэдэхгүй",
+          "feature_value": null
+        }
+      ],
+      "feature": "waist_definition"
+    },
+    {
+      "id": "q04",
+      "order": 4,
+      "section_id": "shape",
+      "title": "Урдаас харахад биеийн тань дунд хэсэг хамгийн өргөн харагддаг уу?",
+      "type": "single_choice",
+      "required": true,
+      "allow_skip": false,
+      "affects_shape": true,
+      "options": [
+        {
+          "id": "q04_o1",
+          "label": "Тийм, бэлхүүс/хэвлийн хэсэг илүү өргөн",
+          "feature_value": "yes"
+        },
+        {
+          "id": "q04_o2",
+          "label": "Үгүй, цээж эсвэл ташаа илүү өргөн",
+          "feature_value": "no"
+        },
+        {
+          "id": "q04_o3",
+          "label": "Бараг адил өргөн",
+          "feature_value": "similar"
+        },
+        {
+          "id": "q04_o4",
+          "label": "Мэдэхгүй",
+          "feature_value": null
+        }
+      ],
+      "help": "“Дунд хэсэг” гэдэг нь цээжний доороос ташааны дээр хүртэлх бэлхүүс, хэвлийн хэсэг. Хэвлий бага зэрэг урагш гарсныг дангаар нь “алим” гэж үзэхгүй.",
+      "feature": "midsection"
+    },
+    {
+      "id": "q05",
+      "order": 5,
+      "section_id": "shape",
+      "title": "Биеийн дээд ба доод хэсгийг бүхэлд нь харахад аль нь өргөн санагддаг вэ?",
+      "type": "single_choice",
+      "required": true,
+      "allow_skip": false,
+      "affects_shape": true,
+      "options": [
+        {
+          "id": "q05_o1",
+          "label": "Мөр, цээжний хэсэг илүү өргөн",
+          "feature_value": "upper_wider"
+        },
+        {
+          "id": "q05_o2",
+          "label": "Ташааны хэсэг илүү өргөн",
+          "feature_value": "lower_wider"
+        },
+        {
+          "id": "q05_o3",
+          "label": "Ойролцоо өргөн",
+          "feature_value": "similar"
+        },
+        {
+          "id": "q05_o4",
+          "label": "Мэдэхгүй",
+          "feature_value": null
+        }
+      ],
+      "help": "Өмнөх хариултаа шалгах асуулт. Өргөн хувцас, зураг авах өнцөг нөлөөлж байвал “Мэдэхгүй” гэж сонгоорой.",
+      "feature": "overall_upper_lower"
+    },
+    {
+      "id": "q06",
+      "order": 6,
+      "section_id": "shape",
+      "title": "Цээжнээс ташаа хүртэлх хажуу талын шугамыг хараарай. Бэлхүүсээрээ дотогш орсон уу?",
+      "type": "single_choice",
+      "required": true,
+      "allow_skip": false,
+      "affects_shape": true,
+      "options": [
+        {
+          "id": "q06_o1",
+          "label": "Тийм, бэлхүүсээрээ илт нарийссан",
+          "feature_value": "defined"
+        },
+        {
+          "id": "q06_o2",
+          "label": "Бага зэрэг нарийссан",
+          "feature_value": "slight"
+        },
+        {
+          "id": "q06_o3",
+          "label": "Бараг шулуун",
+          "feature_value": "straight"
+        },
+        {
+          "id": "q06_o4",
+          "label": "Дунд хэсгээрээ гадагш дугуйрсан",
+          "feature_value": "mid_wider"
+        },
+        {
+          "id": "q06_o5",
+          "label": "Мэдэхгүй",
+          "feature_value": null
+        }
+      ],
+      "help": "Энэ нь хажуугаас авсан зураг биш; урдаас авсан зураг дээрх биеийн зүүн, баруун захыг хэлж байна.",
+      "feature": "waist_definition"
+    },
+    {
+      "id": "q07",
+      "order": 7,
+      "section_id": "fit",
+      "title": "Цамц сонгоход аль асуудал их гардаг вэ?",
+      "type": "single_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q07_o1",
+          "label": "Мөрөөрөө бариу"
+        },
+        {
+          "id": "q07_o2",
+          "label": "Цээжээрээ бариу"
+        },
+        {
+          "id": "q07_o3",
+          "label": "Хэвлий, бэлхүүсээрээ бариу"
+        },
+        {
+          "id": "q07_o4",
+          "label": "Тогтмол асуудал байдаггүй"
+        },
+        {
+          "id": "q07_o5",
+          "label": "Бусад / мэдэхгүй"
+        }
+      ],
+      "help": "Хувцасны загвар, размер өөрөө нөлөөлдөг тул энэ хариултаар биеийн хэлбэр тогтоохгүй."
+    },
+    {
+      "id": "q08",
+      "order": 8,
+      "section_id": "fit",
+      "title": "Өмд сонгоход аль асуудал их гардаг вэ?",
+      "type": "single_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q08_o1",
+          "label": "Ташаа, өгзгөөрөө бариу"
+        },
+        {
+          "id": "q08_o2",
+          "label": "Ташаагаараа таарсан ч бэлхүүсээрээ сул"
+        },
+        {
+          "id": "q08_o3",
+          "label": "Бэлхүүсээрээ бариу"
+        },
+        {
+          "id": "q08_o4",
+          "label": "Урт нь таарахгүй"
+        },
+        {
+          "id": "q08_o5",
+          "label": "Тогтмол асуудал байдаггүй"
+        },
+        {
+          "id": "q08_o6",
+          "label": "Бусад / мэдэхгүй"
+        }
+      ]
+    },
+    {
+      "id": "q09",
+      "order": 9,
+      "section_id": "measurements",
+      "type": "number",
+      "title": "Цээжний тойргийн хэмжээ хэд вэ?",
+      "field_id": "chest_cm",
+      "unit": "cm",
+      "required": false,
+      "allow_skip": true,
+      "nullable": true,
+      "minimum_exclusive": 0,
+      "affects_shape": true,
+      "help": "Метрээ цээжний хамгийн өргөн хэсгээр тойруулж хэмжинэ. Метрийг чангалалгүй, газартай зэрэгцээ байлгана. Хэмжээгээ мэдэхгүй бол алгасаарай.",
+      "source": "user_measured",
+      "quality_confirmation": {
+        "label": "Тайлбарын дагуу хэмжсэн",
+        "required_for_classification": true
+      }
+    },
+    {
+      "id": "q10",
+      "order": 10,
+      "section_id": "measurements",
+      "type": "number",
+      "title": "Бэлхүүсний тойргийн хэмжээ хэд вэ?",
+      "field_id": "waist_cm",
+      "unit": "cm",
+      "required": false,
+      "allow_skip": true,
+      "nullable": true,
+      "minimum_exclusive": 0,
+      "affects_shape": true,
+      "help": "Метрээ бэлхүүсний хамгийн нарийн хэсгээр тойруулна. Хэвлийгээ татахгүй. Метрийг чангалалгүй, газартай зэрэгцээ байлгана. Хэмжээгээ мэдэхгүй бол алгасаарай.",
+      "source": "user_measured",
+      "quality_confirmation": {
+        "label": "Тайлбарын дагуу хэмжсэн",
+        "required_for_classification": true
+      }
+    },
+    {
+      "id": "q11",
+      "order": 11,
+      "section_id": "measurements",
+      "type": "number",
+      "title": "Ташааны тойргийн хэмжээ хэд вэ?",
+      "field_id": "hip_cm",
+      "unit": "cm",
+      "required": false,
+      "allow_skip": true,
+      "nullable": true,
+      "minimum_exclusive": 0,
+      "affects_shape": true,
+      "help": "Метрээ ташаа, өгзөгний хамгийн өргөн хэсгээр тойруулна. Метрийг чангалалгүй, газартай зэрэгцээ байлгана. Хэмжээгээ мэдэхгүй бол алгасаарай.",
+      "source": "user_measured",
+      "quality_confirmation": {
+        "label": "Тайлбарын дагуу хэмжсэн",
+        "required_for_classification": true
+      }
+    },
+    {
+      "id": "q12",
+      "order": 12,
+      "section_id": "measurements",
+      "type": "number",
+      "title": "Та хэдэн см өндөр вэ?",
+      "field_id": "height_cm",
+      "unit": "cm",
+      "required": false,
+      "nullable": true,
+      "minimum_exclusive": 0,
+      "allow_skip": true,
+      "affects_shape": false,
+      "help": "Хувцасны урт санал болгоход ашиглана. Мэдэхгүй бол алгасаарай."
+    },
+    {
+      "id": "q13",
+      "order": 13,
+      "section_id": "preferences",
+      "title": "Та ямар төрлийн хувцас их өмсдөг вэ?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q13_o1",
+          "label": "Ажилдаа өмсөх хувцас"
+        },
+        {
+          "id": "q13_o2",
+          "label": "Өдөр тутмын энгийн хувцас"
+        },
+        {
+          "id": "q13_o3",
+          "label": "Спорт хувцас"
+        },
+        {
+          "id": "q13_o4",
+          "label": "Гоёлын хувцас"
+        }
+      ]
+    },
+    {
+      "id": "q14",
+      "order": 14,
+      "section_id": "preferences",
+      "title": "Танд ямар стиль таалагддаг вэ?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q14_o1",
+          "label": "Энгийн, цөөн деталтай"
+        },
+        {
+          "id": "q14_o2",
+          "label": "Цэвэрхэн, сонгодог"
+        },
+        {
+          "id": "q14_o3",
+          "label": "Спортлог, чөлөөтэй"
+        },
+        {
+          "id": "q14_o4",
+          "label": "Зөөлөн, романтик"
+        },
+        {
+          "id": "q14_o5",
+          "label": "Өнгөлөг, өвөрмөц"
+        },
+        {
+          "id": "q14_o6",
+          "label": "Өөрийнхөөрөө хослуулдаг"
+        }
+      ]
+    },
+    {
+      "id": "q15",
+      "order": 15,
+      "section_id": "preferences",
+      "title": "Хувцас таны биед яаж суухад тухтай байдаг вэ?",
+      "type": "single_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q15_o1",
+          "label": "Биеийн хэлбэр дагасан"
+        },
+        {
+          "id": "q15_o2",
+          "label": "Бага зэрэг сул"
+        },
+        {
+          "id": "q15_o3",
+          "label": "Нэлээд сул"
+        },
+        {
+          "id": "q15_o4",
+          "label": "Хувцасны төрлөөс хамаардаг"
+        }
+      ]
+    },
+    {
+      "id": "q16",
+      "order": 16,
+      "section_id": "preferences",
+      "title": "Та бэлхүүс тодруулсан хувцас өмсөх дуртай юу?",
+      "type": "single_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q16_o1",
+          "label": "Тийм"
+        },
+        {
+          "id": "q16_o2",
+          "label": "Заримдаа"
+        },
+        {
+          "id": "q16_o3",
+          "label": "Үгүй"
+        },
+        {
+          "id": "q16_o4",
+          "label": "Туршиж үзээгүй"
+        }
+      ]
+    },
+    {
+      "id": "q17",
+      "order": 17,
+      "section_id": "preferences",
+      "title": "Аль хувцасны зөвлөгөө танд хэрэгтэй вэ?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q17_o1",
+          "label": "Цамц, футболк"
+        },
+        {
+          "id": "q17_o2",
+          "label": "Өмд, жийнс"
+        },
+        {
+          "id": "q17_o3",
+          "label": "Юбка, даашинз"
+        },
+        {
+          "id": "q17_o4",
+          "label": "Пиджак, хүрэм"
+        },
+        {
+          "id": "q17_o5",
+          "label": "Өвлийн гадуур хувцас"
+        },
+        {
+          "id": "q17_o6",
+          "label": "Бүгд"
+        }
+      ]
+    },
+    {
+      "id": "q18",
+      "order": 18,
+      "section_id": "preferences",
+      "title": "Хувцас авахад таны гол зорилго юу вэ?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q18_o1",
+          "label": "Өдөр тутам амархан хослуулах"
+        },
+        {
+          "id": "q18_o2",
+          "label": "Ажилдаа цэгцтэй харагдах"
+        },
+        {
+          "id": "q18_o3",
+          "label": "Арга хэмжээнд өмсөх"
+        },
+        {
+          "id": "q18_o4",
+          "label": "Хөдөлгөөнд тухтай байх"
+        },
+        {
+          "id": "q18_o5",
+          "label": "Өөртөө таалагдах шинэ стиль турших"
+        }
+      ]
+    },
+    {
+      "id": "q19",
+      "order": 19,
+      "section_id": "preferences",
+      "title": "Та хувцасныхаа юуг онцлох дуртай вэ?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q19_o1",
+          "label": "Мөр, цээжний хэсгийг"
+        },
+        {
+          "id": "q19_o2",
+          "label": "Бэлхүүсийг"
+        },
+        {
+          "id": "q19_o3",
+          "label": "Хөл болон хувцасны уртыг"
+        },
+        {
+          "id": "q19_o4",
+          "label": "Өнгө, гоёл чимэглэлийг"
+        },
+        {
+          "id": "q19_o5",
+          "label": "Онцгой хэсэг тодруулах шаардлагагүй"
+        }
+      ]
+    },
+    {
+      "id": "q20",
+      "order": 20,
+      "section_id": "preferences",
+      "title": "Ямар материалтай хувцас тухтай санагддаг вэ?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q20_o1",
+          "label": "Суналттай, зөөлөн"
+        },
+        {
+          "id": "q20_o2",
+          "label": "Хөнгөн, сул унадаг"
+        },
+        {
+          "id": "q20_o3",
+          "label": "Хэлбэрээ барьдаг, арай зузаан"
+        },
+        {
+          "id": "q20_o4",
+          "label": "Хөвөн зэрэг арьсанд эвтэйхэн"
+        },
+        {
+          "id": "q20_o5",
+          "label": "Сайн мэдэхгүй"
+        }
+      ]
+    },
+    {
+      "id": "q21",
+      "order": 21,
+      "section_id": "preferences",
+      "title": "Аль улиралд өмсөх хувцасны зөвлөгөө хэрэгтэй вэ?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q21_o1",
+          "label": "Монголын хүйтэн өвөл"
+        },
+        {
+          "id": "q21_o2",
+          "label": "Хавар, намрын сэрүүн үе"
+        },
+        {
+          "id": "q21_o3",
+          "label": "Дулаан зун"
+        },
+        {
+          "id": "q21_o4",
+          "label": "Бүх улирал"
+        }
+      ]
+    },
+    {
+      "id": "q22",
+      "order": 22,
+      "section_id": "preferences",
+      "title": "Танд хувцас сонгоход анхаарах хэрэгцээ бий юу?",
+      "type": "multiple_choice",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "options": [
+        {
+          "id": "q22_o1",
+          "label": "Бие сайн халхалсан байх"
+        },
+        {
+          "id": "q22_o2",
+          "label": "Алхах, суухад чөлөөтэй байх"
+        },
+        {
+          "id": "q22_o3",
+          "label": "Арьсанд зөөлөн материалтай байх"
+        },
+        {
+          "id": "q22_o4",
+          "label": "Олон давхарлаж өмсөх боломжтой байх"
+        },
+        {
+          "id": "q22_o5",
+          "label": "Тусгай хэрэгцээ байхгүй"
+        },
+        {
+          "id": "q22_o6",
+          "label": "Бусад"
+        }
+      ]
+    },
+    {
+      "id": "q23",
+      "order": 23,
+      "section_id": "preferences",
+      "type": "group",
+      "title": "Хувцас авахад хэдэн төгрөг зарцуулахаар төлөвлөж байна вэ?",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "fields": [
+        {
+          "id": "use_existing_only",
+          "type": "boolean",
+          "label": "Одоохондоо байгаа хувцсаараа хослуулна",
+          "default": false
+        },
+        {
+          "id": "item_budget_mnt",
+          "type": "number",
+          "label": "Нэг хувцсанд зарцуулах дээд төсөв",
+          "minimum": 0,
+          "nullable": true,
+          "currency": "MNT"
+        },
+        {
+          "id": "total_budget_mnt",
+          "type": "number",
+          "label": "Нийт төсөв",
+          "minimum": 0,
+          "nullable": true,
+          "currency": "MNT"
+        }
+      ]
+    },
+    {
+      "id": "q24",
+      "order": 24,
+      "section_id": "preferences",
+      "type": "group",
+      "title": "Таны зөвлөгөөнд нэмж тусгах зүйл байна уу?",
+      "required": false,
+      "allow_skip": true,
+      "affects_shape": false,
+      "fields": [
+        {
+          "id": "usual_size",
+          "type": "text",
+          "label": "Ихэвчлэн өмсдөг размер",
+          "max_length": 100
+        },
+        {
+          "id": "notes",
+          "type": "textarea",
+          "label": "Жишээ нь: урт хүрэм дуртай, сууж ажилладаг, өсгийтэй гутал өмсдөггүй гэх мэт",
+          "max_length": 1000
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "version": "2.0.0",
+    "validated": false,
+    "engine": "deterministic_backend",
+    "method": "feature_rules_not_kibbe_scoring",
+    "shape_question_ids": [
+      "q01",
+      "q02",
+      "q03",
+      "q04",
+      "q05",
+      "q06"
+    ],
+    "optional_measurement_question_ids": [
+      "q09",
+      "q10",
+      "q11"
+    ],
+    "unknown_policy": "exclude_and_never_assume_similar",
+    "features": {
+      "upper_lower_relation": {
+        "question_ids": [
+          "q01",
+          "q02",
+          "q05"
+        ],
+        "method": "strict_majority_of_non_null_values",
+        "minimum_known": 2,
+        "tie_value": "conflicting"
+      },
+      "waist_definition": {
+        "question_ids": [
+          "q03",
+          "q06"
+        ],
+        "method": "require_matching_non_null_values",
+        "minimum_known": 1,
+        "conflict_value": "conflicting"
+      },
+      "midsection": {
+        "question_ids": [
+          "q04"
+        ],
+        "minimum_known": 1
+      }
+    },
+    "questionnaire_sufficiency": {
+      "minimum_known_shape_answers": 4,
+      "required_known_features": [
+        "upper_lower_relation",
+        "waist_definition",
+        "midsection"
+      ],
+      "conflicting_feature_action": "request_review_no_forced_primary"
+    },
+    "measurement_features": {
+      "requires": [
+        "chest_cm",
+        "waist_cm",
+        "hip_cm"
+      ],
+      "requires_quality_confirmation": true,
+      "upper_lower_ratio": "chest_cm / hip_cm",
+      "upper_wider_when": {
+        "ratio_gt": 1.05
+      },
+      "lower_wider_when": {
+        "ratio_lt": 0.95
+      },
+      "similar_when": {
+        "ratio_gte": 0.95,
+        "ratio_lte": 1.05
+      },
+      "waist_ratio": "waist_cm / min(chest_cm, hip_cm)",
+      "defined_when": {
+        "ratio_lte": 0.8
+      },
+      "not_defined_when": {
+        "ratio_gt": 0.8
+      },
+      "middle_dominant_support_when": {
+        "formula": "waist_cm / max(chest_cm, hip_cm)",
+        "ratio_gte": 0.95
+      },
+      "thresholds_status": "product_heuristics_not_universal_or_medical_standards",
+      "does_not_infer_shoulders_from_chest": true
+    },
+    "source_resolution": {
+      "prefer_confirmed_measurements_for": [
+        "chest_hip_relation",
+        "waist_definition"
+      ],
+      "questionnaire_shoulder_relation_remains_separate": true,
+      "measurement_vs_questionnaire_conflict": "request_review_do_not_silently_override",
+      "cannot_distinguish_apple_rectangle_from_measurements_alone": true,
+      "image_role": "quality_check_and_explain_or_flag_conflicts",
+      "photo_does_not_supply_cm": true
+    },
+    "classification_rules": {
+      "evaluation": "priority_order_first_match_after_sufficiency_and_conflict_checks",
+      "missing_feature": "do_not_match",
+      "rules": [
+        {
+          "priority": 1,
+          "result": "apple",
+          "all": [
+            {
+              "feature": "midsection",
+              "operator": "eq",
+              "value": "yes"
+            },
+            {
+              "feature": "waist_definition",
+              "operator": "in",
+              "value": [
+                "slight",
+                "straight",
+                "mid_wider",
+                "not_defined"
+              ]
+            }
+          ],
+          "note": "Хэвлий бага зэрэг урагш гарсан эсэхээр биш, дунд хэсгийн нийт өргөнөөр ялгана."
+        },
+        {
+          "priority": 2,
+          "result": "pear",
+          "all": [
+            {
+              "feature": "upper_lower_relation",
+              "operator": "eq",
+              "value": "lower_wider"
+            },
+            {
+              "feature": "midsection",
+              "operator": "in",
+              "value": [
+                "no",
+                "similar"
+              ]
+            }
+          ]
+        },
+        {
+          "priority": 3,
+          "result": "inverted_triangle",
+          "all": [
+            {
+              "feature": "upper_lower_relation",
+              "operator": "eq",
+              "value": "upper_wider"
+            },
+            {
+              "feature": "midsection",
+              "operator": "in",
+              "value": [
+                "no",
+                "similar"
+              ]
+            }
+          ]
+        },
+        {
+          "priority": 4,
+          "result": "hourglass",
+          "all": [
+            {
+              "feature": "upper_lower_relation",
+              "operator": "eq",
+              "value": "similar"
+            },
+            {
+              "feature": "waist_definition",
+              "operator": "eq",
+              "value": "defined"
+            },
+            {
+              "feature": "midsection",
+              "operator": "eq",
+              "value": "no"
+            }
+          ]
+        },
+        {
+          "priority": 5,
+          "result": "rectangle",
+          "all": [
+            {
+              "feature": "upper_lower_relation",
+              "operator": "eq",
+              "value": "similar"
+            },
+            {
+              "feature": "waist_definition",
+              "operator": "in",
+              "value": [
+                "slight",
+                "straight",
+                "not_defined"
+              ]
+            },
+            {
+              "feature": "midsection",
+              "operator": "in",
+              "value": [
+                "no",
+                "similar"
+              ]
+            }
+          ]
+        }
+      ],
+      "no_match_status": "mixed_or_unclear"
+    },
+    "measurement_integration": "Map confirmed chest_hip_relation into the upper/lower evidence as one additional vote. Compare measurement waist definition against q03/q06; conflicting categories require review. When measured middle-dominant support contradicts q04=no, request review. Missing or unconfirmed measurements are ignored. Shoulder evidence remains separate; if q01 contradicts measured chest_hip_relation, request review before assigning a primary shape.",
+    "score_is_probability": false
+  },
+  "recommendations": {
+    "personalize_using_question_ids": [
+      "q07",
+      "q08",
+      "q12",
+      "q13",
+      "q14",
+      "q15",
+      "q16",
+      "q17",
+      "q18",
+      "q19",
+      "q20",
+      "q21",
+      "q22",
+      "q23",
+      "q24"
+    ],
+    "principle": "Хэрэглэгчийн хүсэл, тав тухыг голчилно. Хэлбэр бүрд заавал өмсөх эсвэл хориглох хувцас гэж байхгүй.",
+    "winter_context": "Монголын өвөлд давхарлаж өмсөх зай, суух хөдөлгөөн, дулаан байдал, уртыг хамтад нь тооцно.",
+    "unknown_sizes": "Размерыг зохиож таахгүй.",
+    "color": "Биеийн хэлбэрээр өнгөний улирал, арьсны өнгөний тохирол тогтоохгүй.",
+    "do_not_infer": [
+      "seasonal_color",
+      "skin_undertone",
+      "face_shape",
+      "personality",
+      "health",
+      "age",
+      "gender",
+      "ethnicity",
+      "height_cm_from_photo",
+      "weight_from_photo"
+    ]
+  },
+  "result_contract": {
+    "required_fields": [
+      "schema_version",
+      "status",
+      "primary_shape",
+      "secondary_shapes",
+      "reasons",
+      "evidence_sources",
+      "needs_review",
+      "recommendations",
+      "limitations"
+    ],
+    "status_enum": [
+      "approximate_match",
+      "mixed_or_unclear",
+      "insufficient_information"
+    ],
+    "primary_shape": "A result_types id or null",
+    "secondary_shapes": "Array of result_types ids supported by evidence; empty if unsupported",
+    "reasons": "Хариулт эсвэл бодит хэмжээг дурдсан энгийн монгол тайлбар",
+    "prohibited_claims": [
+      "100% баталгаатай хэлбэр",
+      "Эрүүл мэндийн дүгнэлт",
+      "Хүний гоо сайхны эрэмбэ"
+    ],
+    "mixed_message": "Таны биеийн онцлог хоёр хэлбэрийн шинжийг хослуулж байна. Нэг хэлбэрт хүчээр багтаахгүйгээр хувцасны зөвлөгөө өгнө.",
+    "insufficient_message": "Одоогоор хэлбэр тодруулах мэдээлэл дутуу байна. Зургаа шалгаж, мэдэхгүй гэж сонгосон асуултаа дахин харж болно.",
+    "example": {
+      "schema_version": "2.0.0",
+      "status": "approximate_match",
+      "primary_shape": "pear",
+      "secondary_shapes": [],
+      "reasons": [
+        "Мөр, цээжнээс ташаа илүү өргөн гэж хариулсан.",
+        "Биеийн дунд хэсэг хамгийн өргөн биш гэж хариулсан."
+      ],
+      "evidence_sources": [
+        "q01",
+        "q02",
+        "q04",
+        "q05"
+      ],
+      "needs_review": false,
+      "recommendations": [
+        "Ташаандаа тааруулж өмдөө сонгоод, бэлхүүс сул бол тохируулж болно."
+      ],
+      "limitations": [
+        "Энэ нь хувцас сонгоход ашиглах ойролцоо ангилал."
+      ],
+      "is_example_not_real_user_result": true
+    }
+  },
+  "ai_instructions": {
+    "role": "photo_observations_and_recommendation_text_only",
+    "prompt": "Энгийн монгол хэлээр бич. Зурагт мөр, цээж, бэлхүүс, ташааны харагдах харьцааг тайлбарла. Зурагнаас см, жин, нас, хүйс, үндэс угсаа, өвчин бүү таа. Хариулт, хэмжилттэй зөрвөл дахин шалгахыг санал болго. Эцсийн хэлбэрийг backend дүрмээс ав; өөрөө зохиож өөрчлөхгүй. Хүний биеийг өөлсөн, турах шаардлагатай гэсэн тайлбар бүү бич. Kibbe нэршил ашиглахгүй.",
+    "classification_source": "deterministic_backend",
+    "backend_validate_output": true
+  },
+  "answer_payload_contract": {
+    "choice": "{question_id, value: option_id_or_option_id_array}",
+    "number": "{question_id, value: number_or_null, measured_as_instructed: boolean_for_q09_q10_q11}",
+    "group": "{question_id, value: object_keyed_by_field_id}",
+    "skip_optional": "omit_or_null",
+    "reject_invalid_options": true
+  },
+  "qa_cases": [
+    "no_photo_blocks_quiz",
+    "unknown_not_treated_as_similar",
+    "all_unknown_insufficient",
+    "wide_hips_with_defined_waist_pear",
+    "similar_upper_lower_defined_waist_hourglass",
+    "similar_upper_lower_straight_waist_rectangle",
+    "upper_wider_without_middle_dominance_inverted_triangle",
+    "middle_dominant_without_defined_waist_apple",
+    "middle_dominance_with_defined_waist_requests_review",
+    "shoulder_chest_measurement_conflict_requests_review",
+    "unconfirmed_measurements_ignored",
+    "photo_no_cm_inference",
+    "preferences_do_not_change_shape",
+    "private_photos_access_control_and_deletion"
+  ],
+  "sources": [
+    {
+      "type": "previous_version",
+      "version": "1.0.0"
+    },
+    {
+      "type": "user_requested_revision",
+      "description": "5 биеийн хэлбэрээр үр дүн гаргах, энгийн монгол хэлээр асуулт бичих"
+    },
+    {
+      "type": "classification_reference_only",
+      "url": "https://cbseacademic.nic.in/web_material/Curriculum24/publication/DressingBodyStructure.pdf",
+      "note": "5 хэлбэрийн нэршлийн лавлагаа; энэ JSON-ийн босго, алгоритмыг баталгаажуулах эх сурвалж биш."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Цээж",
+      "meaning": "Их биеийн дээд хэсэг. Хэмжээ авахдаа цээжний хамгийн өргөн хэсгээр тойруулна."
+    },
+    {
+      "term": "Бэлхүүс",
+      "meaning": "Цээж болон ташааны хоорондох хамгийн нарийн хэсэг. Заавал хүйсний түвшинтэй адил биш."
+    },
+    {
+      "term": "Ташаа",
+      "meaning": "Биеийн доод хэсгийн өгзөгтэй хамт хамгийн өргөн хэсэг."
+    }
+  ],
+  "result_types": [
+    {
+      "id": "apple",
+      "label": "Алиман хэлбэр",
+      "description": "Бэлхүүс, хэвлийн хэсэг нь биеийн нийт хэлбэрт илүү давамгай харагддаг.",
+      "starter_recommendations": [
+        "Хэвлийд барихгүй, өөрт таарсан хэмжээтэй цамц",
+        "Шулуун эсвэл зөөлөн уналттай хүрэм",
+        "Суухад бэлхүүсээр эвтэйхэн өмд"
+      ]
+    },
+    {
+      "id": "pear",
+      "label": "Лийр хэлбэр",
+      "description": "Ташааны хэсэг мөр, цээжний хэсгээс илүү өргөн харагддаг.",
+      "starter_recommendations": [
+        "Ташаандаа тааруулж сонгосон өмд",
+        "Бэлхүүс сул бол оёдлоор тохируулах",
+        "Мөр, цээжний деталтай цамц туршиж үзэх"
+      ]
+    },
+    {
+      "id": "hourglass",
+      "label": "Элсэн цаг хэлбэр",
+      "description": "Дээд ба доод хэсэг ойролцоо өргөн, бэлхүүс илт нарийн харагддаг.",
+      "starter_recommendations": [
+        "Бэлхүүс дагасан пиджак",
+        "Биеийг шахахгүй, хэлбэр дагасан хувцас",
+        "Бүс эсвэл бэлхүүсийн оёдолтой загвар"
+      ]
+    },
+    {
+      "id": "rectangle",
+      "label": "Тэгш өнцөгт хэлбэр",
+      "description": "Дээд ба доод хэсэг ойролцоо өргөн, бэлхүүсийн нарийсалт бага харагддаг.",
+      "starter_recommendations": [
+        "Шулуун, цэвэр загварын хувцас",
+        "Хүсвэл бүс, давхарлалтаар өөр хэлбэр турших",
+        "Эвтэйхэн, дунд зэргийн сул суулт"
+      ]
+    },
+    {
+      "id": "inverted_triangle",
+      "label": "Урвуу гурвалжин хэлбэр",
+      "description": "Мөр эсвэл цээжний хэсэг ташаанаас илүү өргөн харагддаг.",
+      "starter_recommendations": [
+        "Мөрөндөө таарсан цамц, пиджак",
+        "Хөл хэсгээрээ чөлөөтэй өмд",
+        "Хүсвэл доод хэсэгт деталтай загвар турших"
+      ]
+    }
+  ],
+  "change_log": [
+    {
+      "version": "2.0.0",
+      "changes": [
+        "Kibbe-ийн 6 хэмжээс ба нэршлийг 5 биеийн хэлбэрээр сольсон",
+        "24 асуултыг энгийн монгол хэлээр дахин бичсэн",
+        "Эхэнд биеийн зураг авах урсгалыг хадгалсан",
+        "Заавал 6 хэлбэрийн асуулт, нэмэлт 3 тойргийн хэмжилттэй болгосон",
+        "Тав тух, Монголын улирал, төсвийн асуулттай",
+        "Мэдээлэл дутуу/зөрчилтэй бол төрөл хүчээр оноохгүй"
+      ]
+    }
+  ]
+}

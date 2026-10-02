@@ -4,6 +4,7 @@ import { adminApp } from "../firebase-admin";
 import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
+import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type { AppStore, EmailOtp } from "./types";
 import type {
@@ -344,6 +345,28 @@ export class FirestoreStore implements AppStore {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new AppError("not_found", 404);
       const previous = snap.data() as StyleQuizRecord;
+      const next = update(previous);
+      tx.set(ref, clean(next));
+      return { previous, next };
+    });
+  }
+
+  async saveAiQuiz(quiz: AiQuizRecord) {
+    await this.put("aiQuizzes", quiz.id, quiz);
+  }
+  async getAiQuiz(id: string) {
+    return this.read<AiQuizRecord>("aiQuizzes", id);
+  }
+  async findAiQuizByInvoice(invoiceId: string) {
+    const snap = await this.database().collection("aiQuizzes").where("qpayInvoiceId", "==", invoiceId).limit(1).get();
+    return (snap.docs[0]?.data() as AiQuizRecord | undefined) ?? null;
+  }
+  async updateAiQuiz(id: string, update: (current: AiQuizRecord) => AiQuizRecord) {
+    const ref = this.database().collection("aiQuizzes").doc(id);
+    return this.database().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new AppError("not_found", 404);
+      const previous = snap.data() as AiQuizRecord;
       const next = update(previous);
       tx.set(ref, clean(next));
       return { previous, next };

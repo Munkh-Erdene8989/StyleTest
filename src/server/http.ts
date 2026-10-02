@@ -1,5 +1,5 @@
 import { AppError } from "@/domain/errors";
-import { assertAppCheck, currentUser } from "./auth";
+import { assertAppCheck, currentUser, ensureGuest } from "./auth";
 import type { User } from "@/domain/types";
 
 export function errorResponse(error: unknown) {
@@ -18,6 +18,16 @@ export async function withUser(req: Request, fn: (user: User) => Promise<Respons
   try {
     await assertAppCheck(req);
     const user = await currentUser(req);
+    return await fn(user);
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function withGuest(req: Request, fn: (user: User) => Promise<Response>) {
+  try {
+    await assertAppCheck(req);
+    const user = await ensureGuest();
     return await fn(user);
   } catch (error) {
     return errorResponse(error);

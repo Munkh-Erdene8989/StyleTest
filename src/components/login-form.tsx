@@ -13,6 +13,12 @@ function loginError(code: string, step: "email" | "code" | "password") {
   return "Код буруу байна.";
 }
 
+function afterLogin(admin: boolean) {
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next?.startsWith("/tests/")) return next;
+  return admin ? "/admin" : "/account";
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
@@ -39,7 +45,7 @@ export function LoginForm() {
         return;
       }
       setMessage("Нэвтэрлээ.");
-      router.push(data.admin ? "/admin" : "/account");
+      router.push(afterLogin(Boolean(data.admin)));
       router.refresh();
     } finally {
       setPending(false);
@@ -88,7 +94,7 @@ export function LoginForm() {
         return;
       }
       setMessage("Нэвтэрлээ.");
-      router.push("/account");
+      router.push(afterLogin(false));
       router.refresh();
     } finally {
       setPending(false);

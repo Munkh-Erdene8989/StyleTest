@@ -28,6 +28,8 @@ export async function createInvoice(order: { id: string; amount: number; descrip
     if (simulatePayAllowed()) return { invoiceId: undefined, qrImage: undefined, urls: [] as PayLink[] };
     throw new AppError("qpay_unconfigured", 500);
   }
+  const callback = callbackUrl();
+  if (!callback.startsWith("https://")) throw new AppError("qpay_callback_missing", 500);
   const access = await accessToken();
   const response = await fetch(`${process.env.QPAY_BASE_URL}/v2/invoice`, {
     method: "POST",
@@ -36,12 +38,16 @@ export async function createInvoice(order: { id: string; amount: number; descrip
       invoice_code: process.env.QPAY_INVOICE_CODE,
       sender_invoice_no: order.id,
       invoice_receiver_code: "terminal",
-      invoice_description: order.description,
+      invoice_description: invoiceDescription(order.description),
       amount: order.amount,
-      callback_url: process.env.QPAY_CALLBACK_URL,
+      callback_url: callback,
     }),
   });
-  if (!response.ok) throw new AppError("qpay_invoice", 502);
+  if (!response.ok) {
+    const detail = await qpayFailure(response);
+    console.error("qpay_invoice", response.status, detail);
+    throw new AppError("qpay_invoice", 502, [detail]);
+  }
   const json = (await response.json()) as { invoice_id?: string; qr_image?: string; urls?: { name?: string; link?: string; logo?: string }[] };
   return {
     invoiceId: json.invoice_id ? String(json.invoice_id) : undefined,
@@ -95,6 +101,30 @@ export function parseCheck(json: unknown): ObservedPayment {
     paymentId: stringField(row, ["payment_id", "id"]),
     channel: channelFrom(row),
   };
+}
+
+function callbackUrl() {
+  const configured = process.env.QPAY_CALLBACK_URL?.trim();
+  if (configured) return configured;
+  const app = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  return app.startsWith("https://") ? `${app}/api/qpay/callback` : "";
+}
+
+function invoiceDescription(value: string) {
+  const clean = value.replace(/[^\p{L}\p{N} ]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  return clean || "Naruka";
+}
+
+async function qpayFailure(response: Response) {
+  const text = await response.text();
+  try {
+    const json = JSON.parse(text) as { error?: unknown; message?: unknown };
+    const code = typeof json.error === "string" ? json.error : "";
+    const message = typeof json.message === "string" ? json.message : "";
+    return [code, message].filter(Boolean).join(": ").slice(0, 180) || `http_${response.status}`;
+  } catch {
+    return `http_${response.status}`;
+  }
 }
 
 async function accessToken() {

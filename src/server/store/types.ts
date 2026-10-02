@@ -1,4 +1,5 @@
 import type { AdminLibrary } from "@/domain/admin-content";
+import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type {
   AnalyticsEvent,
@@ -107,6 +108,14 @@ export interface AppStore {
     id: string,
     update: (current: StyleQuizRecord) => StyleQuizRecord,
   ): Promise<{ previous: StyleQuizRecord; next: StyleQuizRecord }>;
+
+  saveAiQuiz(quiz: AiQuizRecord): Promise<void>;
+  getAiQuiz(id: string): Promise<AiQuizRecord | null>;
+  findAiQuizByInvoice(invoiceId: string): Promise<AiQuizRecord | null>;
+  updateAiQuiz(
+    id: string,
+    update: (current: AiQuizRecord) => AiQuizRecord,
+  ): Promise<{ previous: AiQuizRecord; next: AiQuizRecord }>;
 
   saveEmailOtp(otp: EmailOtp): Promise<void>;
   getEmailOtp(email: string): Promise<EmailOtp | null>;
