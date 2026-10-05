@@ -5,14 +5,15 @@ import type { AiQuizKind, AiQuizRecord } from "@/domain/ai-quiz";
 import { scoreAiQuiz } from "@/domain/ai-quiz-score";
 import { AppError } from "@/domain/errors";
 import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
-import { verifyObservation } from "@/domain/payment";
+import { paymentRequired, type ObservedPayment } from "@/domain/payment";
 import { iso } from "@/domain/time";
 import type { User } from "@/domain/types";
-import { providers } from "./ai";
 import { bodyQuizBank, loadArchetypeBank, normalizeAnswers } from "./ai-quiz-banks";
 import { sendEmail } from "./email";
+import { ensureQuizReportPdf } from "./face-report-pdf";
 import { limit } from "./limit";
 import { checkInvoice, createInvoice, simulatePayAllowed } from "./qpay";
+import { settlePayment } from "./settlement";
 import { getStore } from "./store";
 
 const KINDS: AiQuizKind[] = ["face_beauty", "body_shape", "archetype"];
@@ -42,6 +43,15 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
     reportStatus: "pending",
     createdAt: iso(),
   };
+  if (!paymentRequired()) {
+    const scored = scoreAiQuiz(kind, parsed.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
+    quiz.paymentStatus = "paid";
+    quiz.paidAt = iso();
+    quiz.brief = scored.brief;
+    await getStore().saveAiQuiz(quiz);
+    scheduleReport(quiz);
+    return publicQuiz(quiz);
+  }
   const invoice = await createInvoice({
     id: quiz.id,
     amount: quiz.amount,
@@ -64,13 +74,13 @@ export async function confirmAiQuiz(user: User, id: string) {
   const quiz = await loadOwned(user, id);
   if (!quiz.qpayInvoiceId) throw new AppError("invoice_missing", 400);
   const observed = await checkInvoice(quiz.qpayInvoiceId);
-  return settleAiQuiz(quiz.id, observed);
+  return applyAiQuizObservation(quiz.id, observed);
 }
 
 export async function simulateAiQuiz(user: User, id: string) {
   if (!simulatePayAllowed()) throw new AppError("simulate_disabled", 403);
   const quiz = await loadOwned(user, id);
-  return settleAiQuiz(quiz.id, {
+  return applyAiQuizObservation(quiz.id, {
     paid: true,
     amount: quiz.amount,
     currency: "MNT",
@@ -88,17 +98,6 @@ export async function retryAiQuiz(user: User, id: string) {
   return publicQuiz({ ...quiz, reportStatus: "pending" });
 }
 
-export async function applyAiQuizCallback(body: Record<string, unknown>, queryInvoice?: string) {
-  const invoiceId = stringValue(body.invoice_id) || stringValue(body.object_id) || queryInvoice || "";
-  const sender = stringValue(body.sender_invoice_no);
-  const store = getStore();
-  const quiz = invoiceId ? await store.findAiQuizByInvoice(invoiceId) : sender.startsWith("aiq_") ? await store.getAiQuiz(sender) : null;
-  if (!quiz?.qpayInvoiceId) throw new AppError("not_found", 404);
-  const observed = await checkInvoice(quiz.qpayInvoiceId);
-  const result = await settleAiQuiz(quiz.id, observed);
-  return { ok: true, duplicate: result.duplicate };
-}
-
 export async function fulfillAiQuiz(id: string) {
   const store = getStore();
   const current = await store.getAiQuiz(id);
@@ -110,18 +109,26 @@ export async function fulfillAiQuiz(id: string) {
   });
   if (previous.reportStatus === "sent" || previous.reportStatus === "sending") return;
   try {
-    let detail = current.detail;
-    if (!detail) {
-      const scored = scoreAiQuiz(current.kind, current.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
-      const draft = await providers.explainAiQuiz({ kind: current.kind, brief: scored.brief, answers: scored.labels });
-      if (!draft) throw new Error("openai_unconfigured");
-      detail = draft;
-      await store.updateAiQuiz(id, (quiz) => ({ ...quiz, detail }));
-    }
+    const scored = scoreAiQuiz(current.kind, current.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
+    const detail = current.detail ?? {
+      summary: scored.brief.sections.map((section) => section.body).join("\n\n"),
+      sections: scored.brief.sections,
+    };
+    if (!current.detail) await store.updateAiQuiz(id, (quiz) => ({ ...quiz, detail }));
+    const pdf = await ensureQuizReportPdf({ ...current, brief: current.brief ?? scored.brief, detail });
     await sendEmail({
       to: current.email,
-      subject: `Naruka — ${quizByKind(current.kind)?.title ?? "тайлан"}`,
-      text: reportText(quizByKind(current.kind)?.title ?? "тайлан", detail),
+      subject: "Naruka — таны хувийн тайлан бэлэн боллоо",
+      text: [
+        "Сайн байна уу.",
+        "",
+        "Таны хувийн тайлан бэлэн боллоо.",
+        "25 хуудастай PDF хавсаргав.",
+        "Хуудас бүрийн жишээ зураг нь маникен дээрх загвар. Хэрэглэгчийн зураг биш.",
+        "",
+        "— Naruka Styling Studio",
+      ].join("\n"),
+      attachments: [{ filename: `naruka-${current.kind}-report.pdf`, content: pdf }],
     });
     await store.updateAiQuiz(id, (quiz) => ({ ...quiz, detail, reportStatus: "sent" }));
   } catch (error) {
@@ -130,29 +137,27 @@ export async function fulfillAiQuiz(id: string) {
   }
 }
 
-async function settleAiQuiz(id: string, observed: Parameters<typeof verifyObservation>[1]) {
+export async function applyAiQuizObservation(id: string, observed: ObservedPayment) {
   const store = getStore();
   const current = await store.getAiQuiz(id);
   if (!current) throw new AppError("not_found", 404);
-  if (current.paymentStatus === "paid") {
-    scheduleReport(current);
-    return { duplicate: true, quiz: publicQuiz(current), reason: "duplicate" };
-  }
-  const verdict = verifyObservation(current, observed);
-  if (!verdict.ok) return { duplicate: false, quiz: publicQuiz(current), reason: verdict.reason };
-  const scored = scoreAiQuiz(current.kind, current.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
-  const { next } = await store.updateAiQuiz(id, (quiz) => {
-    if (quiz.paymentStatus === "paid") return quiz;
-    return {
-      ...quiz,
-      paymentStatus: "paid",
-      qpayPaymentId: observed.paymentId ?? undefined,
-      paidAt: iso(),
-      brief: scored.brief,
-    };
+  const settled = await settlePayment(current, observed, {
+    commit: (stamp) =>
+      store.updateAiQuiz(id, (quiz) => {
+        if (quiz.paymentStatus === "paid") return quiz;
+        const scored = scoreAiQuiz(quiz.kind, quiz.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
+        return {
+          ...quiz,
+          paymentStatus: "paid",
+          qpayPaymentId: stamp.qpayPaymentId,
+          paidAt: stamp.paidAt,
+          brief: scored.brief,
+        };
+      }),
+    afterPaid: (quiz) => scheduleReport(quiz),
+    afterDuplicate: (quiz) => scheduleReport(quiz),
   });
-  scheduleReport(next);
-  return { duplicate: false, quiz: publicQuiz(next), reason: "paid" };
+  return { duplicate: settled.duplicate, quiz: publicQuiz(settled.record), reason: settled.reason };
 }
 
 function scheduleReport(quiz: AiQuizRecord) {
@@ -202,13 +207,4 @@ async function loadQuiz(id: string) {
 function parseKind(value: string): AiQuizKind {
   if (KINDS.includes(value as AiQuizKind)) return value as AiQuizKind;
   throw new AppError("quiz_unavailable", 404);
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" ? value : "";
-}
-
-function reportText(title: string, detail: { summary: string; sections: { heading: string; body: string }[] }) {
-  const sections = detail.sections.map((section) => `${section.heading}\n${section.body}`).join("\n\n");
-  return [`Сайн байна уу.`, "", `Таны Naruka ${title} бэлэн боллоо.`, "", detail.summary, "", sections, "", "— Naruka Styling Studio"].join("\n");
 }

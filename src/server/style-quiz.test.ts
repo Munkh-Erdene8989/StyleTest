@@ -42,7 +42,9 @@ describe("style quiz checkout", () => {
     });
     expect(quiz.amount).toBe(STYLE_QUIZ_PRICE_MNT);
     expect(quiz.amount).toBe(150);
+    expect(quiz.paymentStatus).toBe("invoiced");
     expect(quiz.simulate).toBe(true);
+    expect((await getStore().getStyleQuiz(quiz.id))?.reportStatus).toBe("pending");
     const paid = await simulateStyleQuiz(quiz.id);
     expect(paid.quiz.paymentStatus).toBe("paid");
     await vi.waitFor(async () => {

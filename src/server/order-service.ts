@@ -3,13 +3,14 @@ import { paidFeaturesAllowed } from "@/domain/age";
 import { STYLE_DIRECTIONS, STYLE_EXAMPLES } from "@/domain/content";
 import { AppError } from "@/domain/errors";
 import { PRICES } from "@/domain/money";
-import { entitlementAfterPayment, qpayRefundSupported, refundWindowOpen, verifyObservation } from "@/domain/payment";
+import { entitlementAfterPayment, qpayRefundSupported, refundWindowOpen } from "@/domain/payment";
 import { nextAddonDirection } from "@/domain/style-match";
 import { iso } from "@/domain/time";
 import type { Entitlement, Order, ProductCode, User } from "@/domain/types";
 import { recordOnce } from "./events";
 import { limit } from "./limit";
 import { checkInvoice, createInvoice, qpayConfigured, refundCardPayment, simulatePayAllowed } from "./qpay";
+import { settlePayment } from "./settlement";
 import { getStore } from "./store";
 import { newJob, ownedSession } from "./session-service";
 import { deliverReportEmail, recoverCost } from "./worker";
@@ -100,51 +101,37 @@ export async function simulateOrder(user: User, orderId: string) {
   });
 }
 
-export async function applyCallback(body: Record<string, unknown>, queryInvoice?: string) {
-  const invoiceId = stringValue(body.invoice_id) || stringValue(body.object_id) || queryInvoice || "";
-  const sender = stringValue(body.sender_invoice_no);
-  const store = getStore();
-  const order = invoiceId ? await store.findOrderByInvoice(invoiceId) : sender ? await store.getOrder(sender) : null;
-  if (!order?.qpayInvoiceId) throw new AppError("not_found", 404);
-  const observed = await checkInvoice(order.qpayInvoiceId);
-  const result = await applyObservation(order.id, observed);
-  return { ok: true, duplicate: result.duplicate };
-}
-
 export async function applyObservation(orderId: string, observed: PaymentObservation) {
   const store = getStore();
   const current = await store.getOrder(orderId);
   if (!current) throw new AppError("not_found", 404);
-  if (current.paymentStatus === "paid") return { duplicate: true, order: publicOrder(current), reason: "duplicate" };
-  const verdict = verifyObservation(current, observed);
-  if (!verdict.ok) {
-    if (verdict.reason !== "unpaid") {
+  const settled = await settlePayment(current, observed, {
+    commit: (stamp) =>
+      store.updateOrder(orderId, (order) => {
+        if (order.paymentStatus === "paid") return order;
+        return {
+          ...order,
+          paymentStatus: "paid",
+          qpayPaymentId: stamp.qpayPaymentId,
+          channel: stamp.channel,
+          paidAt: stamp.paidAt,
+        };
+      }),
+    afterRejected: async (reason) => {
       await store.saveAudit({
         id: randomUUID(),
         actorId: "system",
         role: "ops",
         action: "payment_rejected",
         target: orderId,
-        reason: verdict.reason,
+        reason,
         createdAt: iso(),
       });
-    }
-    return { duplicate: false, order: publicOrder(current), reason: verdict.reason };
-  }
-  const { previous, next } = await store.updateOrder(orderId, (order) => {
-    if (order.paymentStatus === "paid") return order;
-    return {
-      ...order,
-      paymentStatus: "paid",
-      qpayPaymentId: observed.paymentId ?? undefined,
-      channel: observed.channel,
-      paidAt: iso(),
-    };
+    },
+    afterPaid: (order) => grant(order),
   });
-  if (previous.paymentStatus === "paid") return { duplicate: true, order: publicOrder(next), reason: "duplicate" };
-  await grant(next);
   const saved = await store.getOrder(orderId);
-  return { duplicate: false, order: publicOrder(saved ?? next), reason: "paid" };
+  return { duplicate: settled.duplicate, order: publicOrder(saved ?? settled.record), reason: settled.reason };
 }
 
 async function grant(order: Order) {
@@ -388,8 +375,4 @@ function productLabel(code: ProductCode) {
   if (code === "personality_report") return "Дэлгэрэнгүй тайлан";
   if (code === "style_package") return "Стайлын бүтэн багц";
   return "Нэмэлт стайлын чиглэл";
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" ? value : "";
 }

@@ -30,10 +30,9 @@ export async function createInvoice(order: { id: string; amount: number; descrip
   }
   const callback = callbackUrl();
   if (!callback.startsWith("https://")) throw new AppError("qpay_callback_missing", 500);
-  const access = await accessToken();
-  const response = await fetch(`${process.env.QPAY_BASE_URL}/v2/invoice`, {
+  const response = await qpayFetch("/v2/invoice", {
     method: "POST",
-    headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       invoice_code: process.env.QPAY_INVOICE_CODE,
       sender_invoice_no: order.id,
@@ -69,10 +68,9 @@ export function payLinks(urls: { name?: string; link?: string; logo?: string }[]
 
 export async function checkInvoice(invoiceId: string) {
   if (!qpayConfigured()) throw new AppError("qpay_unconfigured", 500);
-  const access = await accessToken();
-  const response = await fetch(`${process.env.QPAY_BASE_URL}/v2/payment/check`, {
+  const response = await qpayFetch("/v2/payment/check", {
     method: "POST",
-    headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ object_type: "INVOICE", object_id: invoiceId }),
   });
   if (!response.ok) throw new AppError("qpay_check", 502);
@@ -81,11 +79,7 @@ export async function checkInvoice(invoiceId: string) {
 
 export async function refundCardPayment(paymentId: string) {
   if (!qpayConfigured()) throw new AppError("qpay_unconfigured", 500);
-  const access = await accessToken();
-  const response = await fetch(`${process.env.QPAY_BASE_URL}/v2/payment/refund/${encodeURIComponent(paymentId)}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${access}` },
-  });
+  const response = await qpayFetch(`/v2/payment/refund/${encodeURIComponent(paymentId)}`, { method: "DELETE" });
   if (!response.ok) throw new AppError("qpay_refund_failed", 502);
 }
 
@@ -137,8 +131,26 @@ async function accessToken() {
   if (!response.ok) throw new AppError("qpay_auth", 502);
   const json = (await response.json()) as { access_token?: string; expires_in?: number; refresh_token?: string };
   if (!json.access_token) throw new AppError("qpay_auth", 502);
-  tokenCache = { access: json.access_token, exp: Date.now() + (json.expires_in ?? 300) * 1000 };
+  tokenCache = { access: json.access_token, exp: tokenExpiry(json.expires_in) };
   return json.access_token;
+}
+
+/** QPay v2 sends expires_in as a Unix timestamp in seconds, not as a lifetime. */
+export function tokenExpiry(expiresIn: unknown, now = Date.now()) {
+  if (typeof expiresIn !== "number" || !Number.isFinite(expiresIn) || expiresIn <= 0) return now + 300_000;
+  return expiresIn > 1_000_000_000 ? expiresIn * 1000 : now + expiresIn * 1000;
+}
+
+async function qpayFetch(path: string, init: RequestInit) {
+  const send = (access: string) =>
+    fetch(`${process.env.QPAY_BASE_URL}${path}`, {
+      ...init,
+      headers: { ...(init.headers as Record<string, string> | undefined), Authorization: `Bearer ${access}` },
+    });
+  const response = await send(await accessToken());
+  if (response.status !== 401) return response;
+  tokenCache = null;
+  return send(await accessToken());
 }
 
 function isPaidRow(row: Record<string, unknown>) {

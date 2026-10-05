@@ -22,6 +22,7 @@
     "heic2any": "^0.0.4",
     "lucide-react": "^1.48.0",
     "next": "15.5.26",
+    "pdf-lib": "^1.17.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.7.0",

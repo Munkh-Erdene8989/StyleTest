@@ -1,5 +1,10 @@
 import type { EntitlementStatus, GenerationJob, Order, PayChannel } from "./types";
 
+/** Return false to skip the QPay invoice before a quiz report. */
+export function paymentRequired() {
+  return true;
+}
+
 export type ObservedPayment = {
   paid: boolean;
   amount: number | null;

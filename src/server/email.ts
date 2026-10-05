@@ -7,7 +7,13 @@ export function otpSender(configured: string) {
   return `OTP <${address}>`;
 }
 
-export async function sendEmail(input: { to: string; subject: string; text: string; from?: string }) {
+export async function sendEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  from?: string;
+  attachments?: { filename: string; content: Buffer }[];
+}) {
   const key = process.env.RESEND_API_KEY;
   const from = input.from ?? process.env.RESEND_FROM_EMAIL;
   if (!key || !from) {
@@ -20,7 +26,16 @@ export async function sendEmail(input: { to: string; subject: string; text: stri
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to: input.to, subject: input.subject, text: input.text }),
+    body: JSON.stringify({
+      from,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      attachments: input.attachments?.map((file) => ({
+        filename: file.filename,
+        content: file.content.toString("base64"),
+      })),
+    }),
   });
   if (!response.ok) throw new AppError("email_failed", 502);
   return { skipped: false as const };

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STYLE_DIRECTIONS } from "@/domain/content";
 import type { ResultBand } from "@/domain/types";
 import { providers } from "./ai";
@@ -25,11 +25,18 @@ function jsonResponse(body: unknown) {
 }
 
 describe("openai providers", () => {
+  beforeEach(() => {
+    delete process.env.OPENAI_TEXT_MODEL;
+    delete process.env.OPENAI_IMAGE_MODEL;
+    delete process.env.OPENAI_REPORT_MODEL;
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_TEXT_MODEL;
     delete process.env.OPENAI_IMAGE_MODEL;
+    delete process.env.OPENAI_REPORT_MODEL;
   });
 
   it("returns a template when the key is missing", async () => {
@@ -48,7 +55,7 @@ describe("openai providers", () => {
       const headers = init?.headers as Record<string, string>;
       expect(headers.authorization).toBe("Bearer test-key");
       const body = JSON.parse(String(init?.body));
-      expect(body.model).toBe("gpt-4.1");
+      expect(body.model).toBe("gpt-6-astra");
       expect(body.response_format).toEqual({ type: "json_object" });
       return jsonResponse({
         choices: [{ message: { content: JSON.stringify(payload) } }],
@@ -62,7 +69,7 @@ describe("openai providers", () => {
       answers: [{ question: "асуулт", answer: "хариу" }],
     });
     expect(result.draft.source).toBe("model");
-    expect(result.model).toBe("gpt-4.1");
+    expect(result.model).toBe("gpt-6-astra");
     expect(result.costUsd).toBe(10);
     delete process.env.OPENAI_INPUT_USD_PER_MTOK;
     delete process.env.OPENAI_OUTPUT_USD_PER_MTOK;
@@ -90,13 +97,13 @@ describe("openai providers", () => {
       expect(headers.authorization).toBe("Bearer test-key");
       if (String(url).endsWith("/images/generations")) {
         const body = JSON.parse(String(init?.body));
-        expect(body.model).toBe("gpt-image-1");
+        expect(body.model).toBe("gpt-image-2.5-sunburst");
         expect(body.output_format).toBe("png");
       }
       if (String(url).endsWith("/images/edits")) {
         expect(init?.body).toBeInstanceOf(FormData);
         const form = init?.body as FormData;
-        expect(form.get("model")).toBe("gpt-image-1");
+        expect(form.get("model")).toBe("gpt-image-2.5-sunburst");
         expect(form.getAll("image[]")).toHaveLength(1);
       }
       return jsonResponse({ data: [{ b64_json: PNG.toString("base64") }], usage: { input_tokens: 12 } });

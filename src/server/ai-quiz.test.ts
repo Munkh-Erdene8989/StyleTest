@@ -11,6 +11,10 @@ vi.mock("./email", () => ({
   sendEmail: vi.fn(async () => ({ skipped: false })),
 }));
 
+vi.mock("./face-report-pdf", () => ({
+  ensureQuizReportPdf: vi.fn(async () => Buffer.from("%PDF-1.4")),
+}));
+
 vi.mock("./qpay", () => ({
   createInvoice: vi.fn(async () => ({ invoiceId: "inv_ai", qrImage: undefined, urls: [] })),
   checkInvoice: vi.fn(async () => ({ paid: true, amount: 150, currency: "MNT", paymentId: "pay_ai", channel: "other" })),
@@ -48,29 +52,18 @@ describe("ai quiz checkout", () => {
     vi.unstubAllGlobals();
   });
 
-  it("hides the brief until payment, then stores it and emails the detailed report once", async () => {
+  it("hides the brief until payment, then emails the detailed report once", async () => {
     const created = await createAiQuizCheckout({ ...user, email: null }, {
       kind: "face_beauty",
       answers: faceAnswers(),
       email: "saraa@example.com",
     });
     expect(created.amount).toBe(STYLE_QUIZ_PRICE_MNT);
+    expect(created.paymentStatus).toBe("invoiced");
     expect(created.brief).toBeNull();
     expect((await readAiQuiz(user, created.id)).brief).toBeNull();
-
-    process.env.OPENAI_API_KEY = "test-key";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          status: "completed",
-          output_text: JSON.stringify({
-            summary: "Таны хариултад тулгуурласан дэлгэрэнгүй тайлан.",
-            sections: [{ heading: "Өнгө", body: "Серверийн оноог хэвээр үлдээв." }],
-          }),
-        }),
-      ),
-    );
+    expect(createInvoice).toHaveBeenCalledTimes(1);
+    expect(sendEmail).not.toHaveBeenCalled();
 
     const paid = await simulateAiQuiz(user, created.id);
     expect(paid.quiz.paymentStatus).toBe("paid");
@@ -79,7 +72,10 @@ describe("ai quiz checkout", () => {
       expect((await getStore().getAiQuiz(created.id))?.reportStatus).toBe("sent");
     });
     const stored = await getStore().getAiQuiz(created.id);
-    expect(stored?.detail?.summary).toContain("дэлгэрэнгүй");
+    expect(stored?.detail?.sections.length).toBeGreaterThan(0);
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      attachments: [expect.objectContaining({ filename: "naruka-face_beauty-report.pdf" })],
+    }));
     expect(stored?.email).toBe("saraa@example.com");
     expect(sendEmail).toHaveBeenCalledTimes(1);
 

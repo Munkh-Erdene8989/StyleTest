@@ -2,13 +2,14 @@ import { randomUUID } from "crypto";
 import { after } from "next/server";
 import { AppError } from "@/domain/errors";
 import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
-import { verifyObservation } from "@/domain/payment";
+import { paymentRequired, type ObservedPayment } from "@/domain/payment";
 import type { StyleQuizAnswer, StyleQuizRecord } from "@/domain/style-quiz";
 import { iso } from "@/domain/time";
 import { providers } from "./ai";
 import { sendEmail } from "./email";
 import { limit } from "./limit";
 import { checkInvoice, createInvoice, simulatePayAllowed } from "./qpay";
+import { settlePayment } from "./settlement";
 import { getStore } from "./store";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,6 +33,13 @@ export async function createStyleQuizCheckout(input: { name: string; email: stri
     reportStatus: "pending",
     createdAt: iso(),
   };
+  if (!paymentRequired()) {
+    quiz.paymentStatus = "paid";
+    quiz.paidAt = iso();
+    await getStore().saveStyleQuiz(quiz);
+    scheduleReport(quiz);
+    return publicQuiz(quiz);
+  }
   const invoice = await createInvoice({
     id: quiz.id,
     amount: quiz.amount,
@@ -54,30 +62,19 @@ export async function confirmStyleQuiz(id: string) {
   const quiz = await loadQuiz(id);
   if (!quiz.qpayInvoiceId) throw new AppError("invoice_missing", 400);
   const observed = await checkInvoice(quiz.qpayInvoiceId);
-  return settleStyleQuiz(quiz.id, observed);
+  return applyStyleQuizObservation(quiz.id, observed);
 }
 
 export async function simulateStyleQuiz(id: string) {
   if (!simulatePayAllowed()) throw new AppError("simulate_disabled", 403);
   const quiz = await loadQuiz(id);
-  return settleStyleQuiz(quiz.id, {
+  return applyStyleQuizObservation(quiz.id, {
     paid: true,
     amount: quiz.amount,
     currency: "MNT",
     paymentId: `sim_${quiz.id}`,
     channel: "other",
   });
-}
-
-export async function applyStyleQuizCallback(body: Record<string, unknown>, queryInvoice?: string) {
-  const invoiceId = stringValue(body.invoice_id) || stringValue(body.object_id) || queryInvoice || "";
-  const sender = stringValue(body.sender_invoice_no);
-  const store = getStore();
-  const quiz = invoiceId ? await store.findStyleQuizByInvoice(invoiceId) : sender ? await store.getStyleQuiz(sender) : null;
-  if (!quiz?.qpayInvoiceId) throw new AppError("not_found", 404);
-  const observed = await checkInvoice(quiz.qpayInvoiceId);
-  const result = await settleStyleQuiz(quiz.id, observed);
-  return { ok: true, duplicate: result.duplicate };
 }
 
 export async function fulfillStyleQuiz(id: string) {
@@ -110,27 +107,25 @@ export async function fulfillStyleQuiz(id: string) {
   }
 }
 
-async function settleStyleQuiz(id: string, observed: Parameters<typeof verifyObservation>[1]) {
+export async function applyStyleQuizObservation(id: string, observed: ObservedPayment) {
   const store = getStore();
   const current = await store.getStyleQuiz(id);
   if (!current) throw new AppError("not_found", 404);
-  if (current.paymentStatus === "paid") {
-    scheduleReport(current);
-    return { duplicate: true, quiz: publicQuiz(current), reason: "duplicate" };
-  }
-  const verdict = verifyObservation(current, observed);
-  if (!verdict.ok) return { duplicate: false, quiz: publicQuiz(current), reason: verdict.reason };
-  const { next } = await store.updateStyleQuiz(id, (quiz) => {
-    if (quiz.paymentStatus === "paid") return quiz;
-    return {
-      ...quiz,
-      paymentStatus: "paid",
-      qpayPaymentId: observed.paymentId ?? undefined,
-      paidAt: iso(),
-    };
+  const settled = await settlePayment(current, observed, {
+    commit: (stamp) =>
+      store.updateStyleQuiz(id, (quiz) => {
+        if (quiz.paymentStatus === "paid") return quiz;
+        return {
+          ...quiz,
+          paymentStatus: "paid",
+          qpayPaymentId: stamp.qpayPaymentId,
+          paidAt: stamp.paidAt,
+        };
+      }),
+    afterPaid: (quiz) => scheduleReport(quiz),
+    afterDuplicate: (quiz) => scheduleReport(quiz),
   });
-  scheduleReport(next);
-  return { duplicate: false, quiz: publicQuiz(next), reason: "paid" };
+  return { duplicate: settled.duplicate, quiz: publicQuiz(settled.record), reason: settled.reason };
 }
 
 function scheduleReport(quiz: StyleQuizRecord) {
@@ -196,10 +191,6 @@ function normalizeValue(value: unknown): StyleQuizAnswer["value"] | null {
 
 function cleanText(value: unknown, max: number) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" ? value : "";
 }
 
 function reportText(
