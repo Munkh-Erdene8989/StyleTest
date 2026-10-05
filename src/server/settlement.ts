@@ -8,7 +8,7 @@ import { getStore } from "./store";
 export type Payable = {
   id: string;
   amount: number;
-  currency: string;
+  currency: "MNT";
   paymentStatus: string;
 };
 

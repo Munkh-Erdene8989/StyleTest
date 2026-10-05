@@ -325,12 +325,17 @@ async function pageCall(kind: AiQuizKind, context: unknown, expected: number[]) 
   return asPages(json);
 }
 
+function paletteRole(value: unknown): FacePaletteColor["role"] | null {
+  if (value === "neutral" || value === "accent" || value === "makeup") return value;
+  return null;
+}
+
 function asPalette(value: unknown): FacePaletteColor[] {
   const colors = Array.isArray((value as { colors?: unknown })?.colors) ? (value as { colors: unknown[] }).colors : [];
-  const parsed = colors.flatMap((item) => {
+  const parsed = colors.flatMap((item): FacePaletteColor[] => {
     if (!item || typeof item !== "object") return [];
     const row = item as Record<string, unknown>;
-    const role = row.role === "neutral" || row.role === "accent" || row.role === "makeup" ? row.role : null;
+    const role = paletteRole(row.role);
     const hex = typeof row.hex === "string" ? row.hex.trim() : "";
     const name_mn = typeof row.name_mn === "string" ? row.name_mn.trim() : "";
     const id = typeof row.id === "string" ? row.id.trim() : "";
