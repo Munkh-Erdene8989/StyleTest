@@ -57,6 +57,7 @@ export function SiteHeader({
     { href: here("training"), label: "Сургалт", section: "training" },
     { href: "/news", label: "Мэдээ", section: "" },
     { href: "/tests", label: "Тест", section: "" },
+    { href: "/bodyshape", label: "Биеийн хэлбэр", section: "" },
   ];
 
   return (
@@ -71,7 +72,9 @@ export function SiteHeader({
               ? pathname === "/" && active === link.section
               : link.href === "/tests"
                 ? pathname.startsWith("/tests")
-                : pathname === link.href;
+                : link.href === "/bodyshape"
+                  ? pathname.startsWith("/bodyshape")
+                  : pathname === link.href;
             return (
               <Link key={link.label} href={link.href} className={current ? "nav-current" : undefined} onClick={() => setOpen(false)}>
                 {link.label}
