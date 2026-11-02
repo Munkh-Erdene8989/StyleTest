@@ -73,7 +73,8 @@ Visual essence-г зан чанар гэж тайлбарлахгүй. Нүүр�
 Нүдний бүтэц, нүүрний геометрийг өөрчилсөн зураг бүү төлөвлө. Шил нь жорын шил биш, стилийн зөвлөгөө.
 Өнгө баталгаагүй бол foundation shade, өнгөний улирлыг батлахгүй.
 PAGE_MANIFEST_FACE-ийн 25 хуудсыг дага.
-callouts зөвхөн нэр ба 2–5 үг. Координат, side, kind бүү бич.`,
+callouts зөвхөн нэр ба 2–5 үг. Координат, side, kind бүү бич.
+edit_en нь энэ нүүрэнд тохирох нэг өөр хэлбэр: малгай, шил, үс, будалт хүн бүрт адилхан ерөнхий загвар байж болохгүй.`,
   body_shape: `REPORT_KIND=body_shape. classification_system=body_shape_5.
 apple/pear/hourglass/rectangle/inverted_triangle нь биеийн хэлбэрийн
 ангилал. Dramatic, Natural, Classic, Gamine, Romantic зэрэг Kibbe body ID
@@ -379,15 +380,19 @@ export function imageJobsFor(kind: AiQuizKind, avoidHair: HairLength[] = []) {
   return jobs;
 }
 
-export function imagePrompt(job: ReportImageJob, personal: boolean) {
-  if (personal && job.role === "body" && job.kind === "outfit") return OUTFIT_EDIT.replace("{{change}}", job.change);
-  if (personal && job.role === "face" && job.kind !== "still") return FACE_EDIT.replace("{{change}}", job.change);
-  if (job.kind === "still") return `${job.change} No text, no letters, no logo, no watermark.`;
+export function imagePrompt(job: ReportImageJob, personal: boolean, variation = "") {
+  const specific = variation.replace(/\s+/g, " ").trim();
+  const change = specific
+    ? `${job.change} Choose a shape for this person, not a shared default: ${specific}`
+    : job.change;
+  if (personal && job.role === "body" && job.kind === "outfit") return OUTFIT_EDIT.replace("{{change}}", change);
+  if (personal && job.role === "face" && job.kind !== "still") return FACE_EDIT.replace("{{change}}", change);
+  if (job.kind === "still") return `${change} No text, no letters, no logo, no watermark.`;
   const framing = job.kind === "outfit"
     ? "full-body adult fashion mannequin with head and feet visible"
     : "head-and-shoulders adult fashion mannequin";
   const background = job.role === "face" ? "plain white background" : "cream background";
-  return `Studio photograph of one ${framing}, modest everyday clothing, ${background}, soft daylight. Demonstrate: ${job.change}. Do not slim, lengthen, or reshape the body. No text, no letters, no logo, no watermark. This is a mannequin example, not a real customer.`;
+  return `Studio photograph of one ${framing}, modest everyday clothing, ${background}, soft daylight. Demonstrate: ${change}. Do not slim, lengthen, or reshape the body. No text, no letters, no logo, no watermark. This is a mannequin example, not a real customer.`;
 }
 
 export function developerPrompt(kind: AiQuizKind) {
@@ -417,11 +422,11 @@ ${JSON.stringify(slots)}
 Даалгавар:
 1. Асуумжийн хариултыг уншиж, энэ batch-ийн хуудас бүрт нэг өгүүлбэр, яг нэг зөвлөмж бич.
 2. Хуудасны дугаар, гарчиг, зорилго, kind түгжээтэй. Бүү соль, бүү нэм.
-3. Зургийн промпт, фонт, координат, side бүү үүсгэ. callouts зөвхөн title ба text.
+3. Фонт, координат, side бүү үүсгэ. callouts зөвхөн title ба text. edit_en нь энэ хүнд зориулсан нэг англи өгүүлбэр: ямар малгай, шил, үс, будалт. Хүн бүрт адилхан ерөнхий хэлбэр бүү давтана.
 4. Стилист хүнд шууд хандаж, ойлгомжтой монголоор бич. placeholder үлдээхгүй. Хариултад байхгүй баримт бүү зохио.
 5. PDF export болон email sent гэж мэдэгдэхгүй. Ангиллын код бүү буцаа.
 
-Энэ batch-ийн JSON талбар: pages[].page_number, intro_mn, recommendations[].action_mn, recommendations[].why_mn, callouts[].title, callouts[].text.
+Энэ batch-ийн JSON талбар: pages[].page_number, intro_mn, recommendations[].action_mn, recommendations[].why_mn, callouts[].title, callouts[].text, edit_en.
 recommendations яг нэг элемент. callouts нэг талд 3-аас ихгүй. PAGE_MANIFEST дээрх хуудас бүрийг буцаа. pages хоосон байж болохгүй.
 ${visualLine(input)}`;
 }

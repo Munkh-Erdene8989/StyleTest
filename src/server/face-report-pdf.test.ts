@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FACE_MANIFEST, assertLandscapePdf, printHtmlToPdf, renderQuizReportHtml, type FaceDraft } from "./face-report-pdf";
+import { FACE_MANIFEST, applyLocated, assertLandscapePdf, printHtmlToPdf, renderQuizReportHtml, type FaceDraft } from "./face-report-pdf";
 import { reportDesign } from "./report-design";
 import { MANIFESTS, developerPrompt, imageJobsFor, imagePrompt, userMessage } from "./report-prompts";
 
@@ -14,6 +14,7 @@ function fixture(): FaceDraft {
     pages: FACE_MANIFEST.map((item) => ({
       page_number: item.page,
       intro_mn: "Хариултаас гарсан нэг чиглэл.",
+      edit_en: "A narrow brim that leaves this forehead visible.",
       recommendations: [{ action_mn: "Нэг акцент сонго", why_mn: "Хариултын контраст өндөр." }],
       callouts: item.page === 3 ? [{ title: "Нүд", text: "Зөөлөн туяа", side: "R" as const, cx: 590, cy: 300, size: 150 }] : [],
     })),
@@ -43,6 +44,7 @@ describe("face report pdf", () => {
     expect(html).not.toContain("AI стиль туршилт");
     expect(html).not.toContain("Жишээ зураг · маникен");
     expect(html).toContain("Анхны зураг");
+    expect(html).toContain("Өөрчлөхийн өмнө");
     expect(html).toContain("#B08A3E");
     expect(html).toContain("background: #FFFFFF");
     expect(html).not.toContain("#F7F3ED");
@@ -69,6 +71,18 @@ describe("face report pdf", () => {
     expect(imagePrompt(outfit!, true)).toContain("Do not slim the waist");
     expect(imagePrompt(outfit!, false)).toContain("mannequin");
     expect(imagePrompt(imageJobsFor("archetype")[1], true)).toContain("mannequin");
+    const hat = imageJobsFor("face_beauty").find((job) => job.id === "hat_suit");
+    expect(hat).toBeTruthy();
+    const personalHat = imagePrompt(hat!, true, "a narrow cloche above a long forehead");
+    expect(personalHat).toContain("narrow cloche");
+    expect(personalHat).toContain("Hat only");
+    expect(imagePrompt(hat!, true)).not.toContain("narrow cloche");
+    const located = applyLocated(
+      [{ title: "Малгай", text: "Нарийн хүрээ" }],
+      [{ title: "Малгай", side: "R", cx: 512, cy: 140, size: 180 }],
+    );
+    expect(located).toEqual([{ title: "Малгай", text: "Нарийн хүрээ", side: "R", cx: 512, cy: 140, size: 180 }]);
+    expect(applyLocated([{ title: "Малгай", text: "Нарийн хүрээ" }], [{ title: "Нүд", side: "L", cx: 100, cy: 100, size: 120 }])).toEqual([]);
   });
 
   it("uses the 25-page instruction for every quiz", () => {

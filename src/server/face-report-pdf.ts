@@ -12,7 +12,7 @@ import { bodyQuizBank, loadArchetypeBank } from "./ai-quiz-banks";
 import { analyzeReferencePhoto } from "./photo-analysis";
 import { renderImage, responsesJson } from "./model-transport";
 import { calloutAnchor, reportCss, reportDesign, stackCalloutYs } from "./report-design";
-import { developerPrompt, imageJobsFor, imagePrompt, landmarksFor, MANIFESTS, SECTION_LABEL, userMessage } from "./report-prompts";
+import { developerPrompt, imageJobsFor, imagePrompt, MANIFESTS, SECTION_LABEL, userMessage } from "./report-prompts";
 import { getStore } from "./store";
 
 const execFileAsync = promisify(execFile);
@@ -23,10 +23,13 @@ export const FACE_MANIFEST = MANIFESTS.face_beauty;
 
 export type FaceRecommendation = { action_mn: string; why_mn: string };
 export type FaceCallout = { title: string; text: string; side: "L" | "R"; cx: number; cy: number; size: number };
+export type FaceNote = { title: string; text: string };
 export type FacePageCopy = {
   page_number: number;
   intro_mn: string;
+  edit_en: string;
   recommendations: FaceRecommendation[];
+  notes?: FaceNote[];
   callouts?: FaceCallout[];
 };
 export type FaceDraft = {
@@ -41,7 +44,7 @@ export type FaceDraft = {
 export type QuizReportFile = { pdf: Buffer; brief: AiQuizBrief; detail: AiQuizDetail };
 
 export function reportObjectKey(quizId: string, kind: AiQuizKind = "face_beauty", withPhoto = false) {
-  return `reports/${quizId}/${kind}${withPhoto ? "-photo" : ""}-v8.pdf`;
+  return `reports/${quizId}/${kind}${withPhoto ? "-photo" : ""}-v9.pdf`;
 }
 
 function metaKey(pdfKey: string) {
@@ -159,8 +162,9 @@ export async function draftQuizReport(input: {
   await pool(jobs, 1, async (job) => {
     const personal = hasReference && job.role !== "none";
     const size = job.kind === "outfit" ? "1024x1536" : "1024x1024";
+    const variation = job.pages.map((page) => pages.find((item) => item.page_number === page)?.edit_en ?? "").filter(Boolean).join(" ");
     try {
-      const image = await exampleImage(imagePrompt(job, personal), personal ? input.referencePhoto : undefined, size, input.mime);
+      const image = await exampleImage(imagePrompt(job, personal, variation), personal ? input.referencePhoto : undefined, size, input.mime);
       for (const page of job.pages) {
         images[page] = image;
         captions[page] = "";
@@ -169,6 +173,7 @@ export async function draftQuizReport(input: {
       console.error("report_image_skipped", job.id, error instanceof Error ? error.message.slice(0, 120) : "unknown");
     }
   });
+  await alignCallouts(pages, images);
   const copy = reportCopy(input.kind, { reportId: input.reportId, briefSections: [], images, captions, pages, hasReference, notice: input.notice });
   return {
     reportId: input.reportId,
@@ -206,7 +211,7 @@ export function renderQuizReportHtml(draft: FaceDraft, kind: AiQuizKind) {
     const copy = draft.pages[index];
     const src = draft.images[item.page];
     const figure = src
-      ? `<figure class="hero"><img alt="" src="${src}"></figure>${calloutHtml(copy.callouts ?? [], src)}${item.kind === "change" && draft.images[1] ? `<figure class="thumb"><img alt="" src="${draft.images[1]}"><figcaption>${esc(thumbLabel)}</figcaption></figure>` : ""}`
+      ? `<figure class="hero"><img alt="" src="${src}"></figure>${calloutHtml(copy.callouts ?? [], src)}${item.kind === "change" && draft.images[1] ? `<figure class="thumb"><img alt="" src="${draft.images[1]}"><figcaption><strong>${esc(thumbLabel)}</strong><span>Өөрчлөхийн өмнө</span></figcaption></figure>` : ""}`
       : "";
     const notice = item.page === 1 && draft.notice ? `<p class="notice">${esc(draft.notice)}</p>` : "";
     return `<section class="report-page frame-${item.kind}">
@@ -221,6 +226,7 @@ export function renderQuizReportHtml(draft: FaceDraft, kind: AiQuizKind) {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans:wght@400;600&family=Noto+Serif:wght@600&display=swap">
 <style>
 ${reportCss()}
+.thumb figcaption span { display: block; margin-top: 0.4mm; }
 </style></head><body>${pages}</body></html>`;
 }
 
@@ -297,7 +303,7 @@ function esc(value: string) {
 async function pageCall(kind: AiQuizKind, context: unknown, expected: number[]) {
   const manifest = MANIFESTS[kind].filter((item) => expected.includes(item.page));
   const json = await completeJson(kind, userMessage(context, manifest));
-  return asPages(kind, json);
+  return asPages(json);
 }
 
 function asCalloutWords(value: unknown) {
@@ -311,23 +317,119 @@ function asCalloutWords(value: unknown) {
   });
 }
 
-function placeCallouts(value: unknown, kind: AiQuizKind, page: number): FaceCallout[] {
-  const landmarks = landmarksFor(kind, page);
-  const placed = asCalloutWords(value).slice(0, landmarks.length).flatMap((word, index): FaceCallout[] => {
-    const mark = landmarks[index];
-    const title = words(word.title, 2);
-    const text = words(word.text, 5);
-    if (!mark || !title || !text) return [];
-    return [{ title, text, side: mark.side, cx: mark.cx, cy: mark.cy, size: mark.size }];
+export function applyLocated(notes: FaceNote[], marks: unknown): FaceCallout[] {
+  const located = Array.isArray(marks) ? marks : [];
+  const used = new Set<number>();
+  const placed = notes.flatMap((note): FaceCallout[] => {
+    const title = words(note.title, 2);
+    const text = words(note.text, 5);
+    if (!title || !text) return [];
+    const index = located.findIndex((mark, markIndex) => {
+      if (used.has(markIndex) || !mark || typeof mark !== "object") return false;
+      const name = textField(mark, "title").toLowerCase();
+      return name === title.toLowerCase() || name === note.title.trim().toLowerCase();
+    });
+    if (index < 0) return [];
+    used.add(index);
+    const mark = located[index] as Record<string, unknown>;
+    const side = mark.side === "L" || mark.side === "R" ? mark.side : null;
+    const cx = Number(mark.cx);
+    const cy = Number(mark.cy);
+    const size = Number(mark.size);
+    if (!side || !Number.isFinite(cx) || !Number.isFinite(cy) || !Number.isFinite(size)) return [];
+    return [{ title, text, side, cx: clampNum(cx, 0, 1024, 0), cy: clampNum(cy, 0, 1024, 0), size: clampNum(size, 80, 520, 160) }];
   });
   return [...placed.filter((item) => item.side === "L").slice(0, 3), ...placed.filter((item) => item.side === "R").slice(0, 3)];
+}
+
+async function alignCallouts(pages: FacePageCopy[], images: Record<number, string>) {
+  const groups = new Map<string, FacePageCopy[]>();
+  for (const page of pages) {
+    const src = images[page.page_number];
+    if (!src || !page.notes?.length) continue;
+    const list = groups.get(src) ?? [];
+    list.push(page);
+    groups.set(src, list);
+  }
+  await pool([...groups.entries()], 2, async ([src, group]) => {
+    try {
+      const located = await locateCallouts(src, group.map((page) => ({ page_number: page.page_number, notes: page.notes ?? [] })));
+      for (const page of group) page.callouts = applyLocated(page.notes ?? [], located.get(page.page_number) ?? []);
+    } catch (error) {
+      console.error("callout_align_skipped", error instanceof Error ? error.message.slice(0, 120) : "unknown");
+      for (const page of group) page.callouts = [];
+    }
+  });
+}
+
+async function locateCallouts(src: string, pages: { page_number: number; notes: FaceNote[] }[]) {
+  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
+  const json = await responsesJson({
+    model,
+    timeoutMs: 90_000,
+    maxOutputTokens: 2500,
+    reasoningEffort: "low",
+    developer: "Point each title at that feature on this exact photo. Coordinates are pixels in a 1024 square. Do not use a generic face template. side L is the viewer's left, R is the viewer's right. size is the square that contains that feature.",
+    user: [
+      { type: "input_text", text: JSON.stringify({ pages: pages.map((page) => ({ page_number: page.page_number, titles: page.notes.map((note) => note.title) })) }) },
+      { type: "input_image", image_url: src, detail: "high" },
+    ],
+    schemaName: "callout_points",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        pages: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              page_number: { type: "integer" },
+              marks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    title: { type: "string" },
+                    side: { type: "string", enum: ["L", "R"] },
+                    cx: { type: "integer" },
+                    cy: { type: "integer" },
+                    size: { type: "integer" },
+                  },
+                  required: ["title", "side", "cx", "cy", "size"],
+                },
+              },
+            },
+            required: ["page_number", "marks"],
+          },
+        },
+      },
+      required: ["pages"],
+    },
+  });
+  const map = new Map<number, unknown[]>();
+  const rows = Array.isArray((json as { pages?: unknown })?.pages) ? (json as { pages: unknown[] }).pages : [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const page = Number((row as { page_number?: unknown }).page_number);
+    const marks = (row as { marks?: unknown }).marks;
+    if (page >= 1 && Array.isArray(marks)) map.set(page, marks);
+  }
+  return map;
 }
 
 function words(text: string, max: number) {
   return text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean).slice(0, max).join(" ");
 }
 
-function asPages(kind: AiQuizKind, value: unknown) {
+function clampNum(value: number, min: number, max: number, fallback: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function asPages(value: unknown) {
   const pages = Array.isArray((value as { pages?: unknown })?.pages) ? (value as { pages: unknown[] }).pages : [];
   const byNumber = new Map<number, FacePageCopy>();
   for (const item of pages) {
@@ -335,6 +437,7 @@ function asPages(kind: AiQuizKind, value: unknown) {
     const row = item as Record<string, unknown>;
     const page_number = Number(row.page_number);
     const intro_mn = typeof row.intro_mn === "string" ? row.intro_mn.trim() : "";
+    const edit_en = typeof row.edit_en === "string" ? row.edit_en.trim() : "";
     const recommendations = Array.isArray(row.recommendations)
       ? row.recommendations.flatMap((entry) => {
           if (!entry || typeof entry !== "object") return [];
@@ -345,7 +448,7 @@ function asPages(kind: AiQuizKind, value: unknown) {
         }).slice(0, 1)
       : [];
     if (page_number < 1 || page_number > 25 || intro_mn.length < 2 || recommendations.length < 1) continue;
-    byNumber.set(page_number, { page_number, intro_mn, recommendations, callouts: placeCallouts(row.callouts, kind, page_number) });
+    byNumber.set(page_number, { page_number, intro_mn, edit_en, recommendations, notes: asCalloutWords(row.callouts), callouts: [] });
   }
   return [...byNumber.values()];
 }
@@ -399,6 +502,7 @@ async function completeJson(kind: AiQuizKind, user: string) {
             properties: {
               page_number: { type: "integer" },
               intro_mn: { type: "string" },
+              edit_en: { type: "string" },
               recommendations: {
                 type: "array",
                 minItems: 1,
@@ -420,7 +524,7 @@ async function completeJson(kind: AiQuizKind, user: string) {
                 },
               },
             },
-            required: ["page_number", "intro_mn", "recommendations", "callouts"],
+            required: ["page_number", "intro_mn", "edit_en", "recommendations", "callouts"],
           },
         },
       },
