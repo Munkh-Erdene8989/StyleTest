@@ -24,7 +24,7 @@ type DesignFile = {
   };
 };
 
-const FILE = path.join(process.cwd(), "Open Ai өгөх", "naruka_report_design.json");
+const FILE = path.join(process.cwd(), "src/content/naruka_report_design.json");
 
 let cached: DesignFile | null = null;
 

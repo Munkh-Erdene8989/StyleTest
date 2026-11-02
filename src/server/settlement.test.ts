@@ -15,6 +15,14 @@ vi.mock("./qpay", () => ({
   simulatePayAllowed: () => false,
 }));
 
+vi.mock("./face-report-pdf", () => ({
+  ensureQuizReportPdf: vi.fn(async () => ({
+    pdf: Buffer.from("%PDF-1.4"),
+    brief: { title: "Нүүр ба гоо сайхан", status: "ready", sections: [{ heading: "Чиглэл", body: "Нэг өгүүлбэр." }] },
+    detail: { summary: "Нэг өгүүлбэр.", sections: [{ heading: "Чиглэл", body: "Нэг өгүүлбэр." }] },
+  })),
+}));
+
 const paid = (invoiceId: string, amount: number) => ({
   paid: true,
   amount,
@@ -49,9 +57,12 @@ describe("payment settlement", () => {
     expect(again).toEqual({ ok: true, duplicate: true });
     expect((await getStore().getOrder("ord_1"))?.paymentStatus).toBe("paid");
     expect((await getStore().getStyleQuiz("quiz_1"))?.paymentStatus).toBe("paid");
-    const storedAi = await getStore().getAiQuiz("aiq_1");
-    expect(storedAi?.paymentStatus).toBe("paid");
-    expect(storedAi?.brief?.sections.length).toBeGreaterThan(0);
+    await vi.waitFor(async () => {
+      const storedAi = await getStore().getAiQuiz("aiq_1");
+      expect(storedAi?.paymentStatus).toBe("paid");
+      expect(storedAi?.reportStatus).toBe("sent");
+      expect(storedAi?.brief?.sections.length).toBeGreaterThan(0);
+    });
     expect((await getStore().listLedger()).filter((entry) => entry.type === "revenue")).toHaveLength(1);
     expect(await getStore().getEntitlement("ent_ord_1")).toBeTruthy();
     expect((await getStore().listAudit()).some((row) => row.action === "payment_rejected")).toBe(false);
