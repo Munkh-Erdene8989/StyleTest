@@ -13,7 +13,7 @@ const SERVICES = [
     subtitle: "Personal Color Analysis",
     desc: "Олон улсын стандартын дагуу таны арьсны өнгө, нүдний болон үсний өнгийг судлан, насан туршид хэрэглэх өнгөний палитрыг тодорхойлно.",
     includes: ["Хувцасны өнгө & хээ", "Нүүр будалтын шийдэл", "Хумс & үсний будаг", "Гоёл чимэглэлийн өнгө", "Цаасан & дижитал гарын авлага"],
-    img: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1200&h=900&fit=crop&auto=format",
+    img: "/studio/service-color.jpg",
     tag: null,
     href: `tel:${PHONE}`,
     action: "Яг одоо тодорхойлох",
@@ -23,7 +23,7 @@ const SERVICES = [
     subtitle: "Makeup Consultation",
     desc: "Өөрийн makeup-аа авч ирээд, таны өнгөний системд нийцэх хэрэглэлийг мэргэжлийн стилистаас шалгуулж, өдөр тутмын будалт хийж сур.",
     includes: ["Makeup аудит", "Өнгөний тохирол шалгах", "Өдөр тутмын будалт сургах", "Оройн будалтын зөвлөмж"],
-    img: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=1200&h=900&fit=crop&auto=format",
+    img: "/studio/service-makeup.jpg",
     tag: null,
     href: `tel:${PHONE}`,
     action: "Яг одоо тодорхойлох",
@@ -33,7 +33,7 @@ const SERVICES = [
     subtitle: "Styling Consultation",
     desc: "Бие галбирт тохирсон хувцас, өмсгөлийн байршил, брэндийн дүр төрхийг бүтцийн аргаар шинжлэн гаргана.",
     includes: ["Биеийн гарааны шинжилгээ", "Хувцасны зохилдлого", "Брэнд дүр бүрдүүлэх", "Дэлгүүр хэсэх гарын авлага"],
-    img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=900&fit=crop&auto=format",
+    img: "/studio/service-styling.jpg",
     tag: null,
     href: `tel:${PHONE}`,
     action: "Яг одоо тодорхойлох",
@@ -43,7 +43,7 @@ const SERVICES = [
     subtitle: "Style Psychology Test",
     desc: "Таны хувийн шинж чанар, амьдралын хэв маяг, зорилгод нийцэх дүр төрхийг сэтгэл судлалын аргаар тодорхойлно. Тест бөглөөд тайланг и-мэйлээр авна.",
     includes: ["6 асуулт — 5 минут", "Стайл архетипийн тодорхойлолт", "Өнгөний палитрын зөвлөмж", "Хувийн стайлинг зөвлөгөө", "Тайланг и-мэйлээр авна"],
-    img: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&h=900&fit=crop&auto=format",
+    img: "/studio/service-test.jpg",
     tag: "Онлайн",
     href: "/quiz",
     action: "Онлайн тест авах",
@@ -51,10 +51,10 @@ const SERVICES = [
 ];
 
 const TEAM = [
-  { name: "Naruka", role: "Үндэслэгч & Ахлах Стилист", img: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=500&h=640&fit=crop&auto=format" },
-  { name: "Билгүүн", role: "Өнгө шинжлэгч", img: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&h=640&fit=crop&auto=format" },
-  { name: "Номин", role: "Makeup Artist & Стилист", img: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=500&h=640&fit=crop&auto=format" },
-  { name: "Энхцэцэг", role: "Стайлинг зөвлөх", img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=500&h=640&fit=crop&auto=format" },
+  { name: "Naruka", role: "Үндэслэгч & Ахлах Стилист", img: "/studio/team-naruka.jpg" },
+  { name: "Билгүүн", role: "Өнгө шинжлэгч", img: "/studio/team-bilguun.jpg" },
+  { name: "Номин", role: "Makeup Artist & Стилист", img: "/studio/team-nomin.jpg" },
+  { name: "Энхцэцэг", role: "Стайлинг зөвлөх", img: "/studio/team-enkhtsetseg.jpg" },
 ];
 
 const TESTIMONIALS = [
@@ -74,7 +74,7 @@ const LESSONS = [
 export function StudioHero() {
   return (
     <section className="stage" id="home">
-      <img className="stage-photo" src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1800&h=1100&fit=crop&auto=format" alt="" />
+      <img className="stage-photo" src="/studio/hero.jpg" alt="" />
       <div className="stage-shade" />
       <div className="stage-copy">
         <p className="kicker">✦ Улаанбаатар, City Tower</p>
@@ -119,9 +119,9 @@ export function StudioAbout() {
       <div className="bar">
         <div className="studio-split">
           <div className="collage">
-            <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=900&h=600&fit=crop&auto=format" alt="" />
-            <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&h=400&fit=crop&auto=format" alt="" />
-            <img src="https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=500&h=400&fit=crop&auto=format" alt="" />
+            <img src="/studio/about-studio.jpg" alt="" />
+            <img src="/studio/about-brushes.jpg" alt="" />
+            <img src="/studio/about-portrait.jpg" alt="" />
           </div>
           <div className="studio-copy">
             <p className="kicker">Бидний тухай</p>

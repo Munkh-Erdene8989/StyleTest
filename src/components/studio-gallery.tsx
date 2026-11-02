@@ -3,12 +3,12 @@
 import { useState } from "react";
 
 const ITEMS = [
-  { img: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=900&h=1100&fit=crop&auto=format", label: "Зун улирлын палитр", tall: true },
-  { img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=900&h=700&fit=crop&auto=format", label: "Warm Autumn", tall: false },
-  { img: "https://images.unsplash.com/photo-1519415943484-9fa1873496d4?w=900&h=1100&fit=crop&auto=format", label: "Cool Winter", tall: true },
-  { img: "https://images.unsplash.com/photo-1512361436605-a484bdb34b5f?w=900&h=700&fit=crop&auto=format", label: "Spring Bright", tall: false },
-  { img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=900&h=1100&fit=crop&auto=format", label: "Soft Summer", tall: true },
-  { img: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=900&h=700&fit=crop&auto=format", label: "Deep Autumn", tall: false },
+  { img: "/studio/gallery-summer.jpg", label: "Зун улирлын палитр", tall: true },
+  { img: "/studio/gallery-autumn.jpg", label: "Warm Autumn", tall: false },
+  { img: "/studio/gallery-winter.jpg", label: "Cool Winter", tall: true },
+  { img: "/studio/gallery-spring.jpg", label: "Spring Bright", tall: false },
+  { img: "/studio/gallery-soft-summer.jpg", label: "Soft Summer", tall: true },
+  { img: "/studio/gallery-deep-autumn.jpg", label: "Deep Autumn", tall: false },
 ];
 
 export function StudioGallery() {

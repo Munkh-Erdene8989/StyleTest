@@ -36,15 +36,11 @@ type Checkout = {
 
 const photos = {
   ages: ['/quiz/age-18-25.jpg', '/quiz/age-26-35.jpg', '/quiz/age-36-55.jpg', '/quiz/age-55.jpg'],
-  customers: [
-    'https://images.unsplash.com/photo-1713528757748-86793bac3744?w=500&h=500&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1631821657340-b07983bfc5f9?w=500&h=500&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1713528757853-6aa66778a912?w=500&h=500&fit=crop&auto=format',
-  ],
-  testimonial: 'https://images.unsplash.com/photo-1701844778533-f46d8092ebe1?w=500&h=600&fit=crop&auto=format',
-  before: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=700&h=900&fit=crop&auto=format',
-  after: 'https://images.unsplash.com/photo-1756700414056-ec050f39d199?w=700&h=900&fit=crop&auto=format',
-  demo: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=900&h=560&fit=crop&auto=format',
+  customers: ['/quiz/customer-1.jpg', '/quiz/customer-2.jpg', '/quiz/customer-3.jpg'],
+  testimonial: '/quiz/testimonial.jpg',
+  before: '/quiz/before.jpg',
+  after: '/quiz/after.jpg',
+  demo: '/quiz/demo.jpg',
 };
 
 const steps = [
@@ -221,11 +217,11 @@ const swatches: Record<'eye' | 'hair' | 'skin', Option[]> = {
 };
 
 const outfitOptions = [
-  { value: 'boho', label: 'Boho', image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=800&h=1000&fit=crop&auto=format', insight: 'Boho төрхөд таны дуртай эсэх нь бүтэц, эрх чөлөөний хэрэгцээг харуулна.' },
-  { value: 'classic', label: 'Classic', image: 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=800&h=1000&fit=crop&auto=format', insight: 'Classic төрх таны цэгцтэй, удаан хэрэглэгдэх сонголтыг илтгэнэ.' },
-  { value: 'denim', label: 'Casual denim', image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=800&h=1000&fit=crop&auto=format', insight: 'Casual denim-д өгсөн үнэлгээ тав тух ба polish-ийн тэнцвэрийг тодорхойлно.' },
-  { value: 'romantic', label: 'Romantic floral', image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&h=1000&fit=crop&auto=format', insight: 'Romantic төрх зөөлөн детальтай хэр холбоотойг тань харуулна.' },
-  { value: 'evening', label: 'Evening', image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=800&h=1000&fit=crop&auto=format', insight: 'Evening төрхийн үнэлгээ таны драматик контрастын хэмжээг хэлж өгнө.' },
+  { value: 'boho', label: 'Boho', image: '/quiz/outfit-boho.jpg', insight: 'Boho төрхөд таны дуртай эсэх нь бүтэц, эрх чөлөөний хэрэгцээг харуулна.' },
+  { value: 'classic', label: 'Classic', image: '/quiz/outfit-classic.jpg', insight: 'Classic төрх таны цэгцтэй, удаан хэрэглэгдэх сонголтыг илтгэнэ.' },
+  { value: 'denim', label: 'Casual denim', image: '/quiz/outfit-denim.jpg', insight: 'Casual denim-д өгсөн үнэлгээ тав тух ба polish-ийн тэнцвэрийг тодорхойлно.' },
+  { value: 'romantic', label: 'Romantic floral', image: '/quiz/outfit-romantic.jpg', insight: 'Romantic төрх зөөлөн детальтай хэр холбоотойг тань харуулна.' },
+  { value: 'evening', label: 'Evening', image: '/quiz/outfit-evening.jpg', insight: 'Evening төрхийн үнэлгээ таны драматик контрастын хэмжээг хэлж өгнө.' },
 ];
 
 function PrimaryButton({ children, onClick, disabled = false, type = 'button' }: {
