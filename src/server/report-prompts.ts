@@ -74,7 +74,7 @@ Visual essence-г зан чанар гэж тайлбарлахгүй. Нүүр�
 Өнгө баталгаагүй бол foundation shade, өнгөний улирлыг батлахгүй.
 PAGE_MANIFEST_FACE-ийн 25 хуудсыг дага.
 callouts зөвхөн нэр ба 2–5 үг. Координат, side, kind бүү бич.
-edit_en нь энэ нүүрэнд тохирох нэг өөр хэлбэр: малгай, шил, үс, будалт хүн бүрт адилхан ерөнхий загвар байж болохгүй.`,
+edit_en нь энэ нүүрэнд ганцхан тодорхой эд зүйл. «soft hat», «classic glasses» гэж бүдэг бичиж болохгүй. Хүн бүрт адилхан хэлбэр бүү давтана.`,
   body_shape: `REPORT_KIND=body_shape. classification_system=body_shape_5.
 apple/pear/hourglass/rectangle/inverted_triangle нь биеийн хэлбэрийн
 ангилал. Dramatic, Natural, Classic, Gamine, Romantic зэрэг Kibbe body ID
@@ -288,7 +288,7 @@ function withLandmarks(jobs: Omit<ReportImageJob, "landmarks">[]): ReportImageJo
 }
 
 const FACE_JOBS: Omit<ReportImageJob, "landmarks">[] = [
-  { id: "portrait", kind: "makeup", pages: [1, 2, 24, 25], role: "face", change: "No makeup and no new accessory. Isolate the adult facing the camera on a plain white background." },
+  { id: "portrait", kind: "makeup", pages: [1, 2, 24, 25], role: "face", change: "No makeup and no accessory. Do not add a hat, glasses, jewelry, or a second person. Isolate the adult facing the camera on a plain white background." },
   { id: "makeup_suit", kind: "makeup", pages: [3, 4, 5], role: "face", change: "A light makeup look that suits this face: soft brow, subtle eye, and a natural lip. Makeup only." },
   { id: "makeup_avoid", kind: "makeup", pages: [6, 7], role: "face", change: "One heavier makeup look to show what to avoid: thick dark liner and a sharp lip. Makeup only, face shape unchanged." },
   { id: "glasses_suit_a", kind: "glasses", pages: [8], role: "face", change: "One pair of slim rectangular eyeglasses that suit this face. Glasses only." },
@@ -349,11 +349,13 @@ Show realistic fabric and garment fit over the existing body.
 Produce one realistic fashion preview, without text, labels or collage panels.`;
 
 const FACE_EDIT = `Edit the supplied original portrait. The only subject is the adult facing the camera.
+One person, one frame, centered. No collage, no split screen, no side-by-side, no before-and-after, no second copy of the person.
 Remove every other person, the room, and the existing background. Use a plain white background.
 Change only: {{change}}.
+Exactly one added or changed item. Do not show two hats, two pairs of glasses, or two hairstyles.
 Preserve facial geometry, eyes, nose, mouth, jawline, skin tone, apparent age, expression, and identity.
 Do not beautify, reshape, retouch unrelated features, or replace the person.
-Produce one realistic style preview with no text or labels.`;
+Produce one realistic style preview with no text, labels, captions, or arrows.`;
 
 function hairLengthOf(job: ReportImageJob): HairLength | null {
   if (job.kind !== "hair") return null;
@@ -380,10 +382,21 @@ export function imageJobsFor(kind: AiQuizKind, avoidHair: HairLength[] = []) {
   return jobs;
 }
 
+function lockOf(job: ReportImageJob) {
+  if (job.id.startsWith("hat")) return "Hat only.";
+  if (job.id.startsWith("glasses")) return "Glasses only.";
+  if (job.id.startsWith("makeup")) return "Makeup only.";
+  if (job.id === "earrings") return "Earrings only.";
+  if (job.id === "necklace") return "Necklace only.";
+  if (job.id === "jewelry") return "That accessory only.";
+  if (job.kind === "hair") return "Hair only. Keep the face unchanged.";
+  return "";
+}
+
 export function imagePrompt(job: ReportImageJob, personal: boolean, variation = "") {
   const specific = variation.replace(/\s+/g, " ").trim();
   const change = specific
-    ? `${job.change} Choose a shape for this person, not a shared default: ${specific}`
+    ? `${specific} ${lockOf(job)} Show this one shape only.`
     : job.change;
   if (personal && job.role === "body" && job.kind === "outfit") return OUTFIT_EDIT.replace("{{change}}", change);
   if (personal && job.role === "face" && job.kind !== "still") return FACE_EDIT.replace("{{change}}", change);
@@ -422,7 +435,7 @@ ${JSON.stringify(slots)}
 Даалгавар:
 1. Асуумжийн хариултыг уншиж, энэ batch-ийн хуудас бүрт нэг өгүүлбэр, яг нэг зөвлөмж бич.
 2. Хуудасны дугаар, гарчиг, зорилго, kind түгжээтэй. Бүү соль, бүү нэм.
-3. Фонт, координат, side бүү үүсгэ. callouts зөвхөн title ба text. edit_en нь энэ хүнд зориулсан нэг англи өгүүлбэр: ямар малгай, шил, үс, будалт. Хүн бүрт адилхан ерөнхий хэлбэр бүү давтана.
+3. Фонт, координат, side бүү үүсгэ. callouts зөвхөн title ба text. edit_en нь энэ нүүрэнд ганцхан тодорхой эд зүйл, англиар: «a wool beret above the eyebrows», «thin oval metal glasses». «soft hat» гэж бүдэг бүү бич. Нэг хуудсанд нэг хэлбэр.
 4. Стилист хүнд шууд хандаж, ойлгомжтой монголоор бич. placeholder үлдээхгүй. Хариултад байхгүй баримт бүү зохио.
 5. PDF export болон email sent гэж мэдэгдэхгүй. Ангиллын код бүү буцаа.
 

@@ -107,7 +107,7 @@ h1 { margin: 0 0 1.2mm; font: 600 ${titleSize(design)}pt/1.15 "Noto Serif", seri
 .R .leader::after { left: -1.6pt; }
 .notice { position: absolute; left: ${mm(photoLeft)}; width: ${mm(photo.size)}; top: ${mm(photoBottom + 4)}; margin: 0; text-align: center; font: 8pt/1.3 "Noto Sans", sans-serif; color: ${colors.muted}; }
 .lead { position: absolute; left: 70mm; width: 157mm; top: ${mm(photoBottom + 16)}; margin: 0; text-align: center; font: 600 12pt/1.35 "Noto Serif", serif; color: ${colors.ink}; }
-.step { position: absolute; left: 70mm; width: 157mm; top: ${mm(photoBottom + 38)}; margin: 0; text-align: center; font: 600 9pt/1.3 Inter, "Noto Sans", sans-serif; color: var(--accent); }
+.step { position: absolute; left: 70mm; width: 157mm; top: ${mm(photoBottom + 58)}; margin: 0; text-align: center; font: 600 9pt/1.3 Inter, "Noto Sans", sans-serif; color: var(--accent); }
 footer { position: absolute; left: ${mm(header.logo.x)}; right: 14mm; bottom: 4mm; display: flex; justify-content: space-between; border-top: 0.2mm solid ${colors.rule}; padding-top: 1.2mm; font: 8pt "Noto Sans", sans-serif; color: ${colors.muted}; }
 * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }`;
 }

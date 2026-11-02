@@ -40,11 +40,12 @@ export type FaceDraft = {
   pages: FacePageCopy[];
   hasReference?: boolean;
   notice?: string;
+  original?: string;
 };
 export type QuizReportFile = { pdf: Buffer; brief: AiQuizBrief; detail: AiQuizDetail };
 
 export function reportObjectKey(quizId: string, kind: AiQuizKind = "face_beauty", withPhoto = false) {
-  return `reports/${quizId}/${kind}${withPhoto ? "-photo" : ""}-v9.pdf`;
+  return `reports/${quizId}/${kind}${withPhoto ? "-photo" : ""}-v10.pdf`;
 }
 
 function metaKey(pdfKey: string) {
@@ -173,8 +174,11 @@ export async function draftQuizReport(input: {
       console.error("report_image_skipped", job.id, error instanceof Error ? error.message.slice(0, 120) : "unknown");
     }
   });
-  await alignCallouts(pages, images);
-  const copy = reportCopy(input.kind, { reportId: input.reportId, briefSections: [], images, captions, pages, hasReference, notice: input.notice });
+  await alignCallouts(input.kind, pages, images);
+  const original = hasReference
+    ? `data:${input.mime || "image/jpeg"};base64,${input.referencePhoto!.toString("base64")}`
+    : undefined;
+  const copy = reportCopy(input.kind, { reportId: input.reportId, briefSections: [], images, captions, pages, hasReference, notice: input.notice, original });
   return {
     reportId: input.reportId,
     briefSections: copy.brief.sections,
@@ -183,6 +187,7 @@ export async function draftQuizReport(input: {
     pages,
     hasReference,
     notice: input.notice,
+    original,
   };
 }
 
@@ -210,8 +215,9 @@ export function renderQuizReportHtml(draft: FaceDraft, kind: AiQuizKind) {
   const pages = manifest.map((item, index) => {
     const copy = draft.pages[index];
     const src = draft.images[item.page];
+    const before = draft.original || draft.images[1];
     const figure = src
-      ? `<figure class="hero"><img alt="" src="${src}"></figure>${calloutHtml(copy.callouts ?? [], src)}${item.kind === "change" && draft.images[1] ? `<figure class="thumb"><img alt="" src="${draft.images[1]}"><figcaption><strong>${esc(thumbLabel)}</strong><span>Өөрчлөхийн өмнө</span></figcaption></figure>` : ""}`
+      ? `<figure class="hero"><img alt="" src="${src}"></figure>${calloutHtml(copy.callouts ?? [], src)}${item.kind === "change" && before ? `<figure class="thumb"><img alt="" src="${before}"><figcaption><strong>${esc(thumbLabel)}</strong><span>Өөрчлөхийн өмнө</span></figcaption></figure>` : ""}`
       : "";
     const notice = item.page === 1 && draft.notice ? `<p class="notice">${esc(draft.notice)}</p>` : "";
     return `<section class="report-page frame-${item.kind}">
@@ -342,7 +348,27 @@ export function applyLocated(notes: FaceNote[], marks: unknown): FaceCallout[] {
   return [...placed.filter((item) => item.side === "L").slice(0, 3), ...placed.filter((item) => item.side === "R").slice(0, 3)];
 }
 
-async function alignCallouts(pages: FacePageCopy[], images: Record<number, string>) {
+export function placeCallout(jobId: string, callout: FaceCallout): FaceCallout | null {
+  const zone = jobId.startsWith("hat") ? "hat"
+    : jobId.startsWith("glasses") ? "glasses"
+      : jobId.startsWith("hair") ? "hair"
+        : jobId === "earrings" || jobId === "jewelry" ? "ear"
+          : jobId === "necklace" ? "neck"
+            : "face";
+  let size = callout.size;
+  if (zone === "hat") size = Math.max(size, 320);
+  if (zone === "glasses") size = Math.max(size, 260);
+  if (zone === "hair") size = Math.max(size, 240);
+  const next = { ...callout, size: clampNum(size, 80, 520, 160) };
+  if (zone === "hat" && next.cy > 340) return null;
+  if (zone === "glasses" && (next.cy < 160 || next.cy > 640)) return null;
+  if (zone === "hair" && next.cy > 420) return null;
+  if (zone === "ear" && (next.cy < 220 || next.cy > 560)) return null;
+  if (zone === "neck" && next.cy < 500) return null;
+  return next;
+}
+
+async function alignCallouts(kind: AiQuizKind, pages: FacePageCopy[], images: Record<number, string>) {
   const groups = new Map<string, FacePageCopy[]>();
   for (const page of pages) {
     const src = images[page.page_number];
@@ -351,10 +377,25 @@ async function alignCallouts(pages: FacePageCopy[], images: Record<number, strin
     list.push(page);
     groups.set(src, list);
   }
+  const jobs = imageJobsFor(kind);
+  const jobOf = (page: number) => jobs.find((job) => job.pages.includes(page))?.id ?? "";
+  const keep = (page: FacePageCopy, located: Map<number, unknown[]>) => {
+    const placed = applyLocated(page.notes ?? [], located.get(page.page_number) ?? []);
+    page.callouts = placed.flatMap((item) => {
+      const kept = placeCallout(jobOf(page.page_number), item);
+      return kept ? [kept] : [];
+    });
+  };
   await pool([...groups.entries()], 2, async ([src, group]) => {
+    const payload = group.map((page) => ({ page_number: page.page_number, notes: page.notes ?? [], edit_en: page.edit_en }));
     try {
-      const located = await locateCallouts(src, group.map((page) => ({ page_number: page.page_number, notes: page.notes ?? [] })));
-      for (const page of group) page.callouts = applyLocated(page.notes ?? [], located.get(page.page_number) ?? []);
+      const located = await locateCallouts(src, payload, false);
+      for (const page of group) keep(page, located);
+      const missed = group.filter((page) => (page.notes?.length ?? 0) > 0 && (page.callouts?.length ?? 0) === 0);
+      if (missed.length) {
+        const again = await locateCallouts(src, missed.map((page) => ({ page_number: page.page_number, notes: page.notes ?? [], edit_en: page.edit_en })), true);
+        for (const page of missed) keep(page, again);
+      }
     } catch (error) {
       console.error("callout_align_skipped", error instanceof Error ? error.message.slice(0, 120) : "unknown");
       for (const page of group) page.callouts = [];
@@ -362,16 +403,16 @@ async function alignCallouts(pages: FacePageCopy[], images: Record<number, strin
   });
 }
 
-async function locateCallouts(src: string, pages: { page_number: number; notes: FaceNote[] }[]) {
+async function locateCallouts(src: string, pages: { page_number: number; notes: FaceNote[]; edit_en: string }[], again: boolean) {
   const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
   const json = await responsesJson({
     model,
     timeoutMs: 90_000,
     maxOutputTokens: 2500,
     reasoningEffort: "low",
-    developer: "Point each title at that feature on this exact photo. Coordinates are pixels in a 1024 square. Do not use a generic face template. side L is the viewer's left, R is the viewer's right. size is the square that contains that feature.",
+    developer: `${again ? "The previous points landed on skin or the wrong feature. Point only at the added object. " : ""}Point each title at the changed object on this exact photo. Coordinates are pixels in a 1024 square. Hat or brim: center on the hat, cy at most 320, size 300 to 460 so the whole hat is inside the square. Never point at a cheek. Glasses: center on the frame, size 240 to 400 so the rim is visible, not an eyelid crop. If the object is not in the photo, omit that title. side L is the viewer's left, R is the viewer's right.`,
     user: [
-      { type: "input_text", text: JSON.stringify({ pages: pages.map((page) => ({ page_number: page.page_number, titles: page.notes.map((note) => note.title) })) }) },
+      { type: "input_text", text: JSON.stringify({ pages: pages.map((page) => ({ page_number: page.page_number, edit_en: page.edit_en, titles: page.notes.map((note) => note.title) })) }) },
       { type: "input_image", image_url: src, detail: "high" },
     ],
     schemaName: "callout_points",

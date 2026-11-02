@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FACE_MANIFEST, applyLocated, assertLandscapePdf, printHtmlToPdf, renderQuizReportHtml, type FaceDraft } from "./face-report-pdf";
+import { FACE_MANIFEST, applyLocated, assertLandscapePdf, placeCallout, printHtmlToPdf, renderQuizReportHtml, type FaceDraft } from "./face-report-pdf";
 import { reportDesign } from "./report-design";
 import { MANIFESTS, developerPrompt, imageJobsFor, imagePrompt, userMessage } from "./report-prompts";
 
@@ -76,7 +76,14 @@ describe("face report pdf", () => {
     const personalHat = imagePrompt(hat!, true, "a narrow cloche above a long forehead");
     expect(personalHat).toContain("narrow cloche");
     expect(personalHat).toContain("Hat only");
+    expect(personalHat).toContain("No collage");
+    expect(personalHat).not.toContain("One soft hat shape");
     expect(imagePrompt(hat!, true)).not.toContain("narrow cloche");
+    expect(imagePrompt(hat!, true)).toContain("One soft hat shape");
+    const hatMark = { title: "Малгай", text: "Нарийн хүрээ", side: "R" as const, cx: 512, cy: 140, size: 180 };
+    expect(placeCallout("hat_suit", hatMark)).toMatchObject({ cy: 140, size: 320 });
+    expect(placeCallout("hat_suit", { ...hatMark, cy: 640 })).toBeNull();
+    expect(placeCallout("glasses_suit_a", { ...hatMark, cy: 320, size: 100 })?.size).toBe(260);
     const located = applyLocated(
       [{ title: "Малгай", text: "Нарийн хүрээ" }],
       [{ title: "Малгай", side: "R", cx: 512, cy: 140, size: 180 }],
