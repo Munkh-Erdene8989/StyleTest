@@ -310,6 +310,23 @@ export function scoreAiQuiz(
   return scoreArchetype(banks.archetype, answers);
 }
 
+export function labelQuizAnswers(
+  kind: AiQuizKind,
+  answers: Record<string, AiAnswer>,
+  banks: { body: BodyBank; archetype: ArchetypeBank | null },
+) {
+  if (kind === "face_beauty") return faceLabels(singleMap(answers));
+  if (kind === "body_shape") return bodyLabels(banks.body, answers);
+  const bank = banks.archetype;
+  if (!bank) return [];
+  return bank.questions.flatMap((question) => {
+    const value = scaleValue(answers[question.id]);
+    if (value === null) return [];
+    const scale = bank.scale?.[String(value)];
+    return [{ question: question.text || question.id, answer: scale || String(value) }];
+  });
+}
+
 function singleMap(answers: Record<string, AiAnswer>) {
   const chosen: Record<string, string> = {};
   for (const [id, answer] of Object.entries(answers)) {

@@ -1,0 +1,898 @@
+{
+  "meta": {
+    "name": "NARUKA нүүр ба гоо сайхны тайлан — дизайн template",
+    "version": "4.0",
+    "units": "pt (1/72 inch); зургийн доторх координат 0–1024 px",
+    "page": {
+      "width": 841.92,
+      "height": 594.96,
+      "orientation": "landscape A4"
+    },
+    "source_report": "naruka-face_beauty-report 2.pdf",
+    "final_report": "naruka-face_beauty-report_засварласан_v4.pdf",
+    "how_to_reuse": "Шинэ тайланд 'pages' хэсгийг л солино: хуудас бүрийн kind (change/base) болон callouts (томруулах хэсэг, зураасны цэг, нэр, богино тайлбар). Бусад бүх хэмжээ, өнгө, дүрэм хэвээр үлдэнэ."
+  },
+  "changelog": [
+    {
+      "version": "1",
+      "changes": [
+        "Зургийн доорх 'AI стиль туршилт' бичгийг бүх хуудаснаас бүрэн хассан (redaction)",
+        "Өөрчлөгдсөн хэсгийг зураг дээр хүрээгээр тэмдэглэж, баруун талд тайлбарын самбар нэмсэн",
+        "Зүүн талд анхны зургийг харьцуулалтад зориулж нэмсэн"
+      ]
+    },
+    {
+      "version": "2",
+      "changes": [
+        "Нүүр халхалсан том хүрээг хасаж, тухайн хэсгийг дугуй томруулгаар (zoom) хажууд гаргасан",
+        "Урт тайлбарын самбарыг хасаж, нэр + 2–5 үгтэй богино тайлбар болгосон",
+        "Логог агуулгаар нь тайрч, 31pt-аас 44pt болгож, гарчгийг баруун тийш шилжүүлсэн"
+      ]
+    },
+    {
+      "version": "3",
+      "changes": [
+        "Нүүрэн дээрх дугуй тэмдэглэгээг бүрэн хассан",
+        "Зураас зурагт орохгүй: зургийн хүрээний гадна, тухайн хэсгийн өндөрт жижиг цэгээр төгсдөг болсон"
+      ]
+    },
+    {
+      "version": "4",
+      "changes": [
+        "Гол зургийг 294.75pt-аас 385pt болгож томруулсан, доорх 2 өгүүлбэрийг 75pt доош шилжүүлсэн",
+        "Логог 56pt өндөр болгосон",
+        "Томруулгын дугуйг 66pt-аас 74pt болгосон",
+        "Богино тайлбарыг дугуйн гадна талд байрлуулсан (зураас бичвэр дээгүүр гарахгүй)",
+        "'Анхны зураг'-ийг зүүн доод буланд шилжүүлсэн"
+      ]
+    }
+  ],
+  "colors": {
+    "ink": "#29272A",
+    "muted": "#6B625C",
+    "rule": "#DDD4C8",
+    "background": "#FFFFFF",
+    "accent_change": "#6D2438",
+    "accent_base": "#B08A3E"
+  },
+  "fonts": {
+    "title": "NotoSerif-SemiBold 16pt (эх тайлангийнх, өөрчлөхгүй)",
+    "callout_title": {
+      "family": "Inter",
+      "weight": "SemiBold",
+      "size": 8.8,
+      "color": "ink",
+      "line_height": 11.5
+    },
+    "callout_text": {
+      "family": "Inter",
+      "weight": "Regular",
+      "size": 7.8,
+      "color": "muted",
+      "line_height": 10
+    },
+    "thumbnail_label": {
+      "family": "Inter",
+      "weight": "Regular",
+      "size": 7.5,
+      "color": "muted"
+    }
+  },
+  "remove": [
+    {
+      "what": "'AI стиль туршилт' зургийн доорх бичиг",
+      "rect": [
+        370,
+        377,
+        480,
+        392
+      ],
+      "method": "redaction"
+    },
+    {
+      "what": "хуучин жижиг лого",
+      "rect": [
+        44,
+        30.5,
+        77.5,
+        63.2
+      ],
+      "method": "redaction (image remove)"
+    },
+    {
+      "what": "хуучин жижиг гол зураг",
+      "rect": [
+        276.75,
+        79.5,
+        571.5,
+        374.25
+      ],
+      "method": "redaction, дараа нь томоор дахин байрлуулна"
+    }
+  ],
+  "header": {
+    "logo": {
+      "crop_to_content": true,
+      "crop_threshold": 200,
+      "crop_padding_px": 12,
+      "height": 56,
+      "x": 45,
+      "bottom": 63.5
+    },
+    "title": {
+      "gap_after_logo": 12,
+      "baseline": 59.25,
+      "keep_original_font": true
+    },
+    "rule": {
+      "y": 66.75,
+      "keep_original": true
+    }
+  },
+  "photo": {
+    "size": 385,
+    "top": 75,
+    "center_x": 421.5,
+    "source_px": 1024,
+    "rect": [
+      229.0,
+      75,
+      614.0,
+      460
+    ]
+  },
+  "text_under_photo": {
+    "shift_down": 75,
+    "applies_to_baseline_range": [
+      395,
+      445
+    ],
+    "note": "Тод өгүүлбэр + улаан зөвлөмж хоёрыг томорсон зургийн доор шилжүүлнэ"
+  },
+  "thumbnail": {
+    "show_on_kinds": [
+      "change"
+    ],
+    "label": "Анхны зураг",
+    "size": 70,
+    "x": 45,
+    "bottom_offset_from_photo": 12,
+    "border": {
+      "color": "rule",
+      "width": 0.6
+    },
+    "source": "1-р хуудасны (өөрчлөлтгүй) зураг"
+  },
+  "callouts": {
+    "markers_on_photo": false,
+    "zoom_circle": {
+      "diameter": 74,
+      "center_x": {
+        "L": 172,
+        "R": 671
+      },
+      "ring_width": 1.6,
+      "ring_color": "page accent",
+      "render_px": 320,
+      "crop": "square, zoom.size px, center zoom.cx/cy"
+    },
+    "leader_line": {
+      "width": 0.9,
+      "color": "page accent",
+      "enters_photo": false,
+      "ends_at": "photo edge ± 4pt, at anchor.y height",
+      "end_dot_radius": 1.9,
+      "starts_at": "zoom circle edge (+1pt)"
+    },
+    "caption": {
+      "position": "outer side of circle (L: зүүн, баруун тийш тэгшилсэн; R: баруун, зүүн тийш тэгшилсэн)",
+      "gap_from_circle": 8,
+      "max_width": 84,
+      "vertical_align": "circle center",
+      "title_words": "1–2",
+      "text_words": "2–5"
+    },
+    "vertical_placement": {
+      "slot": 84,
+      "min_y": "photo.top + diameter/2",
+      "max_y": "photo.bottom - diameter/2",
+      "algorithm": "anchor.y-аар эрэмбэлж, дээрээс доош давхцахгүй түлхээд, доороос дээш хязгаарт багтаана"
+    },
+    "side_rule": "Онцлох хэсэг нүүрний зүүн талд бол L, баруун талд бол R; нэг талд 3-аас ихгүй"
+  },
+  "page_kinds": {
+    "change": {
+      "meaning": "зураг анхныхаас өөрчлөгдсөн",
+      "accent": "accent_change",
+      "thumbnail": true
+    },
+    "base": {
+      "meaning": "өөрчлөлтгүй анхны зураг, зөвхөн анхаарах хэсэг",
+      "accent": "accent_base",
+      "thumbnail": false
+    }
+  },
+  "callout_schema": {
+    "title": "string — богино нэр (Нүд, Уруул, Ээмэг…)",
+    "text": "string — 2–5 үг",
+    "side": "L | R",
+    "zoom": {
+      "cx": "0–1024 px",
+      "cy": "0–1024 px",
+      "size": "томруулах дөрвөлжингийн тал, px"
+    },
+    "anchor": {
+      "x": "0–1024 px",
+      "y": "0–1024 px — зураасны цэгийн өндрийг тодорхойлно"
+    }
+  },
+  "pages": [
+    {
+      "page": 1,
+      "kind": "base",
+      "callouts": [
+        {
+          "title": "Нүд",
+          "text": "Тодруулах сонголт 1",
+          "side": "R",
+          "zoom": {
+            "cx": 590,
+            "cy": 288,
+            "size": 150
+          },
+          "anchor": {
+            "x": 590,
+            "y": 288
+          }
+        },
+        {
+          "title": "Уруул",
+          "text": "Тодруулах сонголт 2",
+          "side": "L",
+          "zoom": {
+            "cx": 515,
+            "cy": 420,
+            "size": 160
+          },
+          "anchor": {
+            "x": 515,
+            "y": 420
+          }
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "kind": "base",
+      "callouts": [
+        {
+          "title": "Хацар",
+          "text": "Будгийн захыг уусгах хэсэг",
+          "side": "L",
+          "zoom": {
+            "cx": 410,
+            "cy": 370,
+            "size": 150
+          },
+          "anchor": {
+            "x": 410,
+            "y": 370
+          }
+        },
+        {
+          "title": "Хацар",
+          "text": "Хоёр талд ижил",
+          "side": "R",
+          "zoom": {
+            "cx": 615,
+            "cy": 370,
+            "size": 150
+          },
+          "anchor": {
+            "x": 615,
+            "y": 370
+          }
+        }
+      ]
+    },
+    {
+      "page": 3,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Зовхи",
+          "text": "Бүдэг ягаавтар бор өнгө",
+          "side": "R",
+          "zoom": {
+            "cx": 590,
+            "cy": 315,
+            "size": 150
+          },
+          "anchor": {
+            "x": 590,
+            "y": 315
+          }
+        },
+        {
+          "title": "Уруул",
+          "text": "Зөөлөн ягаан туяа",
+          "side": "L",
+          "zoom": {
+            "cx": 515,
+            "cy": 485,
+            "size": 160
+          },
+          "anchor": {
+            "x": 515,
+            "y": 485
+          }
+        }
+      ]
+    },
+    {
+      "page": 4,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Нүд",
+          "text": "Сормуусны угаар нарийн зураас",
+          "side": "R",
+          "zoom": {
+            "cx": 590,
+            "cy": 320,
+            "size": 140
+          },
+          "anchor": {
+            "x": 590,
+            "y": 320
+          }
+        },
+        {
+          "title": "Хөмсөг",
+          "text": "Байгалийн нум хэвээр",
+          "side": "L",
+          "zoom": {
+            "cx": 430,
+            "cy": 268,
+            "size": 170
+          },
+          "anchor": {
+            "x": 430,
+            "y": 268
+          }
+        }
+      ]
+    },
+    {
+      "page": 5,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Уруул",
+          "text": "Бүдэг сарнайн ягаан",
+          "side": "R",
+          "zoom": {
+            "cx": 515,
+            "cy": 485,
+            "size": 160
+          },
+          "anchor": {
+            "x": 515,
+            "y": 485
+          }
+        },
+        {
+          "title": "Хацар",
+          "text": "Ойролцоо туяатай улайлт",
+          "side": "L",
+          "zoom": {
+            "cx": 410,
+            "cy": 410,
+            "size": 150
+          },
+          "anchor": {
+            "x": 410,
+            "y": 410
+          }
+        },
+        {
+          "title": "Хацар",
+          "text": "Хоёр талд ижил",
+          "side": "R",
+          "zoom": {
+            "cx": 625,
+            "cy": 410,
+            "size": 150
+          },
+          "anchor": {
+            "x": 625,
+            "y": 410
+          }
+        }
+      ]
+    },
+    {
+      "page": 6,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Хацрын сүүдэр",
+          "text": "Хэт өргөн, бараан",
+          "side": "L",
+          "zoom": {
+            "cx": 400,
+            "cy": 465,
+            "size": 170
+          },
+          "anchor": {
+            "x": 400,
+            "y": 465
+          }
+        },
+        {
+          "title": "Хацрын сүүдэр",
+          "text": "Хэт өргөн, бараан",
+          "side": "R",
+          "zoom": {
+            "cx": 645,
+            "cy": 465,
+            "size": 170
+          },
+          "anchor": {
+            "x": 645,
+            "y": 465
+          }
+        },
+        {
+          "title": "Уруул",
+          "text": "Бараан улаан",
+          "side": "R",
+          "zoom": {
+            "cx": 520,
+            "cy": 530,
+            "size": 170
+          },
+          "anchor": {
+            "x": 520,
+            "y": 530
+          }
+        }
+      ]
+    },
+    {
+      "page": 7,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Нүд",
+          "text": "Зузаан хар хүрээ",
+          "side": "L",
+          "zoom": {
+            "cx": 430,
+            "cy": 360,
+            "size": 170
+          },
+          "anchor": {
+            "x": 430,
+            "y": 360
+          }
+        },
+        {
+          "title": "Уруул",
+          "text": "Бараан улаан",
+          "side": "R",
+          "zoom": {
+            "cx": 520,
+            "cy": 530,
+            "size": 170
+          },
+          "anchor": {
+            "x": 520,
+            "y": 530
+          }
+        }
+      ]
+    },
+    {
+      "page": 8,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Нүдний шил",
+          "text": "Булан нь дугуйрсан дөрвөлжин",
+          "side": "R",
+          "zoom": {
+            "cx": 510,
+            "cy": 295,
+            "size": 340
+          },
+          "anchor": {
+            "x": 600,
+            "y": 295
+          }
+        }
+      ]
+    },
+    {
+      "page": 9,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Нүдний шил",
+          "text": "Мөнгөлөг, зууван хүрээ",
+          "side": "R",
+          "zoom": {
+            "cx": 510,
+            "cy": 385,
+            "size": 460
+          },
+          "anchor": {
+            "x": 625,
+            "y": 385
+          }
+        }
+      ]
+    },
+    {
+      "page": 10,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Нүдний шил",
+          "text": "Хацраас давсан том хүрээ",
+          "side": "R",
+          "zoom": {
+            "cx": 495,
+            "cy": 375,
+            "size": 480
+          },
+          "anchor": {
+            "x": 610,
+            "y": 375
+          }
+        }
+      ]
+    },
+    {
+      "page": 11,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Ээмэг",
+          "text": "Дунд хэмжээтэй",
+          "side": "L",
+          "zoom": {
+            "cx": 332,
+            "cy": 430,
+            "size": 120
+          },
+          "anchor": {
+            "x": 332,
+            "y": 430
+          }
+        },
+        {
+          "title": "Ээмэг",
+          "text": "Хоёр талд ижил",
+          "side": "R",
+          "zoom": {
+            "cx": 662,
+            "cy": 430,
+            "size": 120
+          },
+          "anchor": {
+            "x": 662,
+            "y": 430
+          }
+        }
+      ]
+    },
+    {
+      "page": 12,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Ээмэг",
+          "text": "Зурагт: нарийн, зөв хэмжээ",
+          "side": "L",
+          "zoom": {
+            "cx": 332,
+            "cy": 430,
+            "size": 120
+          },
+          "anchor": {
+            "x": 332,
+            "y": 430
+          }
+        },
+        {
+          "title": "Ээмэг",
+          "text": "Өргөн ээмгээс зайлсхий",
+          "side": "R",
+          "zoom": {
+            "cx": 662,
+            "cy": 430,
+            "size": 120
+          },
+          "anchor": {
+            "x": 662,
+            "y": 430
+          }
+        }
+      ]
+    },
+    {
+      "page": 13,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Зүүлт",
+          "text": "Эгэмний доорх ганц унжлага",
+          "side": "R",
+          "zoom": {
+            "cx": 500,
+            "cy": 630,
+            "size": 230
+          },
+          "anchor": {
+            "x": 500,
+            "y": 678
+          }
+        }
+      ]
+    },
+    {
+      "page": 14,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Зүүлт",
+          "text": "Хэт жижиг унжлага",
+          "side": "R",
+          "zoom": {
+            "cx": 500,
+            "cy": 630,
+            "size": 230
+          },
+          "anchor": {
+            "x": 500,
+            "y": 678
+          }
+        }
+      ]
+    },
+    {
+      "page": 15,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Үсний хавчаар",
+          "text": "Ганц жижиг гоёл",
+          "side": "L",
+          "zoom": {
+            "cx": 353,
+            "cy": 193,
+            "size": 130
+          },
+          "anchor": {
+            "x": 353,
+            "y": 193
+          }
+        }
+      ]
+    },
+    {
+      "page": 16,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Үсний хавчаар",
+          "text": "Ганцаар нь зүүхэд хангалттай",
+          "side": "L",
+          "zoom": {
+            "cx": 353,
+            "cy": 193,
+            "size": 130
+          },
+          "anchor": {
+            "x": 353,
+            "y": 193
+          }
+        }
+      ]
+    },
+    {
+      "page": 17,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Үс",
+          "text": "Богино, хөвсгөр засалт",
+          "side": "L",
+          "zoom": {
+            "cx": 320,
+            "cy": 390,
+            "size": 300
+          },
+          "anchor": {
+            "x": 290,
+            "y": 420
+          }
+        }
+      ]
+    },
+    {
+      "page": 18,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Үс",
+          "text": "Мөр хүртэл, задгай",
+          "side": "L",
+          "zoom": {
+            "cx": 310,
+            "cy": 570,
+            "size": 300
+          },
+          "anchor": {
+            "x": 300,
+            "y": 590
+          }
+        }
+      ]
+    },
+    {
+      "page": 19,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Үс",
+          "text": "Урт, шулуун",
+          "side": "L",
+          "zoom": {
+            "cx": 300,
+            "cy": 700,
+            "size": 340
+          },
+          "anchor": {
+            "x": 290,
+            "y": 700
+          }
+        }
+      ]
+    },
+    {
+      "page": 20,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Үсний тал",
+          "text": "Нүүрний хажууг хааж байна",
+          "side": "L",
+          "zoom": {
+            "cx": 345,
+            "cy": 390,
+            "size": 260
+          },
+          "anchor": {
+            "x": 335,
+            "y": 390
+          }
+        },
+        {
+          "title": "Үсний тал",
+          "text": "Чихний ард хийж болно",
+          "side": "R",
+          "zoom": {
+            "cx": 675,
+            "cy": 390,
+            "size": 260
+          },
+          "anchor": {
+            "x": 685,
+            "y": 390
+          }
+        }
+      ]
+    },
+    {
+      "page": 21,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Малгай",
+          "text": "Цайвар сүлжмэл",
+          "side": "R",
+          "zoom": {
+            "cx": 515,
+            "cy": 200,
+            "size": 480
+          },
+          "anchor": {
+            "x": 690,
+            "y": 200
+          }
+        }
+      ]
+    },
+    {
+      "page": 22,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Малгай",
+          "text": "Хүрээ нь нүдийг халхалсан",
+          "side": "R",
+          "zoom": {
+            "cx": 505,
+            "cy": 250,
+            "size": 460
+          },
+          "anchor": {
+            "x": 660,
+            "y": 335
+          }
+        }
+      ]
+    },
+    {
+      "page": 23,
+      "kind": "change",
+      "callouts": [
+        {
+          "title": "Малгай",
+          "text": "Сул суулттай сүлжмэл",
+          "side": "R",
+          "zoom": {
+            "cx": 515,
+            "cy": 200,
+            "size": 480
+          },
+          "anchor": {
+            "x": 690,
+            "y": 200
+          }
+        }
+      ]
+    },
+    {
+      "page": 24,
+      "kind": "base",
+      "callouts": [
+        {
+          "title": "Ээмэг",
+          "text": "Ганц онцлох гоёл",
+          "side": "L",
+          "zoom": {
+            "cx": 345,
+            "cy": 362,
+            "size": 130
+          },
+          "anchor": {
+            "x": 345,
+            "y": 362
+          }
+        },
+        {
+          "title": "Ээмэг",
+          "text": "Хоёр талд ижил",
+          "side": "R",
+          "zoom": {
+            "cx": 680,
+            "cy": 362,
+            "size": 130
+          },
+          "anchor": {
+            "x": 680,
+            "y": 362
+          }
+        }
+      ]
+    },
+    {
+      "page": 25,
+      "kind": "base",
+      "callouts": []
+    }
+  ]
+}

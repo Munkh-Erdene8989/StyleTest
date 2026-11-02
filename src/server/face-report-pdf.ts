@@ -6,10 +6,13 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { PDFDocument } from "pdf-lib";
 import type { AiQuizBrief, AiQuizDetail, AiQuizKind, AiQuizRecord, AiQuizSection } from "@/domain/ai-quiz";
-import { scoreAiQuiz } from "@/domain/ai-quiz-score";
+import { labelQuizAnswers } from "@/domain/ai-quiz-score";
 import { imageFormatOk } from "@/domain/images";
 import { bodyQuizBank, loadArchetypeBank } from "./ai-quiz-banks";
-import { developerPrompt, MANIFESTS, SECTION_LABEL, userMessage, type ReportLayout } from "./report-prompts";
+import { analyzeReferencePhoto } from "./photo-analysis";
+import { renderImage, responsesJson } from "./model-transport";
+import { calloutAnchor, reportCss, reportDesign, stackCalloutYs } from "./report-design";
+import { developerPrompt, imageJobsFor, imagePrompt, landmarksFor, MANIFESTS, SECTION_LABEL, userMessage } from "./report-prompts";
 import { getStore } from "./store";
 
 const execFileAsync = promisify(execFile);
@@ -19,24 +22,30 @@ const LOGO_SRC = `data:image/jpeg;base64,${readFileSync(path.join(process.cwd(),
 export const FACE_MANIFEST = MANIFESTS.face_beauty;
 
 export type FaceRecommendation = { action_mn: string; why_mn: string };
+export type FaceCallout = { title: string; text: string; side: "L" | "R"; cx: number; cy: number; size: number };
 export type FacePageCopy = {
   page_number: number;
   intro_mn: string;
-  notes_mn: string;
   recommendations: FaceRecommendation[];
+  callouts?: FaceCallout[];
 };
-export type FacePaletteColor = { id: string; name_mn: string; hex: string; role: "neutral" | "accent" | "makeup" };
 export type FaceDraft = {
   reportId: string;
   briefSections: AiQuizSection[];
-  palette: FacePaletteColor[];
   images: Record<number, string>;
+  captions: Record<number, string>;
   pages: FacePageCopy[];
   hasReference?: boolean;
+  notice?: string;
 };
+export type QuizReportFile = { pdf: Buffer; brief: AiQuizBrief; detail: AiQuizDetail };
 
 export function reportObjectKey(quizId: string, kind: AiQuizKind = "face_beauty", withPhoto = false) {
-  return `reports/${quizId}/${kind}${withPhoto ? "-photo" : ""}-v4.pdf`;
+  return `reports/${quizId}/${kind}${withPhoto ? "-photo" : ""}-v8.pdf`;
+}
+
+function metaKey(pdfKey: string) {
+  return pdfKey.replace(/\.pdf$/, ".json");
 }
 
 export async function ensureFaceReportPdf(quiz: AiQuizRecord) {
@@ -44,55 +53,94 @@ export async function ensureFaceReportPdf(quiz: AiQuizRecord) {
   return ensureQuizReportPdf(quiz);
 }
 
-export async function ensureQuizReportPdf(quiz: AiQuizRecord, options?: { referencePhoto?: Buffer }) {
+async function cachedPdf(key: string) {
+  const cached = await getStore().getObject(key);
+  if (!cached) return null;
+  try {
+    return await assertLandscapePdf(cached.bytes);
+  } catch {
+    return null;
+  }
+}
+
+async function cachedReport(key: string): Promise<QuizReportFile | null> {
+  const pdf = await cachedPdf(key);
+  if (!pdf) return null;
+  const meta = await getStore().getObject(metaKey(key));
+  if (!meta) return null;
+  try {
+    const parsed = JSON.parse(meta.bytes.toString("utf8")) as { brief?: AiQuizBrief; detail?: AiQuizDetail };
+    if (!parsed.brief?.sections?.length || !parsed.detail?.summary) return null;
+    return { pdf, brief: parsed.brief, detail: parsed.detail };
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureQuizReportPdf(quiz: AiQuizRecord, options?: { referencePhoto?: Buffer; mime?: string }): Promise<QuizReportFile> {
   const store = getStore();
   const referencePhoto = options?.referencePhoto?.length ? options.referencePhoto : undefined;
-  const key = reportObjectKey(quiz.id, quiz.kind, Boolean(referencePhoto));
-  const cached = await store.getObject(key);
-  if (cached) {
-    try {
-      return await assertLandscapePdf(cached.bytes);
-    } catch {
-      // A stored file that is not 25 landscape pages is rebuilt once.
-    }
+  const canPersonal = Boolean(referencePhoto) && quiz.kind !== "archetype";
+  const plainKey = reportObjectKey(quiz.id, quiz.kind, false);
+  if (!canPersonal) {
+    const ready = await cachedReport(plainKey);
+    if (ready) return ready;
+  } else {
+    const ready = await cachedReport(reportObjectKey(quiz.id, quiz.kind, true));
+    if (ready) return ready;
   }
-  const scored = scoreAiQuiz(quiz.kind, quiz.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
+  const gate = await photoGate(quiz.kind, referencePhoto, options?.mime);
+  if (!gate.personal) {
+    const ready = await cachedReport(plainKey);
+    if (ready) return ready;
+  }
+  const key = reportObjectKey(quiz.id, quiz.kind, gate.personal);
   const draft = await draftQuizReport({
     kind: quiz.kind,
     reportId: quiz.id,
-    brief: quiz.brief ?? scored.brief,
-    detail: quiz.detail,
-    evidence: scored.labels,
-    referencePhoto,
+    answers: labelQuizAnswers(quiz.kind, quiz.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() }),
+    referencePhoto: gate.personal ? referencePhoto : undefined,
+    mime: options?.mime,
+    notice: gate.notice,
   });
+  const copy = reportCopy(quiz.kind, draft);
   const pdf = await assertLandscapePdf(await printHtmlToPdf(renderQuizReportHtml(draft, quiz.kind)));
   await store.putObject(key, pdf, "application/pdf");
-  return pdf;
+  await store.putObject(metaKey(key), Buffer.from(JSON.stringify(copy)), "application/json");
+  return { pdf, ...copy };
+}
+
+export function reportCopy(kind: AiQuizKind, draft: FaceDraft): { brief: AiQuizBrief; detail: AiQuizDetail } {
+  const manifest = MANIFESTS[kind];
+  const sections = draft.pages.slice(0, 3).map((page, index) => ({
+    heading: manifest[index]?.title ?? `Хуудас ${page.page_number}`,
+    body: page.intro_mn,
+  }));
+  return {
+    brief: { title: SECTION_LABEL[kind], status: "ready", sections: sections.slice(0, 1) },
+    detail: { summary: draft.pages[0]?.intro_mn ?? "", sections },
+  };
 }
 
 export async function draftQuizReport(input: {
   kind: AiQuizKind;
   reportId: string;
-  brief: AiQuizBrief | null;
-  detail: AiQuizDetail | null;
-  evidence: { question: string; answer: string }[];
+  answers: { question: string; answer: string }[];
   referencePhoto?: Buffer;
+  mime?: string;
+  notice?: string;
 }): Promise<FaceDraft> {
   if (!process.env.OPENAI_API_KEY) throw new Error("openai_unconfigured");
   const manifest = MANIFESTS[input.kind];
   const hasReference = Boolean(input.referencePhoto?.length);
-  const evidence = input.evidence.slice(0, 40).map((item) => ({ question: item.question, answer: item.answer }));
   const context = {
     quiz_type: input.kind,
     personal_visuals_mode: hasReference ? "reference_photo" : "inspiration_only",
-    brief: input.brief,
-    detail: input.detail ? { summary: input.detail.summary, sections: input.detail.sections } : null,
-    evidence,
+    answers: input.answers.slice(0, 120),
     limitation: hasReference
-      ? "Хэрэглэгч нэг нүүрний зураг оруулсан. Жишээ зургийг тэр зурган дээр үндэслэнэ. Өрөөнд байсан бусад хүнийг бүү оруул."
-      : "Хэрэглэгчийн зураг байхгүй. Жишээ зургийг насанд хүрсэн маникен дээр харуулна. Хэрэглэгчийн хөрөг биш.",
+      ? "Баталсан эх зураг байна. Зураг зөвхөн харагдах жишээ. Хариултыг зургаар үгүйсгэхгүй."
+      : "Хэрэглэгчийн зураг ашиглахгүй. Жишээ зургийг насанд хүрсэн маникен эсвэл хүнгүй эд зүйл дээр харуулна.",
   };
-  const palette = await withRetry(() => paletteCall(input.kind, context));
   const byNumber = new Map<number, FacePageCopy>();
   let empty = 0;
   for (let attempt = 0; attempt < 8 && byNumber.size < 25; attempt += 1) {
@@ -106,19 +154,41 @@ export async function draftQuizReport(input: {
   if (missing.length) throw new Error(`pages_incomplete:${missing.join(",")}`);
   const pages = manifest.map((item) => byNumber.get(item.page)!);
   const images: Record<number, string> = {};
-  await pool(manifest, 1, async (item) => {
-    const copy = pages.find((page) => page.page_number === item.page);
-    const size = input.kind === "body_shape" ? "1024x1536" : "1024x1024";
-    images[item.page] = await exampleImage(examplePrompt(input.kind, item.title, item.objective, copy?.recommendations[0]?.action_mn, hasReference), input.referencePhoto, size);
+  const captions: Record<number, string> = {};
+  const jobs = imageJobsFor(input.kind);
+  await pool(jobs, 1, async (job) => {
+    const personal = hasReference && job.role !== "none";
+    const size = job.kind === "outfit" ? "1024x1536" : "1024x1024";
+    try {
+      const image = await exampleImage(imagePrompt(job, personal), personal ? input.referencePhoto : undefined, size, input.mime);
+      for (const page of job.pages) {
+        images[page] = image;
+        captions[page] = "";
+      }
+    } catch (error) {
+      console.error("report_image_skipped", job.id, error instanceof Error ? error.message.slice(0, 120) : "unknown");
+    }
   });
+  const copy = reportCopy(input.kind, { reportId: input.reportId, briefSections: [], images, captions, pages, hasReference, notice: input.notice });
   return {
     reportId: input.reportId,
-    briefSections: input.brief?.sections ?? [],
-    palette,
+    briefSections: copy.brief.sections,
     images,
+    captions,
     pages,
     hasReference,
+    notice: input.notice,
   };
+}
+
+async function photoGate(kind: AiQuizKind, photo: Buffer | undefined, mime?: string) {
+  if (!photo?.length || kind === "archetype") return { personal: false, notice: undefined as string | undefined };
+  const role = kind === "face_beauty" ? "face_front" : "body_front";
+  const analysis = await analyzeReferencePhoto({ bytes: photo, mime: mime || "image/jpeg", role });
+  if (!analysis || analysis.status !== "ready") {
+    return { personal: false, notice: "Оруулсан зураг хангалтгүй тул жишээ нь маникен дээр." };
+  }
+  return { personal: true, notice: undefined as string | undefined };
 }
 
 export function renderFaceReportHtml(draft: FaceDraft) {
@@ -131,51 +201,26 @@ export function renderQuizReportHtml(draft: FaceDraft, kind: AiQuizKind) {
   const numbers = draft.pages.map((page) => page.page_number);
   if (numbers.join() !== manifest.map((item) => item.page).join()) throw new Error("pages_incomplete");
   const shortId = draft.reportId.replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase();
+  const thumbLabel = reportDesign().thumbnail.label;
   const pages = manifest.map((item, index) => {
     const copy = draft.pages[index];
-    const figure = draft.images[item.page]
-      ? `<figure><img class="still" alt="${draft.hasReference ? "Оруулсан зураг дээрх жишээ" : "Маникен дээрх жишээ"}" src="${draft.images[item.page]}"><figcaption>${draft.hasReference ? "Оруулсан зураг дээр үндэслэсэн жишээ." : "Жишээ зураг · маникен. Хэрэглэгчийн зураг биш."}</figcaption></figure>`
+    const src = draft.images[item.page];
+    const figure = src
+      ? `<figure class="hero"><img alt="" src="${src}"></figure>${calloutHtml(copy.callouts ?? [], src)}${item.kind === "change" && draft.images[1] ? `<figure class="thumb"><img alt="" src="${draft.images[1]}"><figcaption>${esc(thumbLabel)}</figcaption></figure>` : ""}`
       : "";
-    const body = figure
-      ? `<div class="split">${figure}<div class="copy">${layoutHtml(item.layout, item.page, copy, draft)}</div></div>`
-      : layoutHtml(item.layout, item.page, copy, draft);
-    return `<section class="report-page">
-      <header class="mast"><img class="logo" alt="Naruka Styling Studio" src="${LOGO_SRC}"><div><p>Naruka</p><h1>${esc(item.title)}</h1></div></header>
-      ${body}
+    const notice = item.page === 1 && draft.notice ? `<p class="notice">${esc(draft.notice)}</p>` : "";
+    return `<section class="report-page frame-${item.kind}">
+      <header class="mast"><img class="logo" alt="Naruka Styling Studio" src="${LOGO_SRC}"><h1>${esc(item.title)}</h1></header>
+      ${figure}
+      ${notice}
+      ${copyHtml(copy)}
       <footer><span>${esc(shortId)}</span><span>${esc(SECTION_LABEL[kind])}</span><span>${item.page}/25</span></footer>
     </section>`;
   }).join("");
   return `<!doctype html><html lang="mn"><head><meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Noto+Serif:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans:wght@400;600&family=Noto+Serif:wght@600&display=swap">
 <style>
-@page { size: A4 landscape; margin: 0; }
-html, body { margin: 0; padding: 0; background: #FAF7F2; color: #29272A; }
-.report-page { width: 297mm; height: 210mm; padding: 11mm 14mm 13mm 16mm; box-sizing: border-box; break-after: page; break-inside: avoid; page-break-inside: avoid; position: relative; overflow: hidden; background: #F7F3ED; }
-.report-page::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3.2mm; background: #1C1A1B; }
-.report-page:last-child { break-after: auto; }
-.mast { display: flex; align-items: flex-end; gap: 5mm; margin: 0 0 3.5mm; padding-bottom: 2mm; border-bottom: 0.35mm solid #1C1A1B; }
-.logo { height: 13mm; width: auto; }
-header p { display: none; }
-h1 { margin: 0; font: 600 17pt/1.15 "Noto Serif", serif; letter-spacing: -0.01em; }
-.split { display: grid; grid-template-columns: 86mm 1fr; gap: 6mm; align-items: start; }
-figure { margin: 0; }
-figcaption { margin-top: 1.5mm; font: 8.5pt/1.35 "Noto Sans", sans-serif; color: #6B625C; }
-.intro { margin: 0 0 3.5mm; font: 12pt/1.45 "Noto Serif", serif; }
-.note { margin: 3mm 0 0; font: 9pt/1.35 "Noto Sans", sans-serif; color: #6D2438; }
-.cards { display: flex; flex-direction: column; gap: 2.6mm; }
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
-.compare-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
-.compare-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3.5mm; }
-.card { border-left: 0.45mm solid #6D2438; padding: 0.4mm 0 0.4mm 3mm; }
-.card strong { display: block; margin-bottom: 0.6mm; font: 600 11pt/1.3 "Noto Serif", serif; }
-.card span, .swatch span { display: block; font: 10pt/1.35 "Noto Sans", sans-serif; }
-.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2.5mm; }
-.swatch { background: white; padding: 2mm; }
-.swatch strong { display: block; margin-bottom: 0.4mm; font: 600 8.5pt "Noto Sans", sans-serif; }
-.chip { height: 14mm; }
-.still { width: 86mm; height: 124mm; object-fit: cover; object-position: center 18%; background: #EFEAE3; }
-footer { position: absolute; left: 16mm; right: 14mm; bottom: 6mm; display: flex; justify-content: space-between; border-top: 0.2mm solid #DDD4C8; padding-top: 1.6mm; font: 8.5pt "Noto Sans", sans-serif; color: #6B625C; }
-* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+${reportCss()}
 </style></head><body>${pages}</body></html>`;
 }
 
@@ -211,42 +256,27 @@ export async function assertLandscapePdf(bytes: Buffer) {
   return bytes;
 }
 
-function layoutHtml(layout: ReportLayout, page: number, copy: FacePageCopy, draft: FaceDraft) {
-  const intro = `<p class="intro">${esc(clip(copy.intro_mn, 520))}</p>`;
-  const note = `<p class="note">${esc(clip(copy.notes_mn || (draft.hasReference ? "Жишээ зураг оруулсан зураг дээр үндэслэсэн." : "Жишээ зураг нь маникен дээрх загвар. Хэрэглэгчийн зураг биш."), 220))}</p>`;
-  if (layout === "cover") {
-    return `${intro}${cards(copy.recommendations)}${note}`;
-  }
-  if (layout === "dashboard") {
-    const metrics = draft.briefSections.slice(0, 4);
-    const body = metrics.length
-      ? `<div class="cards">${metrics.map((item) => `<article class="card"><strong>${esc(item.heading)}</strong><span>${esc(clip(item.body, 180))}</span></article>`).join("")}</div>`
-      : cards(copy.recommendations);
-    return `${intro}${body}${note}`;
-  }
-  if (layout === "palette") {
-    return `${intro}<div class="swatches">${draft.palette.map((color) => `<article class="swatch"><div class="chip" style="background:${esc(color.hex)}"></div><strong>${esc(color.name_mn)}</strong><span>${esc(color.hex)} · ${esc(color.role)}</span></article>`).join("")}</div><p class="note">HEX нь дизайн лавлагаа. Будгийн бодит өнгө биш.</p>`;
-  }
-  if (layout === "compare_two") return `${intro}<div class="compare-2">${pair(copy)}</div>${note}`;
-  if (layout === "compare_three") return `${intro}<div class="compare-3">${copy.recommendations.slice(0, 3).map(card).join("")}</div>${note}`;
-  if (layout === "detail_steps" || layout === "action_plan") return `${intro}<div class="steps">${copy.recommendations.slice(0, 3).map(card).join("")}</div>${note}`;
-  if (layout === "grid" || layout === "table" || layout === "capsule") {
-    return `${intro}${cards(copy.recommendations)}${note}`;
-  }
-  return `${intro}${cards(copy.recommendations)}${note}`;
+function calloutHtml(callouts: FaceCallout[], src: string) {
+  const sourcePx = reportDesign().photo.source_px;
+  const placed = [...stackSide(callouts.filter((item) => item.side === "L")), ...stackSide(callouts.filter((item) => item.side === "R"))];
+  return placed.map(({ item, y }) => {
+    const box = calloutAnchor(item.side);
+    const scale = Math.round((sourcePx / item.size) * 100);
+    const px = Math.round((item.cx / sourcePx) * 1000) / 10;
+    const py = Math.round((item.cy / sourcePx) * 1000) / 10;
+    return `<div class="callout ${item.side}" style="left:${box.left.toFixed(2)}mm;top:${(y - box.radius).toFixed(2)}mm"><div class="zoom" style="background-image:url('${src}');background-position:${px}% ${py}%;background-size:${scale}%"></div><i class="leader"></i><p class="cap"><strong>${esc(item.title)}</strong><span>${esc(item.text)}</span></p></div>`;
+  }).join("");
 }
 
-function cards(items: FaceRecommendation[]) {
-  return `<div class="cards">${items.slice(0, 3).map(card).join("")}</div>`;
+function stackSide(items: FaceCallout[]) {
+  const ordered = [...items].sort((a, b) => a.cy - b.cy).slice(0, 3);
+  const ys = stackCalloutYs(ordered.map((item) => item.cy));
+  return ordered.map((item, index) => ({ item, y: ys[index] ?? 0 }));
 }
 
-function pair(copy: FacePageCopy) {
-  const items = copy.recommendations.slice(0, 2);
-  return items.map(card).join("");
-}
-
-function card(item: FaceRecommendation) {
-  return `<article class="card"><strong>${esc(clip(item.action_mn, 140))}</strong><span>${esc(clip(item.why_mn, 220))}</span></article>`;
+function copyHtml(copy: FacePageCopy) {
+  const step = copy.recommendations[0];
+  return `<p class="lead">${esc(clip(copy.intro_mn, 90))}</p>${step ? `<p class="step">${esc(clip(step.action_mn, 70))}</p>` : ""}`;
 }
 
 function clip(text: string, max: number) {
@@ -264,90 +294,40 @@ function esc(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
 }
 
-async function paletteCall(kind: AiQuizKind, context: unknown) {
-  const json = await completeJson(kind, "report_palette", {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      colors: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            id: { type: "string" },
-            name_mn: { type: "string" },
-            hex: { type: "string" },
-            role: { type: "string", enum: ["neutral", "accent", "makeup"] },
-          },
-          required: ["id", "name_mn", "hex", "role"],
-        },
-      },
-    },
-    required: ["colors"],
-  }, userMessage({ ...((context as object) ?? {}), task: "12 өнгө: neutral 4, accent 4, makeup 4. HEX нь #RRGGBB. Дизайн лавлагаа, будгийн баталгаа биш." }, MANIFESTS[kind].filter((item) => item.layout === "palette")));
-  return asPalette(json);
-}
-
 async function pageCall(kind: AiQuizKind, context: unknown, expected: number[]) {
   const manifest = MANIFESTS[kind].filter((item) => expected.includes(item.page));
-  const json = await completeJson(kind, "report_pages", {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      pages: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            page_number: { type: "integer" },
-            intro_mn: { type: "string" },
-            notes_mn: { type: "string" },
-            recommendations: {
-              type: "array",
-              minItems: 2,
-              maxItems: 3,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: { action_mn: { type: "string" }, why_mn: { type: "string" } },
-                required: ["action_mn", "why_mn"],
-              },
-            },
-          },
-          required: ["page_number", "intro_mn", "notes_mn", "recommendations"],
-        },
-      },
-    },
-    required: ["pages"],
-  }, userMessage(context, manifest));
-  return asPages(json);
+  const json = await completeJson(kind, userMessage(context, manifest));
+  return asPages(kind, json);
 }
 
-function paletteRole(value: unknown): FacePaletteColor["role"] | null {
-  if (value === "neutral" || value === "accent" || value === "makeup") return value;
-  return null;
-}
-
-function asPalette(value: unknown): FacePaletteColor[] {
-  const colors = Array.isArray((value as { colors?: unknown })?.colors) ? (value as { colors: unknown[] }).colors : [];
-  const parsed = colors.flatMap((item): FacePaletteColor[] => {
-    if (!item || typeof item !== "object") return [];
-    const row = item as Record<string, unknown>;
-    const role = paletteRole(row.role);
-    const hex = typeof row.hex === "string" ? row.hex.trim() : "";
-    const name_mn = typeof row.name_mn === "string" ? row.name_mn.trim() : "";
-    const id = typeof row.id === "string" ? row.id.trim() : "";
-    if (!role || !name_mn || !id || !/^#[0-9A-Fa-f]{6}$/.test(hex)) return [];
-    return [{ id, name_mn, hex, role }];
+function asCalloutWords(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const title = textField(entry, "title");
+    const text = textField(entry, "text");
+    if (!title || !text) return [];
+    return [{ title, text }];
   });
-  const picked = (["neutral", "accent", "makeup"] as const).flatMap((role) => parsed.filter((color) => color.role === role).slice(0, 4));
-  if (picked.length !== 12) throw new Error("palette_incomplete");
-  return picked;
 }
 
-function asPages(value: unknown) {
+function placeCallouts(value: unknown, kind: AiQuizKind, page: number): FaceCallout[] {
+  const landmarks = landmarksFor(kind, page);
+  const placed = asCalloutWords(value).slice(0, landmarks.length).flatMap((word, index): FaceCallout[] => {
+    const mark = landmarks[index];
+    const title = words(word.title, 2);
+    const text = words(word.text, 5);
+    if (!mark || !title || !text) return [];
+    return [{ title, text, side: mark.side, cx: mark.cx, cy: mark.cy, size: mark.size }];
+  });
+  return [...placed.filter((item) => item.side === "L").slice(0, 3), ...placed.filter((item) => item.side === "R").slice(0, 3)];
+}
+
+function words(text: string, max: number) {
+  return text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean).slice(0, max).join(" ");
+}
+
+function asPages(kind: AiQuizKind, value: unknown) {
   const pages = Array.isArray((value as { pages?: unknown })?.pages) ? (value as { pages: unknown[] }).pages : [];
   const byNumber = new Map<number, FacePageCopy>();
   for (const item of pages) {
@@ -355,32 +335,19 @@ function asPages(value: unknown) {
     const row = item as Record<string, unknown>;
     const page_number = Number(row.page_number);
     const intro_mn = typeof row.intro_mn === "string" ? row.intro_mn.trim() : "";
-    const notes_mn = typeof row.notes_mn === "string" ? row.notes_mn.trim() : "";
     const recommendations = Array.isArray(row.recommendations)
       ? row.recommendations.flatMap((entry) => {
           if (!entry || typeof entry !== "object") return [];
-          const action_mn = textField(entry, "action_mn") || textField(entry, "what_mn");
-          const why_mn = textField(entry, "why_mn") || textField(entry, "how_mn");
+          const action_mn = textField(entry, "action_mn");
+          const why_mn = textField(entry, "why_mn");
           if (!action_mn || !why_mn) return [];
           return [{ action_mn, why_mn }];
-        }).slice(0, 3)
+        }).slice(0, 1)
       : [];
     if (page_number < 1 || page_number > 25 || intro_mn.length < 2 || recommendations.length < 1) continue;
-    byNumber.set(page_number, { page_number, intro_mn, notes_mn, recommendations });
+    byNumber.set(page_number, { page_number, intro_mn, recommendations, callouts: placeCallouts(row.callouts, kind, page_number) });
   }
   return [...byNumber.values()];
-}
-
-function examplePrompt(kind: AiQuizKind, title: string, objective: string, action?: string, hasReference = false) {
-  const idea = [title, objective, action].filter(Boolean).join(". ");
-  if (hasReference) {
-    const framing = kind === "face_beauty"
-      ? "Keep a head-and-shoulders view."
-      : "Keep the full body in frame from head to feet. Preserve body proportions. Do not slim, lengthen, or reshape the body. Show the outfit modest and fully clothed.";
-    return `Edit the uploaded photo for a styling example. Keep the adult who is facing the camera: same face, age, and identity. Remove the room and every other person. Use a cream studio background and soft daylight. ${framing} Modest everyday clothing. Demonstrate: ${idea}. No text, no letters, no logo, no watermark.`;
-  }
-  const framing = kind === "face_beauty" ? "head-and-shoulders adult fashion mannequin" : "full-body adult fashion mannequin";
-  return `Studio photograph of one ${framing} with a stylized adult Mongolian appearance, modest everyday clothing, cream background, soft daylight. Demonstrate this styling idea: ${idea}. No text, no letters, no logo, no watermark. This is a mannequin example, not a real customer.`;
 }
 
 async function pool<T>(items: T[], limit: number, run: (item: T) => Promise<void>) {
@@ -393,114 +360,73 @@ async function pool<T>(items: T[], limit: number, run: (item: T) => Promise<void
   }));
 }
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function exampleImage(prompt: string, reference?: Buffer, size = "1024x1024") {
+async function exampleImage(prompt: string, reference?: Buffer, size = "1024x1024", mime = "image/jpeg") {
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
-  let last = "image_failed";
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const response = reference?.length
-      ? await fetch("https://api.openai.com/v1/images/edits", {
-          method: "POST",
-          signal: AbortSignal.timeout(180_000),
-          headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}` },
-          body: editForm(model, prompt, reference, size),
-        })
-      : await fetch("https://api.openai.com/v1/images/generations", {
-          method: "POST",
-          signal: AbortSignal.timeout(180_000),
-          headers: {
-            authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            prompt,
-            size,
-            quality: "medium",
-            n: 1,
-            output_format: "jpeg",
-          }),
-        });
-    if (response.status === 429) {
-      const retryAfter = Number(response.headers.get("retry-after"));
-      const waitSec = Math.min(45, Math.max(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 0, 10 * (attempt + 1)));
-      await delay(waitSec * 1000);
-      last = "image_http_429";
-      continue;
-    }
-    if (!response.ok) {
-      const detail = (await response.text()).replace(/\s+/g, " ").slice(0, 160);
-      last = `image_http_${response.status}:${detail}`;
-      await delay(2000);
-      continue;
-    }
-    const json = (await response.json()) as { data?: { b64_json?: string }[] };
-    const data = json.data?.[0]?.b64_json;
-    if (!data) {
-      last = "image_empty";
-      continue;
-    }
-    const bytes = Buffer.from(data, "base64");
-    const contentType = imageFormatOk(bytes, "image/jpeg") ? "image/jpeg" : imageFormatOk(bytes, "image/png") ? "image/png" : "";
-    if (!contentType) {
-      last = "image_invalid";
-      continue;
-    }
-    return `data:${contentType};base64,${data}`;
-  }
-  throw new Error(last);
-}
-
-function editForm(model: string, prompt: string, reference: Buffer, size: string) {
-  const form = new FormData();
-  form.append("model", model);
-  form.append("prompt", prompt);
-  form.append("size", size);
-  form.append("quality", "medium");
-  form.append("n", "1");
-  form.append("output_format", "jpeg");
-  form.append("image[]", new Blob([new Uint8Array(reference)], { type: "image/jpeg" }), "face.jpg");
-  return form;
-}
-
-async function completeJson(kind: AiQuizKind, name: string, schema: object, user: string) {
-  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-astra";
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    signal: AbortSignal.timeout(180_000),
-    headers: {
-      authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      reasoning: { effort: "low" },
-      max_output_tokens: 12000,
-      input: [
-        { role: "developer", content: name === "report_pages"
-          ? `${developerPrompt(kind)}\n\nСЕРВЕРИЙН ШИЙДВЭР: computed_result хангалттай. needs_input болон pages=[] бүү буцаа. PAGE_MANIFEST-ийн хуудас бүрийг стилист хүнд шууд хандаж, ойлгомжтой монголоор бөглө.`
-          : developerPrompt(kind) },
-        { role: "user", content: user },
-      ],
-      text: { format: { type: "json_schema", name, strict: true, schema } },
-    }),
+  const image = await renderImage({
+    model,
+    prompt,
+    size,
+    outputFormat: "jpeg",
+    quality: "medium",
+    timeoutMs: 180_000,
+    reference: reference?.length ? { bytes: reference, mime } : undefined,
   });
-  if (!response.ok) {
-    const detail = (await response.text()).replace(/\s+/g, " ").slice(0, 180);
-    throw new Error(`model_http_${response.status}:${detail}`);
-  }
-  const json = (await response.json()) as {
-    status?: string;
-    output_text?: string;
-    output?: { content?: { type?: string; text?: string }[] }[];
-  };
-  if (json.status && json.status !== "completed") throw new Error("incomplete");
-  const refused = json.output?.some((item) => item.content?.some((part) => part.type === "refusal"));
-  if (refused) throw new Error("refused");
-  const text = json.output_text || json.output?.flatMap((item) => item.content ?? []).find((part) => part.type === "output_text")?.text || "";
-  return JSON.parse(text) as unknown;
+  const contentType = imageFormatOk(image.bytes, "image/jpeg") ? "image/jpeg" : imageFormatOk(image.bytes, "image/png") ? "image/png" : "";
+  if (!contentType) throw new Error("image_invalid");
+  return `data:${contentType};base64,${image.base64}`;
+}
+
+async function completeJson(kind: AiQuizKind, user: string) {
+  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
+  const developer = `${developerPrompt(kind)}\n\nСЕРВЕРИЙН ШИЙДВЭР: хуудасны бүтэц түгжээтэй. pages хоосон бүү буцаа. PAGE_MANIFEST-ийн хуудас бүрийг стилист хүнд шууд хандаж, ойлгомжтой монголоор бөглө. Ангиллын код бүү буцаа.`;
+  return responsesJson({
+    model,
+    timeoutMs: 180_000,
+    maxOutputTokens: 12000,
+    reasoningEffort: "low",
+    developer,
+    user,
+    schemaName: "report_pages",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        pages: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              page_number: { type: "integer" },
+              intro_mn: { type: "string" },
+              recommendations: {
+                type: "array",
+                minItems: 1,
+                maxItems: 1,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: { action_mn: { type: "string" }, why_mn: { type: "string" } },
+                  required: ["action_mn", "why_mn"],
+                },
+              },
+              callouts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: { title: { type: "string" }, text: { type: "string" } },
+                  required: ["title", "text"],
+                },
+              },
+            },
+            required: ["page_number", "intro_mn", "recommendations", "callouts"],
+          },
+        },
+      },
+      required: ["pages"],
+    },
+  });
 }
 
 async function withRetry<T>(run: () => Promise<T>) {

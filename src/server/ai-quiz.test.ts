@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { faceQuestions } from "@/content/quizzes/face-beauty";
 import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
 import type { User } from "@/domain/types";
-import { createAiQuizCheckout, readAiQuiz, simulateAiQuiz } from "./ai-quiz-service";
+import { createAiQuizCheckout, readAiQuiz, saveQuizPhoto, simulateAiQuiz } from "./ai-quiz-service";
 import { sendEmail } from "./email";
 import { createInvoice } from "./qpay";
 import { getStore, resetStoreForTests } from "./store";
@@ -12,7 +12,11 @@ vi.mock("./email", () => ({
 }));
 
 vi.mock("./face-report-pdf", () => ({
-  ensureQuizReportPdf: vi.fn(async () => Buffer.from("%PDF-1.4")),
+  ensureQuizReportPdf: vi.fn(async () => ({
+    pdf: Buffer.from("%PDF-1.4"),
+    brief: { title: "Нүүр ба гоо сайхан", status: "ready", sections: [{ heading: "Чиглэл", body: "Нэг өгүүлбэр." }] },
+    detail: { summary: "Нэг өгүүлбэр.", sections: [{ heading: "Чиглэл", body: "Нэг өгүүлбэр." }] },
+  })),
 }));
 
 vi.mock("./qpay", () => ({
@@ -67,11 +71,11 @@ describe("ai quiz checkout", () => {
 
     const paid = await simulateAiQuiz(user, created.id);
     expect(paid.quiz.paymentStatus).toBe("paid");
-    expect(paid.quiz.brief?.sections.length).toBeGreaterThan(0);
     await vi.waitFor(async () => {
       expect((await getStore().getAiQuiz(created.id))?.reportStatus).toBe("sent");
     });
     const stored = await getStore().getAiQuiz(created.id);
+    expect(stored?.brief?.sections.length).toBeGreaterThan(0);
     expect(stored?.detail?.sections.length).toBeGreaterThan(0);
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
       attachments: [expect.objectContaining({ filename: "naruka-face_beauty-report.pdf" })],
@@ -83,6 +87,31 @@ describe("ai quiz checkout", () => {
     expect(again.duplicate).toBe(true);
     expect(createInvoice).toHaveBeenCalledTimes(1);
     expect(sendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a consented quiz photo and rejects one without consent", async () => {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    await expect(saveQuizPhoto(user, { role: "face", bytes: png, contentType: "image/png", consent: false })).rejects.toMatchObject({
+      code: "consent_required",
+    });
+    const photo = await saveQuizPhoto(user, { role: "face", bytes: png, contentType: "image/png", consent: true });
+    const created = await createAiQuizCheckout(user, {
+      kind: "face_beauty",
+      answers: faceAnswers(),
+      email: "saraa@example.com",
+      photoId: photo.id,
+    });
+    expect((await getStore().getAiQuiz(created.id))?.photoUploadId).toBe(photo.id);
+    const bodyPhoto = await saveQuizPhoto(user, { role: "body", bytes: png, contentType: "image/png", consent: true });
+    await expect(createAiQuizCheckout(user, {
+      kind: "face_beauty",
+      answers: faceAnswers(),
+      email: "saraa@example.com",
+      photoId: bodyPhoto.id,
+    })).rejects.toMatchObject({ code: "invalid_image" });
   });
 
   it("asks for the delivery email on the quiz", async () => {

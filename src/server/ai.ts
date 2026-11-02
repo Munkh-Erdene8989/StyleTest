@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { imageCostUsd, textCostUsd } from "@/domain/money";
 import { imageFormatOk } from "@/domain/images";
-import type { AiQuizKind } from "@/domain/ai-quiz";
 import type { ResultBand, StyleDirection } from "@/domain/types";
-import { developerPrompt, EDITORIAL_RULES } from "./report-prompts";
+import { EDITORIAL_RULES } from "./report-prompts";
+import { chatJson, renderImage } from "./model-transport";
 
 function textModel() {
-  return process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-astra";
+  return process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
 }
 
 function imageModel() {
@@ -28,11 +28,6 @@ const quizReportSchema = z.object({
   sections: z
     .array(z.object({ heading: z.string().min(1), body: z.string().min(1) }))
     .length(4),
-});
-
-const aiQuizDetailSchema = z.object({
-  summary: z.string().min(1),
-  sections: z.array(z.object({ heading: z.string().min(1), body: z.string().min(1) })).min(1).max(8),
 });
 
 const styleSchema = z.object({
@@ -66,7 +61,7 @@ export const providers = {
     const template = personalityTemplate(input.band, input.answers);
     if (!process.env.OPENAI_API_KEY) return { draft: template, costUsd: 0 };
     const model = textModel();
-    const result = await openaiJson(model, { task: "personality_report", outline: input.outline, band: input.band, answers: input.answers });
+    const result = await chatCompletion(model, { task: "personality_report", outline: input.outline, band: input.band, answers: input.answers });
     const parsed = personalitySchema.safeParse(result.json);
     const headingsMatch = parsed.success && parsed.data.sections.every((section, index) => section.heading === input.outline[index]);
     if (!parsed.success || !headingsMatch) return { draft: template, costUsd: textCostUsd(result.inputTokens, result.outputTokens), model };
@@ -87,7 +82,7 @@ export const providers = {
     const template = styleTemplate(input.directions, input.comfort);
     if (!process.env.OPENAI_API_KEY) return { draft: template, costUsd: 0 };
     const model = textModel();
-    const result = await openaiJson(model, {
+    const result = await chatCompletion(model, {
       task: "style_package",
       directionIds: input.directions.map((item) => item.id),
       directions: input.directions.map((item) => ({ id: item.id, title: item.title, hint: item.reasonHint })),
@@ -112,7 +107,7 @@ export const providers = {
     if (!process.env.OPENAI_API_KEY) return { draft: template, costUsd: 0 };
     const model = textModel();
     try {
-      const result = await openaiJson(model, {
+      const result = await chatCompletion(model, {
         task: "style_quiz_report",
         name: input.name,
         headings: quizHeadings,
@@ -135,24 +130,7 @@ export const providers = {
     }
   },
 
-  async explainAiQuiz(input: {
-    kind: string;
-    brief: { title: string; status: string; sections: { heading: string; body: string }[] };
-    answers: { question: string; answer: string }[];
-  }): Promise<{ summary: string; sections: { heading: string; body: string }[] } | null> {
-    if (!process.env.OPENAI_API_KEY) return null;
-    const model = textModel();
-    const result = await openaiResponses(model, asQuizKind(input.kind), {
-      quiz_type: input.kind,
-      brief: input.brief,
-      answers: input.answers,
-    });
-    const parsed = aiQuizDetailSchema.safeParse(result);
-    if (!parsed.success || parsed.data.sections.length === 0) throw new Error("schema_invalid");
-    return parsed.data;
-  },
-
-  async renderImage(input: { direction: StyleDirection; face?: Buffer; body?: Buffer }): Promise<RenderedImage> {
+  async renderImage(input: { direction: StyleDirection; body?: Buffer }): Promise<RenderedImage> {
     if (process.env.OPENAI_API_KEY) return openaiImage(input);
     if (process.env.NODE_ENV === "production") throw new Error("image_unconfigured");
     const svg = demoSvg(input.direction.title);
@@ -234,160 +212,31 @@ function styleTemplate(directions: StyleDirection[], comfort: string): StyleDraf
   };
 }
 
-async function openaiJson(model: string, data: unknown) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    signal: AbortSignal.timeout(20_000),
-    headers: {
-      authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: JSON.stringify({ data }) },
-      ],
-    }),
-  });
-  if (!response.ok) throw new Error("model_http");
-  const json = (await response.json()) as {
-    choices?: { message?: { content?: string } }[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
-  };
-  const text = json.choices?.[0]?.message?.content ?? "";
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("schema_invalid");
-  return {
-    json: JSON.parse(match[0]) as unknown,
-    inputTokens: json.usage?.prompt_tokens ?? 0,
-    outputTokens: json.usage?.completion_tokens ?? 0,
-  };
+function chatCompletion(model: string, data: unknown) {
+  return chatJson({ model, system: SYSTEM, user: JSON.stringify({ data }), timeoutMs: 20_000 });
 }
 
-function asQuizKind(kind: string): AiQuizKind {
-  if (kind === "body_shape" || kind === "archetype" || kind === "face_beauty") return kind;
-  return "face_beauty";
-}
-
-async function openaiResponses(model: string, kind: AiQuizKind, data: unknown) {
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    signal: AbortSignal.timeout(45_000),
-    headers: {
-      authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      input: [
-        { role: "developer", content: developerPrompt(kind) },
-        { role: "user", content: JSON.stringify(data) },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "personal_style_report",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              summary: { type: "string" },
-              sections: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    heading: { type: "string" },
-                    body: { type: "string" },
-                  },
-                  required: ["heading", "body"],
-                },
-              },
-            },
-            required: ["summary", "sections"],
-          },
-        },
-      },
-    }),
-  });
-  if (!response.ok) throw new Error("model_http");
-  const json = (await response.json()) as {
-    status?: string;
-    output_text?: string;
-    output?: { content?: { type?: string; text?: string }[] }[];
-  };
-  if (json.status && json.status !== "completed") throw new Error("incomplete");
-  const refused = json.output?.some((item) => item.content?.some((part) => part.type === "refusal"));
-  if (refused) throw new Error("refused");
-  const text =
-    json.output_text ||
-    json.output?.flatMap((item) => item.content ?? []).find((part) => part.type === "output_text")?.text ||
-    "";
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("schema_invalid");
-  return JSON.parse(match[0]) as unknown;
-}
-
-async function openaiImage(input: { direction: StyleDirection; face?: Buffer; body?: Buffer }): Promise<RenderedImage> {
+async function openaiImage(input: { direction: StyleDirection; body?: Buffer }): Promise<RenderedImage> {
   const model = imageModel();
   const prompt = [
-    "Edit clothing and accessories only.",
-    "Preserve the person's face, skin tone, body shape, pose, and identity.",
-    "Do not change the face. Do not add logos, brand names, or readable text.",
+    "Edit the supplied original full-body photograph of the consenting adult.",
+    "Change only the clothing to the outfit direction.",
+    "Preserve facial features, skin tone, apparent age, body proportions, shoulder width, waist, hips, limbs, pose, camera angle, lighting and background.",
+    "Do not slim the waist, lengthen the legs, reshape the body, or replace the person.",
+    "Do not add logos, brand names, or readable text.",
     `Outfit direction: ${input.direction.title}. ${input.direction.reasonHint}`,
   ].join(" ");
-  const response = input.face || input.body ? await openaiImageEdit(model, prompt, input) : await openaiImageGenerate(model, prompt);
-  if (!response.ok) throw new Error("model_http");
-  const json = (await response.json()) as {
-    data?: { b64_json?: string }[];
-    usage?: { input_tokens?: number };
-  };
-  const data = json.data?.[0]?.b64_json;
-  if (!data) throw new Error("image_empty");
-  const bytes = Buffer.from(data, "base64");
+  const image = await renderImage({
+    model,
+    prompt,
+    size: "1024x1536",
+    outputFormat: "png",
+    timeoutMs: 60_000,
+    reference: input.body?.length ? { bytes: input.body, mime: "image/jpeg" } : undefined,
+  });
   const contentType = "image/png";
-  if (!imageFormatOk(bytes, contentType)) throw new Error("image_invalid");
-  const inputTokens =
-    json.usage?.input_tokens ??
-    Math.ceil((input.face?.length ?? 0) / 1000) + Math.ceil((input.body?.length ?? 0) / 1000);
-  return { bytes, contentType, provider: "openai", costUsd: imageCostUsd(1, inputTokens) };
-}
-
-async function openaiImageGenerate(model: string, prompt: string) {
-  return fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    signal: AbortSignal.timeout(60_000),
-    headers: {
-      authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ model, prompt, size: "1024x1536", n: 1, output_format: "png" }),
-  });
-}
-
-async function openaiImageEdit(
-  model: string,
-  prompt: string,
-  input: { face?: Buffer; body?: Buffer },
-) {
-  const form = new FormData();
-  form.append("model", model);
-  form.append("prompt", prompt);
-  form.append("size", "1024x1536");
-  form.append("output_format", "png");
-  if (input.face) form.append("image[]", new Blob([new Uint8Array(input.face)], { type: "image/jpeg" }), "face.jpg");
-  if (input.body) form.append("image[]", new Blob([new Uint8Array(input.body)], { type: "image/jpeg" }), "body.jpg");
-  return fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    signal: AbortSignal.timeout(60_000),
-    headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}` },
-    body: form,
-  });
+  if (!imageFormatOk(image.bytes, contentType)) throw new Error("image_invalid");
+  return { bytes: image.bytes, contentType, provider: "openai", costUsd: imageCostUsd(1, image.inputTokens) };
 }
 
 function paletteLabel(palette: StyleDirection["paletteFamily"]) {

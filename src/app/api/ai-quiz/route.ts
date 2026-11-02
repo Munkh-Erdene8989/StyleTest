@@ -9,6 +9,7 @@ export async function POST(req: Request) {
         kind: String(body.kind ?? ""),
         answers: body.answers,
         email: String(body.email ?? ""),
+        photoId: body.photoId ? String(body.photoId) : undefined,
       });
       return Response.json(quiz);
     } catch (error) {

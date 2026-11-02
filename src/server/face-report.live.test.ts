@@ -13,8 +13,8 @@ describe.skipIf(!quizId || !to)("deliver face pdf", () => {
     const quiz = await getStore().getAiQuiz(quizId!);
     expect(quiz?.kind).toBeTruthy();
     const photo = photoPath ? await readFile(photoPath) : undefined;
-    const pdf = await ensureQuizReportPdf(quiz!, photo ? { referencePhoto: photo } : undefined);
-    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    const report = await ensureQuizReportPdf(quiz!, photo ? { referencePhoto: photo } : undefined);
+    expect(report.pdf.subarray(0, 5).toString()).toBe("%PDF-");
     const sent = await sendEmail({
       to: to!,
       subject: "Naruka — таны хувийн тайлан бэлэн боллоо",
@@ -30,7 +30,7 @@ describe.skipIf(!quizId || !to)("deliver face pdf", () => {
         "— Naruka Styling Studio",
       ].join("\n"),
       attachments: [
-        { filename: `naruka-${quiz!.kind}-report.pdf`, content: pdf },
+        { filename: `naruka-${quiz!.kind}-report.pdf`, content: report.pdf },
         ...(photo ? [{ filename: "naruka-uploaded-photo.jpg", content: photo }] : []),
       ],
     });

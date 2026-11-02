@@ -22,6 +22,8 @@ type Stage = "intro" | "questions" | "email";
 function checkoutError(code?: string) {
   if (code === "invalid_contact") return "И-мэйл хаягаа зөв оруулна уу.";
   if (code === "answers_incomplete") return "Бүх асуултад хариулна уу.";
+  if (code === "consent_required") return "Зураг ашиглах зөвшөөрлөө батална уу.";
+  if (code === "invalid_image") return "Зургийн файл тохирохгүй байна.";
   if (code === "qpay_invoice" || code === "qpay_callback_missing") return "QPay нэхэмжлэх үүсгэж чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
   return "Илгээж чадсангүй. Дахин оролдоно уу.";
 }
@@ -85,6 +87,9 @@ export function AiQuizRunner({
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoConsent, setPhotoConsent] = useState(false);
+  const wantsPhoto = kind === "face_beauty" || kind === "body_shape";
   const question = questions[index];
 
   useEffect(() => {
@@ -141,14 +146,32 @@ export function AiQuizRunner({
   }
 
   async function submit(deliveryEmail: string) {
+    if (photo && !photoConsent) {
+      setError("Зураг ашиглах зөвшөөрлөө батална уу.");
+      return;
+    }
     setPending(true);
     setError("");
     try {
       await fetch("/api/auth/guest", { method: "POST" });
+      let photoId: string | undefined;
+      if (photo && wantsPhoto) {
+        const form = new FormData();
+        form.set("file", photo);
+        form.set("role", kind === "body_shape" ? "body" : "face");
+        form.set("consent", "true");
+        const uploaded = await fetch("/api/ai-quiz/photo", { method: "POST", body: form });
+        const saved = (await uploaded.json()) as { id?: string; error?: string };
+        if (!uploaded.ok || !saved.id) {
+          setError(checkoutError(saved.error));
+          return;
+        }
+        photoId = saved.id;
+      }
       const response = await fetch("/api/ai-quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, answers, email: deliveryEmail }),
+        body: JSON.stringify({ kind, answers, email: deliveryEmail, photoId }),
       });
       const payload = (await response.json()) as Checkout & { error?: string };
       if (!response.ok) {
@@ -294,6 +317,36 @@ export function AiQuizRunner({
               className="mt-2 w-full rounded-2xl border border-cream-dark bg-white p-4 text-charcoal outline-none focus:border-bordeaux"
             />
           </label>
+          {wantsPhoto ? (
+            <div className="rounded-2xl border border-cream-dark bg-white p-4">
+              <label className="block text-sm text-muted">
+                {kind === "body_shape" ? "Бүтэн биеийн зураг, заавал биш" : "Нүүрний зураг, заавал биш"}
+                <input
+                  id="quiz-photo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    setPhoto(event.target.files?.[0] ?? null);
+                    if (!event.target.files?.[0]) setPhotoConsent(false);
+                  }}
+                  className="mt-2 block w-full text-sm text-charcoal"
+                />
+              </label>
+              <p className="mt-3 text-sm leading-relaxed text-muted">
+                Зураг нь шинжилгээ болон хувцас, үс, будалтын туршилтад ашиглагдана. Эх зураг тусад нь хадгалагдана. Та устгаж болно.
+              </p>
+              <label className="mt-3 flex items-start gap-3 text-sm text-charcoal">
+                <input
+                  id="quiz-photo-consent"
+                  type="checkbox"
+                  checked={photoConsent}
+                  onChange={(event) => setPhotoConsent(event.target.checked)}
+                  className="mt-1"
+                />
+                Энэ бол миний эсвэл зөвшөөрөлтэй зураг. Шинжилгээ, зураг засварлах, хадгалах нөхцөлийг зөвшөөрч байна.
+              </label>
+            </div>
+          ) : null}
           <button type="submit" disabled={pending} className="w-full rounded-full bg-bordeaux px-6 py-4 font-semibold text-white shadow-lg shadow-bordeaux/15 transition hover:bg-bordeaux-dark disabled:opacity-60">
             {pending ? "Хадгалж байна…" : `${formatMnt(price)}₮ төлөх`}
           </button>

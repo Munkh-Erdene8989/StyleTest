@@ -26,6 +26,7 @@ function jsonResponse(body: unknown) {
 
 describe("openai providers", () => {
   beforeEach(() => {
+    delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_TEXT_MODEL;
     delete process.env.OPENAI_IMAGE_MODEL;
     delete process.env.OPENAI_REPORT_MODEL;
@@ -55,7 +56,7 @@ describe("openai providers", () => {
       const headers = init?.headers as Record<string, string>;
       expect(headers.authorization).toBe("Bearer test-key");
       const body = JSON.parse(String(init?.body));
-      expect(body.model).toBe("gpt-6-astra");
+      expect(body.model).toBe("gpt-6-luna");
       expect(body.response_format).toEqual({ type: "json_object" });
       return jsonResponse({
         choices: [{ message: { content: JSON.stringify(payload) } }],
@@ -69,7 +70,7 @@ describe("openai providers", () => {
       answers: [{ question: "асуулт", answer: "хариу" }],
     });
     expect(result.draft.source).toBe("model");
-    expect(result.model).toBe("gpt-6-astra");
+    expect(result.model).toBe("gpt-6-luna");
     expect(result.costUsd).toBe(10);
     delete process.env.OPENAI_INPUT_USD_PER_MTOK;
     delete process.env.OPENAI_OUTPUT_USD_PER_MTOK;
@@ -89,7 +90,7 @@ describe("openai providers", () => {
     expect(result.draft.directions[0]?.id).toBe(STYLE_DIRECTIONS[0].id);
   });
 
-  it("generates without a photo and edits when a photo is present", async () => {
+  it("generates without a body photo and edits only the body photo", async () => {
     process.env.OPENAI_API_KEY = "test-key";
     const direction = STYLE_DIRECTIONS[0];
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
@@ -105,12 +106,13 @@ describe("openai providers", () => {
         const form = init?.body as FormData;
         expect(form.get("model")).toBe("gpt-image-2.5-sunburst");
         expect(form.getAll("image[]")).toHaveLength(1);
+        expect(String(form.get("prompt"))).toContain("Do not slim the waist");
       }
       return jsonResponse({ data: [{ b64_json: PNG.toString("base64") }], usage: { input_tokens: 12 } });
     });
     vi.stubGlobal("fetch", fetchMock);
     const generated = await providers.renderImage({ direction });
-    const edited = await providers.renderImage({ direction, face: PNG });
+    const edited = await providers.renderImage({ direction, body: PNG });
     expect(generated.provider).toBe("openai");
     expect(generated.contentType).toBe("image/png");
     expect(edited.bytes.equals(PNG)).toBe(true);

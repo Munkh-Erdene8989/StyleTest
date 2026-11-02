@@ -2,13 +2,13 @@ import { randomUUID } from "crypto";
 import { after } from "next/server";
 import { quizByKind } from "@/content/quizzes/catalog";
 import type { AiQuizKind, AiQuizRecord } from "@/domain/ai-quiz";
-import { scoreAiQuiz } from "@/domain/ai-quiz-score";
 import { AppError } from "@/domain/errors";
+import { imageFormatOk } from "@/domain/images";
 import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
 import { paymentRequired, type ObservedPayment } from "@/domain/payment";
 import { iso } from "@/domain/time";
-import type { User } from "@/domain/types";
-import { bodyQuizBank, loadArchetypeBank, normalizeAnswers } from "./ai-quiz-banks";
+import type { Upload, User } from "@/domain/types";
+import { loadArchetypeBank, normalizeAnswers } from "./ai-quiz-banks";
 import { sendEmail } from "./email";
 import { ensureQuizReportPdf } from "./face-report-pdf";
 import { limit } from "./limit";
@@ -19,7 +19,32 @@ import { getStore } from "./store";
 const KINDS: AiQuizKind[] = ["face_beauty", "body_shape", "archetype"];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function createAiQuizCheckout(user: User, input: { kind: string; answers: unknown; email: string }) {
+export async function saveQuizPhoto(user: User, input: { role: string; bytes: Buffer; contentType: string; consent: boolean }) {
+  if (!input.consent) throw new AppError("consent_required", 400);
+  if (input.role !== "face" && input.role !== "body") throw new AppError("invalid_image", 400);
+  if (!["image/png", "image/jpeg", "image/webp"].includes(input.contentType) || !imageFormatOk(input.bytes, input.contentType)) {
+    throw new AppError("invalid_image", 400);
+  }
+  if (input.bytes.length > 8 * 1024 * 1024) throw new AppError("file_too_large", 400);
+  await limit(user.id, "upload", 20);
+  const upload: Upload = {
+    id: randomUUID(),
+    ownerUid: user.id,
+    sessionId: "quiz",
+    role: input.role,
+    path: `private/${user.id}/quiz-photos/${randomUUID()}`,
+    contentType: input.contentType,
+    consentAt: iso(),
+    linked: false,
+    createdAt: iso(),
+  };
+  const store = getStore();
+  await store.putObject(upload.path, input.bytes, input.contentType);
+  await store.saveUpload(upload);
+  return { id: upload.id, role: upload.role };
+}
+
+export async function createAiQuizCheckout(user: User, input: { kind: string; answers: unknown; email: string; photoId?: string }) {
   const email = String(input.email ?? "").replace(/\s+/g, "").trim().toLowerCase().slice(0, 160);
   if (!EMAIL.test(email)) throw new AppError("invalid_contact", 400);
   const kind = parseKind(input.kind);
@@ -43,11 +68,10 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
     reportStatus: "pending",
     createdAt: iso(),
   };
+  await attachQuizPhoto(user, quiz, input.photoId);
   if (!paymentRequired()) {
-    const scored = scoreAiQuiz(kind, parsed.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
     quiz.paymentStatus = "paid";
     quiz.paidAt = iso();
-    quiz.brief = scored.brief;
     await getStore().saveAiQuiz(quiz);
     scheduleReport(quiz);
     return publicQuiz(quiz);
@@ -109,13 +133,8 @@ export async function fulfillAiQuiz(id: string) {
   });
   if (previous.reportStatus === "sent" || previous.reportStatus === "sending") return;
   try {
-    const scored = scoreAiQuiz(current.kind, current.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
-    const detail = current.detail ?? {
-      summary: scored.brief.sections.map((section) => section.body).join("\n\n"),
-      sections: scored.brief.sections,
-    };
-    if (!current.detail) await store.updateAiQuiz(id, (quiz) => ({ ...quiz, detail }));
-    const pdf = await ensureQuizReportPdf({ ...current, brief: current.brief ?? scored.brief, detail });
+    const photo = await quizPhoto(current);
+    const report = await ensureQuizReportPdf(current, photo);
     await sendEmail({
       to: current.email,
       subject: "Naruka — таны хувийн тайлан бэлэн боллоо",
@@ -124,13 +143,13 @@ export async function fulfillAiQuiz(id: string) {
         "",
         "Таны хувийн тайлан бэлэн боллоо.",
         "25 хуудастай PDF хавсаргав.",
-        "Хуудас бүрийн жишээ зураг нь маникен дээрх загвар. Хэрэглэгчийн зураг биш.",
+        "Зураг хангалттай бол тэр зурган дээр туршина. Хангалтгүй бол жишээ нь маникен.",
         "",
         "— Naruka Styling Studio",
       ].join("\n"),
-      attachments: [{ filename: `naruka-${current.kind}-report.pdf`, content: pdf }],
+      attachments: [{ filename: `naruka-${current.kind}-report.pdf`, content: report.pdf }],
     });
-    await store.updateAiQuiz(id, (quiz) => ({ ...quiz, detail, reportStatus: "sent" }));
+    await store.updateAiQuiz(id, (quiz) => ({ ...quiz, brief: report.brief, detail: report.detail, reportStatus: "sent" }));
   } catch (error) {
     console.error("ai_quiz_report_failed", error instanceof Error ? error.message.slice(0, 180) : "unknown");
     await store.updateAiQuiz(id, (quiz) => ({ ...quiz, reportStatus: "failed" }));
@@ -145,19 +164,40 @@ export async function applyAiQuizObservation(id: string, observed: ObservedPayme
     commit: (stamp) =>
       store.updateAiQuiz(id, (quiz) => {
         if (quiz.paymentStatus === "paid") return quiz;
-        const scored = scoreAiQuiz(quiz.kind, quiz.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() });
         return {
           ...quiz,
           paymentStatus: "paid",
           qpayPaymentId: stamp.qpayPaymentId,
           paidAt: stamp.paidAt,
-          brief: scored.brief,
         };
       }),
     afterPaid: (quiz) => scheduleReport(quiz),
     afterDuplicate: (quiz) => scheduleReport(quiz),
   });
   return { duplicate: settled.duplicate, quiz: publicQuiz(settled.record), reason: settled.reason };
+}
+
+async function attachQuizPhoto(user: User, quiz: AiQuizRecord, photoId?: string) {
+  if (!photoId) return;
+  if (quiz.kind === "archetype") throw new AppError("invalid_image", 400);
+  const upload = await getStore().getUpload(photoId);
+  const expected = quiz.kind === "face_beauty" ? "face" : "body";
+  if (!upload || upload.ownerUid !== user.id || upload.deletedAt || upload.role !== expected || !upload.consentAt) {
+    throw new AppError("invalid_image", 400);
+  }
+  upload.linked = true;
+  upload.sessionId = quiz.id;
+  await getStore().saveUpload(upload);
+  quiz.photoUploadId = upload.id;
+}
+
+async function quizPhoto(quiz: AiQuizRecord) {
+  if (!quiz.photoUploadId || quiz.kind === "archetype") return undefined;
+  const upload = await getStore().getUpload(quiz.photoUploadId);
+  if (!upload || upload.ownerUid !== quiz.ownerUid || upload.deletedAt) return undefined;
+  const object = await getStore().getObject(upload.path);
+  if (!object?.bytes.length) return undefined;
+  return { referencePhoto: object.bytes, mime: upload.contentType };
 }
 
 function scheduleReport(quiz: AiQuizRecord) {

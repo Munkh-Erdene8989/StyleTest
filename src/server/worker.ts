@@ -95,10 +95,9 @@ async function runStylePackage(job: GenerationJob) {
   let imageCost = 0;
   let provider = explained.draft.source === "model" ? "openai" : "template";
   if (process.env.OPENAI_API_KEY) {
-    const face = await uploadBytes(session.styleInput.faceUploadId);
     const body = await uploadBytes(session.styleInput.bodyUploadId);
     for (const direction of directions) {
-      const image = await providers.renderImage({ direction, face, body });
+      const image = await providers.renderImage({ direction, body });
       if (image.provider !== "demo") provider = image.provider;
       const path = `private/${job.ownerUid}/reports/${job.sessionId}/${direction.id}.${extensionFor(image.contentType)}`;
       await store.putObject(path, image.bytes, image.contentType);
@@ -138,9 +137,8 @@ async function runStyleAddon(job: GenerationJob) {
   const paths: string[] = [];
   let imageCost = 0;
   if (process.env.OPENAI_API_KEY) {
-    const face = await uploadBytes(session.styleInput.faceUploadId);
     const body = await uploadBytes(session.styleInput.bodyUploadId);
-    const image = await providers.renderImage({ direction, face, body });
+    const image = await providers.renderImage({ direction, body });
     const path = `private/${job.ownerUid}/reports/${job.id}/${direction.id}.${extensionFor(image.contentType)}`;
     await store.putObject(path, image.bytes, image.contentType);
     paths.push(path);

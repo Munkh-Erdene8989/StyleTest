@@ -37,6 +37,7 @@ export type AiQuizRecord = {
   brief: AiQuizBrief | null;
   detail: AiQuizDetail | null;
   reportStatus: "pending" | "sending" | "sent" | "failed";
+  photoUploadId?: string;
   createdAt: string;
   paidAt?: string;
 };
