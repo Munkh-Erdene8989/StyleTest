@@ -20,16 +20,16 @@ export function OverviewDesk() {
   return (
     <div>
       <DeskTitle title="Өнөөдрийн ширээ" text="Асуулга, хариулт, тайлан, худалдан авалт нэг дороос." />
-      <dl className="mb-8 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-4">
+      <dl className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
         <Tally label="Бүртгэлтэй" value={String(registered)} />
         <Tally label="Төлсөн захиалга" value={String(paid)} />
         <Tally label="Нээлттэй буцаалт" value={String(openRefunds)} />
         <Tally label="Алдаатай үүсгэлт" value={String(failedJobs)} />
       </dl>
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section>
-          <h2 className="mb-3 font-medium">Асуулгууд</h2>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+      <div className="desk-bento">
+        <section className="bento-tile bento-8">
+          <h2>Асуулгууд</h2>
+          <ul className="divide-y divide-border">
             {desk.tests.map((test) => (
               <li key={test.version.id}>
                 <Link href={`/admin/tests/${test.version.id}`} className="flex items-center justify-between gap-3 px-4 py-3">
@@ -46,8 +46,8 @@ export function OverviewDesk() {
           </ul>
           {broken.length ? <p className="mt-2 text-sm text-destructive">Онооны муж хаагдаагүй тест байна. Нээж засна.</p> : null}
         </section>
-        <section>
-          <h2 className="mb-3 font-medium">Сүүлийн худалдан авалт</h2>
+        <section className="bento-tile bento-4">
+          <h2>Сүүлийн худалдан авалт</h2>
           {desk.orders.length === 0 ? <p className="text-muted-foreground">Захиалга алга.</p> : null}
           <Table>
             <TableHeader>
@@ -67,7 +67,7 @@ export function OverviewDesk() {
               ))}
             </TableBody>
           </Table>
-          <h2 className="mb-3 mt-8 font-medium">Сүүлийн үйл явдал</h2>
+          <h2 className="mt-4">Сүүлийн үйл явдал</h2>
           <ul className="text-sm">
             {desk.events.slice(0, 8).map((event, index) => (
               <li key={`${event.createdAt}-${index}`} className="flex justify-between gap-3 border-b border-border py-2">
@@ -85,7 +85,7 @@ export function OverviewDesk() {
 
 function Tally({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card px-4 py-4">
+    <div className="bento-tile">
       <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="mt-1 text-3xl font-medium tabular-nums">{value}</dd>
     </div>

@@ -114,6 +114,37 @@ export function NewsDesk() {
                 </select>
               </Field>
             </div>
+            <Field label="Зураг">
+              {post.image ? <img src={post.image} alt="" className="h-40 w-full rounded-md object-cover" /> : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="bento-file">
+                  {post.image ? "Зураг солих" : "Зураг оруулах"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      const form = new FormData();
+                      form.set("file", file);
+                      const response = await fetch("/api/admin/site/media", { method: "POST", body: form });
+                      const json = (await response.json()) as { url?: string };
+                      if (!response.ok || !json.url) {
+                        setIssues(["Зураг оруулж чадсангүй."]);
+                        return;
+                      }
+                      update({ ...post, image: json.url });
+                    }}
+                  />
+                </label>
+                {post.image ? (
+                  <Button type="button" variant="ghost" onClick={() => update({ ...post, image: undefined })}>
+                    Зураг хасах
+                  </Button>
+                ) : null}
+              </div>
+            </Field>
             <Field label="Товч">
               <Textarea value={post.excerpt} onChange={(event) => update({ ...post, excerpt: event.target.value })} />
             </Field>

@@ -6,7 +6,7 @@ import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
 import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
-import type { AdminCredential, AppStore, EmailOtp } from "./types";
+import type { AdminAccount, AdminCredential, AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -389,5 +389,26 @@ export class FirestoreStore implements AppStore {
   }
   async saveAdminCredential(credential: AdminCredential) {
     await this.put("adminCredential", "current", credential);
+  }
+
+  async listAdminAccounts() {
+    return this.all<AdminAccount>("adminAccounts");
+  }
+  async getAdminAccount(email: string) {
+    return this.read<AdminAccount>("adminAccounts", email.toLowerCase());
+  }
+  async saveAdminAccount(account: AdminAccount) {
+    const email = account.email.toLowerCase();
+    await this.put("adminAccounts", email, { ...account, email });
+  }
+  async deleteAdminAccount(email: string) {
+    await this.database().collection("adminAccounts").doc(email.toLowerCase()).delete();
+  }
+
+  async listAiQuizzes() {
+    return this.all<AiQuizRecord>("aiQuizzes");
+  }
+  async listStyleQuizzes() {
+    return this.all<StyleQuizRecord>("styleQuizzes");
   }
 }

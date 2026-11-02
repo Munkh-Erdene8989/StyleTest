@@ -44,4 +44,34 @@ describe("admin content", () => {
     ]);
     expect("posts" in saved && saved.posts).toHaveLength(1);
   });
+
+  it("keeps a site image on a news post and rejects an outside address", () => {
+    const image = "/api/site-media/11111111-1111-1111-1111-111111111111.jpg";
+    const kept = sanitizeNews([
+      {
+        slug: "zuragtai",
+        title: "Зурагтай мэдээ",
+        publishedOn: "2026-09-25",
+        topic: "Өнгө",
+        swatch: "earth",
+        excerpt: "Энэ улирлын нэг өнгөний тухай товч.",
+        body: ["Нэг зүйлээр эхлэхэд хангалттай."],
+        image,
+      },
+    ]);
+    expect("posts" in kept && kept.posts[0]?.image).toBe(image);
+    const rejected = sanitizeNews([
+      {
+        slug: "zuragtai",
+        title: "Зурагтай мэдээ",
+        publishedOn: "2026-09-25",
+        topic: "Өнгө",
+        swatch: "earth",
+        excerpt: "Энэ улирлын нэг өнгөний тухай товч.",
+        body: ["Нэг зүйлээр эхлэхэд хангалттай."],
+        image: "https://example.com/photo.jpg",
+      },
+    ]);
+    expect("issues" in rejected).toBe(true);
+  });
 });

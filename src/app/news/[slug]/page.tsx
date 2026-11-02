@@ -22,7 +22,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
       <Link className="btn-quiet" href="/news">
         Мэдээ рүү буцах
       </Link>
-      <span className={`article-rule swatch-${post.swatch}`} aria-hidden="true" />
+      {post.image ? <img className="article-photo" src={post.image} alt="" /> : <span className={`article-rule swatch-${post.swatch}`} aria-hidden="true" />}
       <h1>{post.title}</h1>
       <p className="row-meta">
         {post.topic}, <time dateTime={post.publishedOn}>{formatNewsDate(post.publishedOn)}</time>

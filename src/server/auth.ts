@@ -166,36 +166,48 @@ export async function verifyEmailOtp(userId: string, email: string, code: string
   await store.deleteEmailOtp(normalized);
   const account = await attachEmail(userId, normalized);
   if (record.uid !== account.id) await moveOwnership(record.uid, account.id);
-  const role = normalized === soleAdminEmail() ? "user" : roleForEmail(account.email);
+  const role = (await isAdminEmail(normalized)) ? "user" : roleForEmail(account.email);
   return saveRole(account, role);
 }
 
+export async function isAdminEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized === soleAdminEmail() && soleAdminEmail()) return true;
+  return Boolean(await getStore().getAdminAccount(normalized));
+}
+
 export async function loginWithPassword(userId: string, email: string, password: string) {
-  const expectedEmail = soleAdminEmail();
   const normalized = normalizeEmail(email);
   await limit(normalized, "password_login", 8, 15 * 60 * 1000);
-  const emailOk = Boolean(expectedEmail) && normalized === expectedEmail;
-  const passwordOk = emailOk && (await adminPasswordMatches(password));
+  const emailOk = await isAdminEmail(normalized);
+  const passwordOk = emailOk && (await passwordMatchesAdmin(normalized, password));
   if (!emailOk || !passwordOk) throw new AppError("invalid_code", 400);
   const account = await attachEmail(userId, normalized);
-  return saveRole(account, roleForEmail(account.email));
+  return saveRole(account, "ops_sensitive");
 }
 
 export async function requestAdminPasswordReset(email: string, origin: string) {
-  const expectedEmail = soleAdminEmail();
   const normalized = normalizeEmail(email);
-  if (!expectedEmail || normalized !== expectedEmail) throw new AppError("invalid_email", 400);
+  if (!(await isAdminEmail(normalized))) throw new AppError("invalid_email", 400);
   await limit(normalized, "admin_password_reset", 5, 15 * 60 * 1000);
   const store = getStore();
-  const current = await store.getAdminCredential();
+  const account = await store.getAdminAccount(normalized);
+  const previous = account ? null : await store.getAdminCredential();
   const token = randomBytes(32).toString("hex");
-  await store.saveAdminCredential({
-    passwordHash: current?.passwordHash ?? "",
-    salt: current?.salt ?? "",
-    resetHash: hashOtp(token, "admin-reset"),
-    resetExpiresAt: Date.now() + RESET_TTL_MS,
-    updatedAt: iso(),
-  });
+  const resetHash = hashOtp(token, "admin-reset");
+  const resetExpiresAt = Date.now() + RESET_TTL_MS;
+  if (account) {
+    await store.saveAdminAccount({ ...account, resetHash, resetExpiresAt, updatedAt: iso() });
+  } else {
+    await store.saveAdminCredential({
+      passwordHash: previous?.passwordHash ?? "",
+      salt: previous?.salt ?? "",
+      resetHash,
+      resetExpiresAt,
+      updatedAt: iso(),
+    });
+  }
   const link = `${origin.replace(/\/$/, "")}/login/reset?token=${token}`;
   try {
     const delivery = await sendEmail({
@@ -206,13 +218,8 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
     if (delivery.skipped) return { sent: false as const, development: true as const, token };
     return { sent: true as const, development: false as const };
   } catch (error) {
-    await store.saveAdminCredential({
-      passwordHash: current?.passwordHash ?? "",
-      salt: current?.salt ?? "",
-      resetHash: current?.resetHash ?? null,
-      resetExpiresAt: current?.resetExpiresAt ?? null,
-      updatedAt: current?.updatedAt ?? iso(),
-    });
+    if (account) await store.saveAdminAccount(account);
+    else if (previous) await store.saveAdminCredential(previous);
     throw error;
   }
 }
@@ -220,16 +227,28 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
 export async function confirmAdminPasswordReset(token: string, password: string) {
   const trimmed = password.trim();
   if (trimmed.length < 8 || trimmed.length > 72) throw new AppError("weak_password", 400);
+  const entered = token.trim();
   const store = getStore();
+  const salt = randomBytes(16).toString("hex");
+  const passwordHash = hashPassword(trimmed, salt);
+  for (const account of await store.listAdminAccounts()) {
+    if (!resetMatches(account.resetHash, account.resetExpiresAt, entered)) continue;
+    await store.saveAdminAccount({
+      ...account,
+      passwordHash,
+      salt,
+      resetHash: null,
+      resetExpiresAt: null,
+      updatedAt: iso(),
+    });
+    return;
+  }
   const current = await store.getAdminCredential();
-  if (!current?.resetHash || !current.resetExpiresAt || current.resetExpiresAt <= Date.now()) {
+  if (!resetMatches(current?.resetHash ?? null, current?.resetExpiresAt ?? null, entered)) {
     throw new AppError("code_expired", 400);
   }
-  const entered = token.trim();
-  if (!entered || !codesMatch(entered, "admin-reset", current.resetHash)) throw new AppError("invalid_code", 400);
-  const salt = randomBytes(16).toString("hex");
   await store.saveAdminCredential({
-    passwordHash: hashPassword(trimmed, salt),
+    passwordHash,
     salt,
     resetHash: null,
     resetExpiresAt: null,
@@ -247,13 +266,27 @@ function hashPassword(password: string, salt: string) {
   return scryptSync(password, salt, 32).toString("hex");
 }
 
+function passwordHashOk(password: string, salt: string, hash: string) {
+  if (!salt || !hash) return false;
+  const actual = Buffer.from(hashPassword(password, salt), "hex");
+  const expected = Buffer.from(hash, "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+function resetMatches(hash: string | null, expiresAt: number | null, token: string) {
+  return Boolean(hash && expiresAt && expiresAt > Date.now() && token && codesMatch(token, "admin-reset", hash));
+}
+
+async function passwordMatchesAdmin(email: string, password: string) {
+  const account = await getStore().getAdminAccount(email);
+  if (account?.passwordHash && account.salt) return passwordHashOk(password, account.salt, account.passwordHash);
+  if (email !== soleAdminEmail()) return false;
+  return adminPasswordMatches(password);
+}
+
 async function adminPasswordMatches(password: string) {
   const credential = await getStore().getAdminCredential();
-  if (credential?.passwordHash && credential.salt) {
-    const actual = Buffer.from(hashPassword(password, credential.salt), "hex");
-    const expected = Buffer.from(credential.passwordHash, "hex");
-    return actual.length === expected.length && timingSafeEqual(actual, expected);
-  }
+  if (credential?.passwordHash && credential.salt) return passwordHashOk(password, credential.salt, credential.passwordHash);
   const expectedPassword = process.env.ADMIN_PASSWORD || "";
   return Boolean(expectedPassword) && safeEqual(password, expectedPassword);
 }

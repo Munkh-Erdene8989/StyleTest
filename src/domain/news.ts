@@ -8,6 +8,7 @@ export type NewsPost = {
   swatch: NewsSwatch;
   excerpt: string;
   body: string[];
+  image?: string;
 };
 
 export const NEWS_POSTS: NewsPost[] = [

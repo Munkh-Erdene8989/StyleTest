@@ -3,7 +3,7 @@ import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
-import type { AdminCredential, AppStore, EmailOtp } from "./types";
+import type { AdminAccount, AdminCredential, AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -46,6 +46,7 @@ type Bag = {
   rates: Map<string, { count: number; reset: number }>;
   otps: Map<string, EmailOtp>;
   adminCredential: AdminCredential | null;
+  adminAccounts: Map<string, AdminAccount>;
   styleQuizzes: Map<string, StyleQuizRecord>;
   aiQuizzes: Map<string, AiQuizRecord>;
   site: SiteConfig | null;
@@ -75,6 +76,7 @@ function bag(): Bag {
     rates: new Map(),
     otps: new Map(),
     adminCredential: null,
+    adminAccounts: new Map(),
     styleQuizzes: new Map(),
     aiQuizzes: new Map(),
     site: null,
@@ -375,5 +377,25 @@ export class MemoryStore implements AppStore {
   }
   async saveAdminCredential(credential: AdminCredential) {
     this.db.adminCredential = credential;
+  }
+
+  async listAdminAccounts() {
+    return [...this.db.adminAccounts.values()];
+  }
+  async getAdminAccount(email: string) {
+    return this.db.adminAccounts.get(email.toLowerCase()) ?? null;
+  }
+  async saveAdminAccount(account: AdminAccount) {
+    this.db.adminAccounts.set(account.email.toLowerCase(), { ...account, email: account.email.toLowerCase() });
+  }
+  async deleteAdminAccount(email: string) {
+    this.db.adminAccounts.delete(email.toLowerCase());
+  }
+
+  async listAiQuizzes() {
+    return [...this.db.aiQuizzes.values()];
+  }
+  async listStyleQuizzes() {
+    return [...this.db.styleQuizzes.values()];
   }
 }

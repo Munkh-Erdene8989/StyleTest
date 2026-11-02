@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { blankUser } from "./auth";
 import { confirmAdminPasswordReset, loginWithPassword, requestAdminPasswordReset, requestEmailOtp, verifyEmailOtp } from "./auth";
+import { addAdmin } from "./admin-service";
 import { getStore, resetStoreForTests } from "./store";
 
 const ADMIN = "m.erdene8989@gmail.com";
@@ -38,8 +39,23 @@ describe("sole admin password", () => {
       code: "invalid_email",
     });
     const sent = await requestEmailOtp(guest.id, ADMIN);
-    if (!("code" in sent)) throw new Error("expected a development code");
+    if (!("code" in sent) || !sent.code) throw new Error("expected a development code");
     const account = await verifyEmailOtp(guest.id, ADMIN, sent.code);
     expect(account.role).toBe("user");
+  });
+
+  it("lets an added admin set a password from the email link", async () => {
+    const owner = blankUser();
+    owner.role = "ops_sensitive";
+    owner.email = ADMIN;
+    await getStore().saveUser(owner);
+    const invited = await addAdmin(owner, "studio@example.com", "https://admin.naruka.mn");
+    if (!("token" in invited) || !invited.token) throw new Error("expected an invite token");
+    await confirmAdminPasswordReset(invited.token, "second-admin");
+    const guest = blankUser();
+    await getStore().saveUser(guest);
+    const signedIn = await loginWithPassword(guest.id, "studio@example.com", "second-admin");
+    expect(signedIn.role).toBe("ops_sensitive");
+    expect(signedIn.email).toBe("studio@example.com");
   });
 });

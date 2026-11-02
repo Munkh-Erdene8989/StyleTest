@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { formatDay } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeskTitle } from "./admin-frame";
+import { SiteSettings } from "./site-settings";
 import { useDesk } from "./desk-context";
 import { eventLabel, kindLabel, statusLabel } from "./labels";
 
@@ -133,71 +131,12 @@ export function StyleDesk() {
 }
 
 export function SettingsDesk() {
-  const { desk, reload } = useDesk();
-  const [name, setName] = useState(desk?.appName ?? "");
-  const [contacts, setContacts] = useState(desk?.helpContacts ?? []);
-  const [message, setMessage] = useState("");
-  const [passwordNote, setPasswordNote] = useState("");
+  const { desk } = useDesk();
   if (!desk) return null;
   return (
-    <div className="max-w-xl">
-      <DeskTitle title="Тохиргоо" text="Сайтын нэр, стрессийн үр дүнд гарах тусламжийн холбоо." />
-      <form
-        className="grid gap-4"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          const response = await fetch("/api/admin/site", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ appName: name, helpContacts: contacts }),
-          });
-          setMessage(response.ok ? "Хадгаллаа." : "Хадгалж чадсангүй.");
-          if (response.ok) await reload();
-        }}
-      >
-        <div className="grid gap-1.5">
-          <Label htmlFor="app-name">Сайтын нэр</Label>
-          <Input id="app-name" value={name} onChange={(event) => setName(event.target.value)} />
-        </div>
-        <div className="grid gap-3">
-          {contacts.map((contact, index) => (
-            <div key={index} className="grid gap-2 rounded-md border border-border p-3">
-              <Input value={contact.name} placeholder="Нэр" onChange={(event) => setContacts(contacts.map((item, itemIndex) => (itemIndex === index ? { ...item, name: event.target.value } : item)))} />
-              <Input value={contact.phone} placeholder="Утас" onChange={(event) => setContacts(contacts.map((item, itemIndex) => (itemIndex === index ? { ...item, phone: event.target.value } : item)))} />
-              <Input value={contact.note} placeholder="Тэмдэглэл" onChange={(event) => setContacts(contacts.map((item, itemIndex) => (itemIndex === index ? { ...item, note: event.target.value } : item)))} />
-              <Input value={contact.source} placeholder="Эх сурвалж" onChange={(event) => setContacts(contacts.map((item, itemIndex) => (itemIndex === index ? { ...item, source: event.target.value } : item)))} />
-              <Button type="button" variant="ghost" onClick={() => setContacts(contacts.filter((_, itemIndex) => itemIndex !== index))}>
-                Хасах
-              </Button>
-            </div>
-          ))}
-          <Button type="button" variant="outline" onClick={() => setContacts([...contacts, { name: "", phone: "", note: "", source: "" }])}>
-            Холбоо нэмэх
-          </Button>
-        </div>
-        <Button type="submit">Хадгалах</Button>
-        {message ? <p>{message}</p> : null}
-      </form>
-      <div className="mt-8 grid gap-3">
-        <h2 className="font-medium">Админ нууц үг</h2>
-        <p className="text-sm text-muted-foreground">Шинэчлэх холбоос зөвхөн {desk.viewer.email} хаяг руу очно. Холбоос 30 минут хүчинтэй.</p>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={async () => {
-            setPasswordNote("");
-            const response = await fetch("/api/auth/password/reset", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: desk.viewer.email }),
-            });
-            setPasswordNote(response.ok ? "Шинэчлэх холбоосыг имэйл рүү илгээлээ." : "Илгээж чадсангүй.");
-          }}
-        >
-          Нууц үг имэйлээр шинэчлэх
-        </Button>
-        {passwordNote ? <p>{passwordNote}</p> : null}
-      </div>
+    <div>
+      <DeskTitle title="Тохиргоо" text="Том хавтан дээр зураг, хажууд холбоо барих ба админ." />
+      <SiteSettings />
     </div>
   );
 }

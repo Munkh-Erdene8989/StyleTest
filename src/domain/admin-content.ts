@@ -35,6 +35,7 @@ const QUIZ_KINDS: TestKind[] = ["personality", "stress", "fun", "youth"];
 const STATUSES: VersionStatus[] = ["demo", "license_pending", "approved"];
 const SWATCHES: NewsSwatch[] = ["personality", "style", "earth"];
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const NEWS_IMAGE = /^\/api\/site-media\/[0-9a-f-]{36}\.(png|jpg|webp)$/i;
 const TOKEN = /^[a-z0-9][a-z0-9-]{0,48}$/;
 
 export function defaultMethod() {
@@ -261,6 +262,7 @@ export function sanitizeNews(raw: unknown): { posts: NewsPost[] } | { issues: st
     const publishedOn = str(body.publishedOn, 10);
     const swatch = SWATCHES.includes(body.swatch as NewsSwatch) ? (body.swatch as NewsSwatch) : "personality";
     const paragraphs = Array.isArray(body.body) ? body.body.map((part) => str(part, 1200)).filter(Boolean).slice(0, 12) : [];
+    const image = str(body.image, 80);
     if (!SLUG.test(slug)) issues.push("Мэдээний холбоос буруу байна.");
     if (slugs.has(slug)) issues.push("Мэдээний холбоос давхардсан.");
     slugs.add(slug);
@@ -268,7 +270,8 @@ export function sanitizeNews(raw: unknown): { posts: NewsPost[] } | { issues: st
     if (excerpt.length < 8) issues.push("Мэдээний товч хэрэгтэй.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(publishedOn)) issues.push("Огноо YYYY-MM-DD байна.");
     if (paragraphs.length === 0) issues.push("Мэдээний текст хэрэгтэй.");
-    posts.push({ slug, title, publishedOn, topic: topic || "Мэдээ", swatch, excerpt, body: paragraphs });
+    if (image && !NEWS_IMAGE.test(image)) issues.push("Зургийн холбоос буруу байна.");
+    posts.push({ slug, title, publishedOn, topic: topic || "Мэдээ", swatch, excerpt, body: paragraphs, ...(image ? { image } : {}) });
   }
   if (issues.length) return { issues: [...new Set(issues)] };
   return { posts };

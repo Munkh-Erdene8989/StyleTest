@@ -1,6 +1,7 @@
 import { updateSite } from "@/server/admin-service";
 import { readJson, withUser } from "@/server/http";
-import type { HelpContact } from "@/domain/types";
+import { studioFrom } from "@/domain/studio-profile";
+import type { HelpContact, StudioProfile } from "@/domain/types";
 
 export async function POST(req: Request) {
   return withUser(req, async (user) => {
@@ -8,7 +9,8 @@ export async function POST(req: Request) {
     const site = await updateSite(user, {
       appName: typeof body.appName === "string" ? body.appName : undefined,
       helpContacts: Array.isArray(body.helpContacts) ? (body.helpContacts as HelpContact[]) : undefined,
+      studio: body.studio && typeof body.studio === "object" ? (body.studio as StudioProfile) : undefined,
     });
-    return Response.json({ appName: site.appName, helpContacts: site.helpContacts });
+    return Response.json({ appName: site.appName, helpContacts: site.helpContacts, studio: studioFrom(site.studio) });
   });
 }

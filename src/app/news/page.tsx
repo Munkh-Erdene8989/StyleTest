@@ -24,7 +24,11 @@ export default async function NewsPage() {
       <div className="news-grid">
         {posts.map((post) => (
           <Link key={post.slug} href={`/news/${post.slug}`} className="news-card">
-            <span className={`news-band swatch-${post.swatch}`} aria-hidden="true" />
+            {post.image ? (
+              <img className="news-photo" src={post.image} alt="" />
+            ) : (
+              <span className={`news-band swatch-${post.swatch}`} aria-hidden="true" />
+            )}
             <span className="news-card-body">
               <span className="kicker">{post.topic}</span>
               <span className="news-title">{post.title}</span>

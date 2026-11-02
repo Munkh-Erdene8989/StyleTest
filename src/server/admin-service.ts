@@ -2,11 +2,15 @@ import { randomUUID } from "crypto";
 import { catalogFromLibrary, sanitizeDraft, sanitizeNews, scoreSpan, bandIssues } from "@/domain/admin-content";
 import { AppError } from "@/domain/errors";
 import { iso } from "@/domain/time";
-import type { HelpContact, User, VersionStatus } from "@/domain/types";
+import { questionAnswerPairs } from "@/domain/score";
+import { studioFrom } from "@/domain/studio-profile";
+import type { AiAnswer, AiQuizKind } from "@/domain/ai-quiz";
+import type { HelpContact, StudioProfile, User, VersionStatus } from "@/domain/types";
 import { VERSIONS } from "@/domain/content";
 import { NEWS_POSTS } from "@/domain/news";
-import { canOperate, canReadSensitive } from "./auth";
+import { canOperate, canReadSensitive, isAdminEmail, requestAdminPasswordReset, soleAdminEmail } from "./auth";
 import { effectiveVersion, loadCatalog } from "./catalog";
+import { publicQuestions } from "./ai-quiz-banks";
 import { getStore } from "./store";
 import { enqueueJob } from "./enqueue";
 import { limit } from "./limit";
@@ -60,11 +64,12 @@ export async function adminOverview(user: User) {
   };
 }
 
-export async function updateSite(user: User, input: { appName?: string; helpContacts?: HelpContact[] }) {
+export async function updateSite(user: User, input: { appName?: string; helpContacts?: HelpContact[]; studio?: StudioProfile }) {
   assertOps(user);
   const store = getStore();
   const site = await store.getSiteConfig();
   if (typeof input.appName === "string" && input.appName.trim()) site.appName = input.appName.trim().slice(0, 40);
+  if (input.studio) site.studio = cleanStudio(input.studio);
   if (Array.isArray(input.helpContacts)) {
     site.helpContacts = input.helpContacts
       .filter((item) => item.name?.trim() && item.phone?.trim() && item.source?.trim())
@@ -200,6 +205,8 @@ export async function adminDesk(user: User) {
     appName: site.appName,
     helpContacts: site.helpContacts,
     funCopy: site.funCopy,
+    studio: studioFrom(site.studio),
+    admins: await adminEmails(),
     tests,
     news: library.news ?? NEWS_POSTS,
     users: users
@@ -345,5 +352,134 @@ export async function saveNewsPosts(user: User, raw: unknown) {
   await store.saveAdminLibrary(library);
   await audit(user, "news_save", "news");
   return result.posts;
+}
+
+function cleanStudio(studio: StudioProfile): StudioProfile {
+  const current = studioFrom(studio);
+  return {
+    headerImage: current.headerImage.slice(0, 300),
+    phone: current.phone.slice(0, 40),
+    email: current.email.slice(0, 120),
+    address: current.address.slice(0, 400),
+    team: current.team.slice(0, 12).map((member) => ({
+      name: member.name.trim().slice(0, 80),
+      role: member.role.trim().slice(0, 80),
+      image: member.image.trim().slice(0, 300),
+    })),
+    reviews: current.reviews.slice(0, 30).flatMap((review) => {
+      const name = review.name.trim().slice(0, 80);
+      const text = review.text.trim().slice(0, 600);
+      if (!name || !text) return [];
+      return [{ name, text, tag: review.tag.trim().slice(0, 80) }];
+    }),
+  };
+}
+
+async function adminEmails() {
+  const extra = (await getStore().listAdminAccounts()).map((account) => account.email);
+  const owner = soleAdminEmail();
+  return [...new Set([owner, ...extra].filter(Boolean))];
+}
+
+export async function addAdmin(user: User, email: string, origin: string) {
+  assertOps(user);
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) throw new AppError("invalid_email", 400);
+  if (await isAdminEmail(normalized)) throw new AppError("invalid_email", 400);
+  await getStore().saveAdminAccount({
+    email: normalized,
+    passwordHash: "",
+    salt: "",
+    resetHash: null,
+    resetExpiresAt: null,
+    updatedAt: iso(),
+  });
+  await audit(user, "admin_add", normalized);
+  return requestAdminPasswordReset(normalized, origin);
+}
+
+export async function removeAdmin(user: User, email: string) {
+  assertOps(user);
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || normalized === soleAdminEmail()) throw new AppError("forbidden", 403);
+  const store = getStore();
+  await store.deleteAdminAccount(normalized);
+  const existing = await store.findUserByEmail(normalized);
+  if (existing && (existing.role === "ops" || existing.role === "ops_sensitive")) {
+    existing.role = "user";
+    await store.saveUser(existing);
+  }
+  await audit(user, "admin_remove", normalized);
+}
+
+const AI_TITLES: Record<AiQuizKind, string> = {
+  face_beauty: "Нүүрний гоо сайхан",
+  body_shape: "Биеийн хэлбэр",
+  archetype: "Архетип",
+};
+
+export async function userAnswers(actor: User, userId: string) {
+  assertOps(actor);
+  const store = getStore();
+  const owner = await store.getUser(userId);
+  if (!owner) throw new AppError("not_found", 404);
+  const [sessions, aiQuizzes, styleQuizzes] = await Promise.all([
+    store.listSessionsByOwner(userId),
+    store.listAiQuizzes(),
+    store.listStyleQuizzes(),
+  ]);
+  const tests = [];
+  for (const session of sessions) {
+    let title = session.testId || session.kind;
+    let pairs: { question: string; answer: string }[] = [];
+    try {
+      const version = await effectiveVersion(session.versionId);
+      title = version.title;
+      pairs = questionAnswerPairs(version, session.answers);
+    } catch {
+      pairs = Object.entries(session.answers).map(([question, answer]) => ({ question, answer }));
+    }
+    tests.push({ id: session.id, title, createdAt: session.createdAt, answers: pairs });
+  }
+  const email = owner.email?.toLowerCase() ?? "";
+  for (const quiz of aiQuizzes) {
+    if (quiz.ownerUid !== userId && quiz.email.toLowerCase() !== email) continue;
+    const questions = publicQuestions(quiz.kind);
+    tests.push({
+      id: quiz.id,
+      title: AI_TITLES[quiz.kind] ?? quiz.kind,
+      createdAt: quiz.createdAt,
+      answers: questions.map((question) => ({
+        question: question.text,
+        answer: aiAnswerText(question, quiz.answers[question.id]),
+      })),
+    });
+  }
+  for (const quiz of styleQuizzes) {
+    if (!email || quiz.email.toLowerCase() !== email) continue;
+    tests.push({
+      id: quiz.id,
+      title: "Стайл тест",
+      createdAt: quiz.createdAt,
+      answers: Object.entries(quiz.answers).map(([question, answer]) => ({
+        question,
+        answer: Array.isArray(answer.label) ? answer.label.join(", ") : String(answer.label || answer.value),
+      })),
+    });
+  }
+  tests.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return { tests };
+}
+
+function aiAnswerText(question: { options?: { id: string; label: string }[]; fields?: { id: string; label: string }[] }, answer: AiAnswer | undefined) {
+  if (!answer) return "—";
+  if (answer.type === "single") return question.options?.find((option) => option.id === answer.optionId)?.label ?? answer.optionId;
+  if (answer.type === "multiple") {
+    return answer.optionIds.map((id) => question.options?.find((option) => option.id === id)?.label ?? id).join(", ") || "—";
+  }
+  if (answer.type === "number") return answer.value == null ? "—" : String(answer.value);
+  return Object.entries(answer.fields)
+    .map(([key, value]) => `${question.fields?.find((field) => field.id === key)?.label ?? key}: ${value ?? "—"}`)
+    .join(", ");
 }
 

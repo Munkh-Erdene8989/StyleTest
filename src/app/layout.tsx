@@ -3,7 +3,8 @@ import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { SiteHeader } from "@/components/site-header";
 import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sections";
-import { BRAND_DESCRIPTION, BRAND_EMAIL, BRAND_FACEBOOK, BRAND_KEYWORDS, BRAND_NAME, BRAND_PHONE } from "@/domain/brand";
+import { BRAND_DESCRIPTION, BRAND_FACEBOOK, BRAND_KEYWORDS, BRAND_NAME } from "@/domain/brand";
+import { studioFrom } from "@/domain/studio-profile";
 import { optionalUser } from "@/server/auth";
 import { getStore } from "@/server/store";
 import "./globals.css";
@@ -50,7 +51,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  await getStore().getSiteConfig();
+  const studio = studioFrom((await getStore().getSiteConfig()).studio);
   const user = await optionalUser();
   const jsonLd = {
     "@context": "https://schema.org",
@@ -60,12 +61,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     url: siteUrl,
     image: siteUrl ? `${siteUrl}/naruka-logo.png` : "/naruka-logo.png",
     logo: siteUrl ? `${siteUrl}/naruka-logo.png` : "/naruka-logo.png",
-    telephone: BRAND_PHONE,
-    email: BRAND_EMAIL,
+    telephone: studio.phone,
+    email: studio.email,
     sameAs: [BRAND_FACEBOOK],
     address: {
       "@type": "PostalAddress",
-      streetAddress: "City Tower, 20-р давхар, 2002 тоот",
+      streetAddress: studio.address.split("\n")[0],
       addressLocality: "Улаанбаатар",
       postalCode: "14200",
       addressCountry: "MN",
@@ -83,7 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="foot">
           <div className="bar foot-grid">
             <StudioFooterBrand />
-            <StudioFooterContact />
+            <StudioFooterContact studio={studio} />
           </div>
           <p className="bar foot-copy">© 2024 Naruka Styling Studio. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>
         </footer>

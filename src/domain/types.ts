@@ -288,10 +288,32 @@ export type HelpContact = {
   source: string;
 };
 
+export type StudioMember = {
+  name: string;
+  role: string;
+  image: string;
+};
+
+export type StudioReview = {
+  name: string;
+  text: string;
+  tag: string;
+};
+
+export type StudioProfile = {
+  headerImage: string;
+  phone: string;
+  email: string;
+  address: string;
+  team: StudioMember[];
+  reviews: StudioReview[];
+};
+
 export type SiteConfig = {
   appName: string;
   helpContacts: HelpContact[];
   funCopy: Record<string, { title: string; summary: string }>;
+  studio?: StudioProfile;
 };
 
 export type VersionOverride = {

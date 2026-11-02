@@ -123,6 +123,14 @@ export interface AppStore {
 
   getAdminCredential(): Promise<AdminCredential | null>;
   saveAdminCredential(credential: AdminCredential): Promise<void>;
+
+  listAdminAccounts(): Promise<AdminAccount[]>;
+  getAdminAccount(email: string): Promise<AdminAccount | null>;
+  saveAdminAccount(account: AdminAccount): Promise<void>;
+  deleteAdminAccount(email: string): Promise<void>;
+
+  listAiQuizzes(): Promise<AiQuizRecord[]>;
+  listStyleQuizzes(): Promise<StyleQuizRecord[]>;
 }
 
 export type EmailOtp = {
@@ -140,4 +148,8 @@ export type AdminCredential = {
   resetHash: string | null;
   resetExpiresAt: number | null;
   updatedAt: string;
+};
+
+export type AdminAccount = AdminCredential & {
+  email: string;
 };

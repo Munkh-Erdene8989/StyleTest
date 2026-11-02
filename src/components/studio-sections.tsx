@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { StudioGallery } from "@/components/studio-gallery";
+import type { StudioProfile } from "@/domain/types";
 
 const PHONE = "86106616";
-const PHONE_LABEL = "8610 6616";
-const EMAIL = "naruka.stylingstudio@gmail.com";
 const FACEBOOK = "https://facebook.com/narukastylingstudio";
+const MAPS_URL = "https://maps.app.goo.gl/rjnJRU1CptBG6iE69";
+const MAPS_EMBED = "https://maps.google.com/maps?q=47.9193516,106.9209513+(City+tower+business+center)&z=17&hl=mn&output=embed";
 
 const SERVICES = [
   {
@@ -50,20 +51,6 @@ const SERVICES = [
   },
 ];
 
-const TEAM = [
-  { name: "Naruka", role: "Үндэслэгч & Ахлах Стилист", img: "/studio/team-naruka.jpg" },
-  { name: "Билгүүн", role: "Өнгө шинжлэгч", img: "/studio/team-bilguun.jpg" },
-  { name: "Номин", role: "Makeup Artist & Стилист", img: "/studio/team-nomin.jpg" },
-  { name: "Энхцэцэг", role: "Стайлинг зөвлөх", img: "/studio/team-enkhtsetseg.jpg" },
-];
-
-const TESTIMONIALS = [
-  { name: "Мөнхцэцэг Б.", text: "Naruka Studio-д очсоноос хойш хувцасаа огт буруу сонгохоо болилоо. Өнгөний анализ хийлгэсэн нь миний амьдралд хийсэн шилдэг хөрөнгө оруулалт байлаа.", palette: "Warm Autumn" },
-  { name: "Оюунцэцэг Д.", text: "Гэрэлтэй, цэмцгэр орчинд мэргэжлийн баг маш нягт нямбай тодорхойлсон. Палитрын гарын авлага нь одоо болтол гар утаснаасаа хэзээ ч хаядаггүй.", palette: "Cool Winter" },
-  { name: "Энхжаргал С.", text: "Мэргэжлийн ангид суусан. 2 долоо хоногийн хичээл их нягт агуулгатай байсан. Одоо өөрийн студи нээх замдаа яваа.", palette: "Мэргэжлийн анги" },
-  { name: "Нарантуяа Ж.", text: "Би makeup-аа авчирч шалгуулсан. Аль хэрэглэл зохохгүй байгааг ойлгосон нь их хэмнэлттэй боллоо. Зөвлөгөө маш тодорхой, ойлгомжтой байлаа.", palette: "Soft Summer" },
-];
-
 const LESSONS = [
   { n: "01", title: "Өнгөний онол", desc: "Өнгөний дугуй, температур, гүн гэрэлтэй байдал, хуурмаг болон жинхэнэ өнгө" },
   { n: "02", title: "Хувийн өнгө тодорхойлох", desc: "Алчуур ашиглан практик тодорхойлолт, 4 улирлын систем" },
@@ -71,10 +58,10 @@ const LESSONS = [
   { n: "04", title: "Бизнес эрхлэлт", desc: "Үйлчилгээ тогтоох, харилцагч татах, брэнд бүтээх" },
 ];
 
-export function StudioHero() {
+export function StudioHero({ studio }: { studio: StudioProfile }) {
   return (
     <section className="stage" id="home">
-      <img className="stage-photo" src="/studio/hero.jpg" alt="" />
+      <img className="stage-photo" src={studio.headerImage} alt="" />
       <div className="stage-shade" />
       <div className="stage-copy">
         <p className="kicker">✦ Улаанбаатар, City Tower</p>
@@ -113,7 +100,7 @@ export function StudioHero() {
   );
 }
 
-export function StudioAbout() {
+export function StudioAbout({ studio }: { studio: StudioProfile }) {
   return (
     <section className="band" id="about">
       <div className="bar">
@@ -149,9 +136,9 @@ export function StudioAbout() {
           <h2>Таны өнгийг нээх мэргэжилтнүүд</h2>
         </div>
         <div className="team">
-          {TEAM.map((member) => (
-            <figure key={member.name}>
-              <img src={member.img} alt="" />
+          {studio.team.map((member) => (
+            <figure key={`${member.name}-${member.image}`}>
+              <img src={member.image} alt="" />
               <figcaption>
                 <strong>{member.name}</strong>
                 <span>{member.role}</span>
@@ -164,7 +151,7 @@ export function StudioAbout() {
   );
 }
 
-export function StudioServices({ featured, children }: { featured?: ReactNode; children?: ReactNode }) {
+export function StudioServices({ studio, featured, children }: { studio: StudioProfile; featured?: ReactNode; children?: ReactNode }) {
   return (
     <section className="band band-sand" id="services">
       <div className="bar">
@@ -189,7 +176,7 @@ export function StudioServices({ featured, children }: { featured?: ReactNode; c
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-                <a className="btn" href={service.href}>
+                <a className="btn" href={service.href.startsWith("tel:") ? `tel:${studio.phone.replace(/\s/g, "")}` : service.href}>
                   {service.action}
                 </a>
               </div>
@@ -212,7 +199,7 @@ export function StudioServices({ featured, children }: { featured?: ReactNode; c
   );
 }
 
-export function StudioTraining() {
+export function StudioTraining({ studio }: { studio: StudioProfile }) {
   return (
     <section className="band band-wine" id="training">
       <div className="bar wine">
@@ -229,10 +216,10 @@ export function StudioTraining() {
           <div className="notice">
             <p>Элсэлт хаагдах гэж байна</p>
             <p>
-              Эхлэх огноо: <strong>9-р сарын 28</strong>. Элсэлт <strong>9-р сарын 25</strong>-нд хаагдана. Бүртгэлийн утас: <strong>{PHONE_LABEL}</strong>
+              Эхлэх огноо: <strong>9-р сарын 28</strong>. Элсэлт <strong>9-р сарын 25</strong>-нд хаагдана. Бүртгэлийн утас: <strong>{studio.phone}</strong>
             </p>
           </div>
-          <a className="btn btn-gold" href={`tel:${PHONE}`}>
+          <a className="btn btn-gold" href={`tel:${studio.phone.replace(/\s/g, "")}`}>
             Бүртгэлийн утас руу залгах
           </a>
         </div>
@@ -279,7 +266,7 @@ export function StudioGallerySection() {
   );
 }
 
-export function StudioStories() {
+export function StudioStories({ studio }: { studio: StudioProfile }) {
   return (
     <section className="band band-sand" id="stories">
       <div className="bar">
@@ -288,15 +275,15 @@ export function StudioStories() {
           <h2>Үйлчлүүлэгчдийн хэлсэн үг</h2>
         </div>
         <div className="quotes">
-          {TESTIMONIALS.map((item) => (
-            <article key={item.name} className="quote">
+          {studio.reviews.map((item) => (
+            <article key={`${item.name}-${item.text}`} className="quote">
               <p className="stars" aria-label="5 од">
                 ★★★★★
               </p>
               <p>“{item.text}”</p>
               <footer>
                 <strong>{item.name}</strong>
-                <span>{item.palette}</span>
+                <span>{item.tag}</span>
               </footer>
             </article>
           ))}
@@ -311,7 +298,7 @@ export function StudioStories() {
   );
 }
 
-export function StudioContact() {
+export function StudioContact({ studio }: { studio: StudioProfile }) {
   return (
     <section className="band" id="contact">
       <div className="bar">
@@ -323,25 +310,26 @@ export function StudioContact() {
           <article className="contact-card">
             <h3>Байршил</h3>
             <p>
-              City Tower, 20-р давхар, 2002 тоот
-              <br />
-              Талбайн зүүн тал
-              <br />
-              Улаанбаатар 14200
+              {studio.address.split("\n").map((line) => (
+                <span key={line}>
+                  {line}
+                  <br />
+                </span>
+              ))}
             </p>
           </article>
           <article className="contact-card">
             <h3>Утас</h3>
             <p>Цаг захиалга, сургалтын бүртгэл</p>
-            <a className="btn" href={`tel:${PHONE}`}>
-              {PHONE_LABEL}
+            <a className="btn" href={`tel:${studio.phone.replace(/\s/g, "")}`}>
+              {studio.phone}
             </a>
           </article>
           <article className="contact-card">
             <h3>И-мэйл & Сошиал</h3>
             <div className="link-row">
-              <a className="btn-quiet" href={`mailto:${EMAIL}`}>
-                И-мэйл бичих
+              <a className="btn-quiet" href={`mailto:${studio.email}`}>
+                {studio.email}
               </a>
               <a className="btn-quiet" href={FACEBOOK} target="_blank" rel="noopener noreferrer">
                 Facebook
@@ -351,11 +339,10 @@ export function StudioContact() {
         </div>
         <div className="contact-close">
           <div className="map-frame">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2673.5!2d106.9057!3d47.9077!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x5d96924e21a0e0b5%3A0x123456!2sCity+Tower%2C+Ulaanbaatar!5e0!3m2!1sen!2smn!4v1695000000000!5m2!1sen!2smn"
-              title="Naruka Studio байршил"
-              loading="lazy"
-            />
+            <iframe src={MAPS_EMBED} title="Naruka Studio байршил" loading="lazy" tabIndex={-1} />
+            <a className="map-hit" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
+              <span>Google Maps дээр нээх</span>
+            </a>
           </div>
           <article className="contact-cta">
             <p className="kicker">Яг одоо тодорхойлох</p>
@@ -365,7 +352,7 @@ export function StudioContact() {
               <em>өнөөдөр эхлүүл</em>
             </h2>
             <p>Насан туршид хэрэглэх өнгөний системийг нэг удаа тодорхойлоод хувцас, makeup, гоёл чимэглэл бүгдийг зөв сонгох болно.</p>
-            <a className="btn btn-gold" href={`tel:${PHONE}`}>
+            <a className="btn btn-gold" href={`tel:${studio.phone.replace(/\s/g, "")}`}>
               Яг одоо тодорхойлох
             </a>
           </article>
@@ -399,17 +386,19 @@ export function StudioFooterBrand() {
   );
 }
 
-export function StudioFooterContact() {
+export function StudioFooterContact({ studio }: { studio: StudioProfile }) {
   return (
     <div>
       <p className="foot-label">Холбоо</p>
       <nav className="foot-links">
-        <a href={`tel:${PHONE}`}>{PHONE_LABEL}</a>
-        <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+        <a href={`tel:${studio.phone.replace(/\s/g, "")}`}>{studio.phone}</a>
+        <a href={`mailto:${studio.email}`}>{studio.email}</a>
         <a href={FACEBOOK} target="_blank" rel="noopener noreferrer">
           Facebook
         </a>
-        <span>City Tower 20F · 2002 тоот</span>
+        <a href={MAPS_URL} target="_blank" rel="noopener noreferrer">
+          {studio.address.split("\n")[0]}
+        </a>
       </nav>
     </div>
   );

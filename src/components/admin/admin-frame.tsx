@@ -2,38 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ClipboardList,
-  CreditCard,
-  LayoutDashboard,
-  Newspaper,
-  RotateCcw,
-  Scale,
-  ScrollText,
-  Settings,
-  Shirt,
-  Sparkles,
-  Users,
-  Cpu,
-  MessagesSquare,
-} from "lucide-react";
+import { ClipboardList, CreditCard, LayoutDashboard, Newspaper, Settings, Sparkles, Users } from "lucide-react";
 import { DeskProvider, useDesk } from "./desk-context";
 import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/admin", label: "Тойм", icon: LayoutDashboard },
   { href: "/admin/tests", label: "Асуулга", icon: ClipboardList },
-  { href: "/admin/responses", label: "Хариулт", icon: MessagesSquare },
   { href: "/admin/reports", label: "Тайлан", icon: Sparkles },
-  { href: "/admin/rules", label: "Дүрэм", icon: Scale },
   { href: "/admin/users", label: "Хэрэглэгч", icon: Users },
   { href: "/admin/orders", label: "Худалдан авалт", icon: CreditCard },
   { href: "/admin/news", label: "Мэдээ", icon: Newspaper },
-  { href: "/admin/refunds", label: "Буцаалт", icon: RotateCcw },
-  { href: "/admin/jobs", label: "Үүсгэлт", icon: Cpu },
-  { href: "/admin/style", label: "Стайл", icon: Shirt },
   { href: "/admin/settings", label: "Тохиргоо", icon: Settings },
-  { href: "/admin/audit", label: "Аудит", icon: ScrollText },
 ];
 
 export function AdminFrame({ children }: { children: React.ReactNode }) {
