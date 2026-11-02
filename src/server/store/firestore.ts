@@ -6,7 +6,7 @@ import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
 import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
-import type { AppStore, EmailOtp } from "./types";
+import type { AdminCredential, AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -382,5 +382,12 @@ export class FirestoreStore implements AppStore {
   }
   async deleteEmailOtp(email: string) {
     await this.database().collection("emailOtps").doc(email.toLowerCase()).delete();
+  }
+
+  async getAdminCredential() {
+    return this.read<AdminCredential>("adminCredential", "current");
+  }
+  async saveAdminCredential(credential: AdminCredential) {
+    await this.put("adminCredential", "current", credential);
   }
 }

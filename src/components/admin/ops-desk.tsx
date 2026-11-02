@@ -137,6 +137,7 @@ export function SettingsDesk() {
   const [name, setName] = useState(desk?.appName ?? "");
   const [contacts, setContacts] = useState(desk?.helpContacts ?? []);
   const [message, setMessage] = useState("");
+  const [passwordNote, setPasswordNote] = useState("");
   if (!desk) return null;
   return (
     <div className="max-w-xl">
@@ -177,6 +178,26 @@ export function SettingsDesk() {
         <Button type="submit">Хадгалах</Button>
         {message ? <p>{message}</p> : null}
       </form>
+      <div className="mt-8 grid gap-3">
+        <h2 className="font-medium">Админ нууц үг</h2>
+        <p className="text-sm text-muted-foreground">Шинэчлэх холбоос зөвхөн {desk.viewer.email} хаяг руу очно. Холбоос 30 минут хүчинтэй.</p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={async () => {
+            setPasswordNote("");
+            const response = await fetch("/api/auth/password/reset", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: desk.viewer.email }),
+            });
+            setPasswordNote(response.ok ? "Шинэчлэх холбоосыг имэйл рүү илгээлээ." : "Илгээж чадсангүй.");
+          }}
+        >
+          Нууц үг имэйлээр шинэчлэх
+        </Button>
+        {passwordNote ? <p>{passwordNote}</p> : null}
+      </div>
     </div>
   );
 }

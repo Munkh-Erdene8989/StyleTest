@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "crypto";
+import { createHash, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from "crypto";
 import { getAppCheck } from "firebase-admin/app-check";
 import { AppError } from "@/domain/errors";
 import type { User, UserRole } from "@/domain/types";
@@ -12,11 +12,17 @@ import { getStore } from "./store";
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_ATTEMPTS = 5;
 const OTP_SUBJECT = "1 удаагийн баталгаажуулах код";
+const RESET_TTL_MS = 30 * 60 * 1000;
+const RESET_SUBJECT = "Админ нууц үг шинэчлэх";
+
+export function soleAdminEmail() {
+  return (process.env.BOOTSTRAP_ADMIN_EMAIL || "").trim().toLowerCase();
+}
 
 export function roleForEmail(email: string | null): UserRole {
   if (!email) return "user";
   const value = email.toLowerCase();
-  const ops = (process.env.BOOTSTRAP_ADMIN_EMAIL || "").toLowerCase();
+  const ops = soleAdminEmail();
   const sensitive = (process.env.BOOTSTRAP_SENSITIVE_EMAIL || "").toLowerCase();
   const isOps = Boolean(ops) && value === ops;
   const isSensitive = Boolean(sensitive) && value === sensitive;
@@ -160,24 +166,103 @@ export async function verifyEmailOtp(userId: string, email: string, code: string
   await store.deleteEmailOtp(normalized);
   const account = await attachEmail(userId, normalized);
   if (record.uid !== account.id) await moveOwnership(record.uid, account.id);
-  return account;
+  const role = normalized === soleAdminEmail() ? "user" : roleForEmail(account.email);
+  return saveRole(account, role);
 }
 
 export async function loginWithPassword(userId: string, email: string, password: string) {
-  const expectedEmail = (process.env.BOOTSTRAP_ADMIN_EMAIL || "").trim().toLowerCase();
-  const expectedPassword = process.env.ADMIN_PASSWORD || "";
+  const expectedEmail = soleAdminEmail();
   const normalized = normalizeEmail(email);
   await limit(normalized, "password_login", 8, 15 * 60 * 1000);
   const emailOk = Boolean(expectedEmail) && normalized === expectedEmail;
-  const passwordOk = Boolean(expectedPassword) && safeEqual(password, expectedPassword);
+  const passwordOk = emailOk && (await adminPasswordMatches(password));
   if (!emailOk || !passwordOk) throw new AppError("invalid_code", 400);
-  return attachEmail(userId, normalized);
+  const account = await attachEmail(userId, normalized);
+  return saveRole(account, roleForEmail(account.email));
+}
+
+export async function requestAdminPasswordReset(email: string, origin: string) {
+  const expectedEmail = soleAdminEmail();
+  const normalized = normalizeEmail(email);
+  if (!expectedEmail || normalized !== expectedEmail) throw new AppError("invalid_email", 400);
+  await limit(normalized, "admin_password_reset", 5, 15 * 60 * 1000);
+  const store = getStore();
+  const current = await store.getAdminCredential();
+  const token = randomBytes(32).toString("hex");
+  await store.saveAdminCredential({
+    passwordHash: current?.passwordHash ?? "",
+    salt: current?.salt ?? "",
+    resetHash: hashOtp(token, "admin-reset"),
+    resetExpiresAt: Date.now() + RESET_TTL_MS,
+    updatedAt: iso(),
+  });
+  const link = `${origin.replace(/\/$/, "")}/login/reset?token=${token}`;
+  try {
+    const delivery = await sendEmail({
+      to: normalized,
+      subject: RESET_SUBJECT,
+      text: `Админ нууц үгээ шинэчлэхийн тулд энэ холбоосыг нээнэ үү:\n${link}\n\nХолбоос 30 минутын турш хүчинтэй. Хэрэв та хүсээгүй бол энэ имэйлийг үл тооно уу.`,
+    });
+    if (delivery.skipped) return { sent: false as const, development: true as const, token };
+    return { sent: true as const, development: false as const };
+  } catch (error) {
+    await store.saveAdminCredential({
+      passwordHash: current?.passwordHash ?? "",
+      salt: current?.salt ?? "",
+      resetHash: current?.resetHash ?? null,
+      resetExpiresAt: current?.resetExpiresAt ?? null,
+      updatedAt: current?.updatedAt ?? iso(),
+    });
+    throw error;
+  }
+}
+
+export async function confirmAdminPasswordReset(token: string, password: string) {
+  const trimmed = password.trim();
+  if (trimmed.length < 8 || trimmed.length > 72) throw new AppError("weak_password", 400);
+  const store = getStore();
+  const current = await store.getAdminCredential();
+  if (!current?.resetHash || !current.resetExpiresAt || current.resetExpiresAt <= Date.now()) {
+    throw new AppError("code_expired", 400);
+  }
+  const entered = token.trim();
+  if (!entered || !codesMatch(entered, "admin-reset", current.resetHash)) throw new AppError("invalid_code", 400);
+  const salt = randomBytes(16).toString("hex");
+  await store.saveAdminCredential({
+    passwordHash: hashPassword(trimmed, salt),
+    salt,
+    resetHash: null,
+    resetExpiresAt: null,
+    updatedAt: iso(),
+  });
 }
 
 function safeEqual(left: string, right: string) {
   const a = createHash("sha256").update(left).digest();
   const b = createHash("sha256").update(right).digest();
   return timingSafeEqual(a, b);
+}
+
+function hashPassword(password: string, salt: string) {
+  return scryptSync(password, salt, 32).toString("hex");
+}
+
+async function adminPasswordMatches(password: string) {
+  const credential = await getStore().getAdminCredential();
+  if (credential?.passwordHash && credential.salt) {
+    const actual = Buffer.from(hashPassword(password, credential.salt), "hex");
+    const expected = Buffer.from(credential.passwordHash, "hex");
+    return actual.length === expected.length && timingSafeEqual(actual, expected);
+  }
+  const expectedPassword = process.env.ADMIN_PASSWORD || "";
+  return Boolean(expectedPassword) && safeEqual(password, expectedPassword);
+}
+
+async function saveRole(user: User, role: UserRole) {
+  if (user.role === role) return user;
+  user.role = role;
+  await getStore().saveUser(user);
+  return user;
 }
 
 export async function moveOwnership(fromUid: string, toUid: string) {

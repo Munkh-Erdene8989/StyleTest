@@ -120,6 +120,9 @@ export interface AppStore {
   saveEmailOtp(otp: EmailOtp): Promise<void>;
   getEmailOtp(email: string): Promise<EmailOtp | null>;
   deleteEmailOtp(email: string): Promise<void>;
+
+  getAdminCredential(): Promise<AdminCredential | null>;
+  saveAdminCredential(credential: AdminCredential): Promise<void>;
 }
 
 export type EmailOtp = {
@@ -129,4 +132,12 @@ export type EmailOtp = {
   salt: string;
   expiresAt: number;
   attempts: number;
+};
+
+export type AdminCredential = {
+  passwordHash: string;
+  salt: string;
+  resetHash: string | null;
+  resetExpiresAt: number | null;
+  updatedAt: string;
 };

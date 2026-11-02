@@ -3,7 +3,7 @@ import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
-import type { AppStore, EmailOtp } from "./types";
+import type { AdminCredential, AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -45,6 +45,7 @@ type Bag = {
   media: Map<string, { path: string; exp: number }>;
   rates: Map<string, { count: number; reset: number }>;
   otps: Map<string, EmailOtp>;
+  adminCredential: AdminCredential | null;
   styleQuizzes: Map<string, StyleQuizRecord>;
   aiQuizzes: Map<string, AiQuizRecord>;
   site: SiteConfig | null;
@@ -73,6 +74,7 @@ function bag(): Bag {
     media: new Map(),
     rates: new Map(),
     otps: new Map(),
+    adminCredential: null,
     styleQuizzes: new Map(),
     aiQuizzes: new Map(),
     site: null,
@@ -366,5 +368,12 @@ export class MemoryStore implements AppStore {
   }
   async deleteEmailOtp(email: string) {
     this.db.otps.delete(email.toLowerCase());
+  }
+
+  async getAdminCredential() {
+    return this.db.adminCredential;
+  }
+  async saveAdminCredential(credential: AdminCredential) {
+    this.db.adminCredential = credential;
   }
 }

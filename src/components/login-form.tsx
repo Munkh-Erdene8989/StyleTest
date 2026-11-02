@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 function loginError(code: string, step: "email" | "code" | "password") {
   if (code === "rate_limited") return "Хэт олон удаа илгээлээ. Түр хүлээнэ үү.";
+  if (code === "invalid_email" && step === "password") return "Зөвхөн админ имэйл нууц үгээ шинэчилнэ.";
+  if (code === "email_unconfigured" || code === "email_failed") return "Имэйл илгээгдсэнгүй. Дахин оролдоно уу.";
   if (code === "invalid_code" && step === "password") return "И-мэйл эсвэл нууц үг буруу байна.";
   if (code === "invalid_code") return "Код буруу байна.";
   if (code === "code_expired") return "Кодын хугацаа дууссан. Дахин авна уу.";
@@ -19,7 +21,7 @@ function afterLogin(admin: boolean) {
   return admin ? "/admin" : "/account";
 }
 
-export function LoginForm() {
+export function LoginForm({ adminDesk = false }: { adminDesk?: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
@@ -47,6 +49,32 @@ export function LoginForm() {
       setMessage("Нэвтэрлээ.");
       router.push(afterLogin(Boolean(data.admin)));
       router.refresh();
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function sendReset() {
+    setError("");
+    setMessage("");
+    setPending(true);
+    try {
+      await fetch("/api/auth/guest", { method: "POST" });
+      const response = await fetch("/api/auth/password/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(loginError(String(data.error ?? ""), "password"));
+        return;
+      }
+      if (data.development && data.token) {
+        setMessage(`Хөгжүүлэлтийн холбоос: /login/reset?token=${data.token}`);
+        return;
+      }
+      setMessage("Нууц үг шинэчлэх холбоосыг админ имэйл рүү илгээлээ.");
     } finally {
       setPending(false);
     }
@@ -190,9 +218,14 @@ export function LoginForm() {
       <button type="submit" className="btn" disabled={pending}>
         Нэвтрэх
       </button>
-      <button type="button" className="btn-quiet" disabled={pending} onClick={() => void sendCode()}>
-        Код авах
+      <button type="button" className="btn-quiet" disabled={pending || !email} onClick={() => void sendReset()}>
+        Нууц үг имэйлээр шинэчлэх
       </button>
+      {adminDesk ? null : (
+        <button type="button" className="btn-quiet" disabled={pending} onClick={() => void sendCode()}>
+          Код авах
+        </button>
+      )}
       {message ? <p role="status">{message}</p> : null}
       {error ? (
         <p role="alert" className="alert">
