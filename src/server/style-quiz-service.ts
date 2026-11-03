@@ -14,7 +14,7 @@ import { getStore } from "./store";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function createStyleQuizCheckout(input: { name: string; email: string; answers: unknown }) {
+export async function createStyleQuizCheckout(input: { name: string; email: string; answers: unknown; ownerUid?: string }) {
   const name = cleanText(input.name, 80);
   const email = cleanText(input.email, 160).toLowerCase();
   if (!name || !EMAIL.test(email)) throw new AppError("invalid_contact", 400);
@@ -23,6 +23,7 @@ export async function createStyleQuizCheckout(input: { name: string; email: stri
   await limit(email, "style_quiz_create", 8);
   const quiz: StyleQuizRecord = {
     id: `quiz_${randomUUID()}`,
+    ownerUid: input.ownerUid,
     name,
     email,
     answers,

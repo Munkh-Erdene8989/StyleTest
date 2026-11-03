@@ -408,7 +408,23 @@ export class FirestoreStore implements AppStore {
   async listAiQuizzes() {
     return this.all<AiQuizRecord>("aiQuizzes");
   }
+  async listAiQuizzesByOwner(uid: string) {
+    const snap = await this.database().collection("aiQuizzes").where("ownerUid", "==", uid).get();
+    return snap.docs.map((doc) => doc.data() as AiQuizRecord);
+  }
+  async listAiQuizzesByEmail(email: string) {
+    const snap = await this.database().collection("aiQuizzes").where("email", "==", email.toLowerCase()).get();
+    return snap.docs.map((doc) => doc.data() as AiQuizRecord);
+  }
   async listStyleQuizzes() {
     return this.all<StyleQuizRecord>("styleQuizzes");
+  }
+  async listStyleQuizzesByOwner(uid: string) {
+    const snap = await this.database().collection("styleQuizzes").where("ownerUid", "==", uid).get();
+    return snap.docs.map((doc) => doc.data() as StyleQuizRecord);
+  }
+  async listStyleQuizzesByEmail(email: string) {
+    const snap = await this.database().collection("styleQuizzes").where("email", "==", email.toLowerCase()).get();
+    return snap.docs.map((doc) => doc.data() as StyleQuizRecord);
   }
 }

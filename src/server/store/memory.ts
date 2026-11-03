@@ -395,7 +395,21 @@ export class MemoryStore implements AppStore {
   async listAiQuizzes() {
     return [...this.db.aiQuizzes.values()];
   }
+  async listAiQuizzesByOwner(uid: string) {
+    return [...this.db.aiQuizzes.values()].filter((quiz) => quiz.ownerUid === uid);
+  }
+  async listAiQuizzesByEmail(email: string) {
+    const target = email.toLowerCase();
+    return [...this.db.aiQuizzes.values()].filter((quiz) => quiz.email.toLowerCase() === target);
+  }
   async listStyleQuizzes() {
     return [...this.db.styleQuizzes.values()];
+  }
+  async listStyleQuizzesByOwner(uid: string) {
+    return [...this.db.styleQuizzes.values()].filter((quiz) => quiz.ownerUid === uid);
+  }
+  async listStyleQuizzesByEmail(email: string) {
+    const target = email.toLowerCase();
+    return [...this.db.styleQuizzes.values()].filter((quiz) => quiz.email.toLowerCase() === target);
   }
 }

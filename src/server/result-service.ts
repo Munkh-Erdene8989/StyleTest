@@ -71,6 +71,7 @@ export type AccountTrack = {
   href: string;
   action: string;
   kind: string;
+  open: boolean;
   progress: TrackProgress;
 };
 
@@ -97,6 +98,7 @@ export async function listAccountTracks(user: User): Promise<AccountTrack[]> {
       href: open ? resumeHref(session, row?.test.slug) : report ? `/reports/${report.id}` : `/sessions/${session.id}`,
       action: open ? "Үргэлжлүүлэх" : "Тайлан харах",
       kind: session.kind,
+      open,
       progress: await trackProgress(session, report ?? null, jobStatus),
     });
   }
@@ -109,6 +111,7 @@ export async function listAccountTracks(user: User): Promise<AccountTrack[]> {
       href: `/reports/${report.id}`,
       action: "Тайлан харах",
       kind: report.kind,
+      open: false,
       progress: await trackProgress(null, report, jobStatus),
     });
   }

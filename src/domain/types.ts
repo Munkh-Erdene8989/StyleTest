@@ -26,6 +26,10 @@ export type PayChannel = "unknown" | "card" | "bank_qr" | "other";
 
 export type UserRole = "user" | "ops" | "sensitive" | "ops_sensitive";
 
+export type Gender = "female" | "male" | "other";
+
+export type BodyFigure = "apple" | "banana" | "pear" | "hourglass";
+
 export type Question = {
   id: string;
   text: string;
@@ -99,6 +103,12 @@ export type User = {
   email: string | null;
   dateOfBirth: string | null;
   ageBand: AgeBand;
+  phone?: string | null;
+  gender?: Gender | null;
+  bodyShape?: string | null;
+  faceShape?: string | null;
+  bodyFigure?: BodyFigure | null;
+  bodyFigureSet?: boolean;
   anonymous: boolean;
   role: UserRole;
   createdAt: string;

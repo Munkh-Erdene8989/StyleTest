@@ -130,7 +130,11 @@ export interface AppStore {
   deleteAdminAccount(email: string): Promise<void>;
 
   listAiQuizzes(): Promise<AiQuizRecord[]>;
+  listAiQuizzesByOwner(uid: string): Promise<AiQuizRecord[]>;
+  listAiQuizzesByEmail(email: string): Promise<AiQuizRecord[]>;
   listStyleQuizzes(): Promise<StyleQuizRecord[]>;
+  listStyleQuizzesByOwner(uid: string): Promise<StyleQuizRecord[]>;
+  listStyleQuizzesByEmail(email: string): Promise<StyleQuizRecord[]>;
 }
 
 export type EmailOtp = {

@@ -38,6 +38,12 @@ export function blankUser(id: string = randomUUID()): User {
     email: null,
     dateOfBirth: null,
     ageBand: "unknown",
+    phone: null,
+    gender: null,
+    bodyShape: null,
+    faceShape: null,
+    bodyFigure: null,
+    bodyFigureSet: false,
     anonymous: true,
     role: "user",
     createdAt: iso(),
@@ -329,6 +335,10 @@ export async function moveOwnership(fromUid: string, toUid: string) {
   for (const entitlement of await store.listEntitlementsByOwner(fromUid)) {
     entitlement.ownerUid = toUid;
     await store.saveEntitlement(entitlement);
+  }
+  for (const quiz of await store.listAiQuizzesByOwner(fromUid)) {
+    quiz.ownerUid = toUid;
+    await store.saveAiQuiz(quiz);
   }
 }
 

@@ -2819,6 +2819,36 @@ body:has(.admin-root) .shell > main {
   appearance: none;
 }
 
+.profile-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-fact span {
+  color: var(--muted);
+}
+
+.report-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--cream);
+}
+
+.report-line .btn {
+  width: auto;
+  flex: none;
+}
+
 .body-value input[type="number"] {
   appearance: textfield;
 }

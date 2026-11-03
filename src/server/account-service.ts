@@ -67,7 +67,19 @@ export async function deleteAccount(user: User) {
     }
   }
   const removed = user.id;
-  await store.saveUser({ ...user, email: null, dateOfBirth: null, anonymous: true, role: "user" });
+  await store.saveUser({
+    ...user,
+    email: null,
+    dateOfBirth: null,
+    phone: null,
+    gender: null,
+    bodyShape: null,
+    faceShape: null,
+    bodyFigure: null,
+    bodyFigureSet: false,
+    anonymous: true,
+    role: "user",
+  });
   return { deletedUser: removed, financialRecordsKept: true };
 }
 

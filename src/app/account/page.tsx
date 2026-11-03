@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { DeleteAccountForm, RefundForm } from "@/components/account-actions";
+import { ProfileForm } from "@/components/profile-form";
+import { ReportDownloads } from "@/components/report-downloads";
 import { StatusBar } from "@/components/status-bar";
-import { formatDay } from "@/lib/format";
 import { optionalUser } from "@/server/auth";
+import { loadProfile } from "@/server/profile-service";
 import { listAccountTracks } from "@/server/result-service";
 import { getStore } from "@/server/store";
 
@@ -20,39 +22,45 @@ export default async function AccountPage() {
     );
   }
   const store = getStore();
-  const tracks = await listAccountTracks(user);
+  const [tracks, profile] = await Promise.all([listAccountTracks(user), loadProfile(user)]);
+  const openTracks = tracks.filter((track) => track.open);
   const orders = (await store.listOrdersByOwner(user.id)).filter((order) => order.paymentStatus === "paid" || order.paymentStatus === "refund_requested");
   return (
     <main>
       <h1>Миний хэсэг</h1>
-      <p>{user.email ?? "И-мэйл холбоогүй"}</p>
-      <p>Төрсөн өдөр: {user.dateOfBirth ? formatDay(`${user.dateOfBirth}T00:00:00Z`) : "Ороогүй"}</p>
-      <p>Нас: {ageLabel(user.ageBand)}</p>
+      <ProfileForm
+        dateOfBirth={profile.dateOfBirth ?? ""}
+        age={profile.age}
+        gender={profile.gender ?? ""}
+        email={profile.email ?? ""}
+        phone={profile.phone ?? ""}
+        bodyShape={profile.bodyShape}
+        faceShape={profile.faceShape}
+        bodyFigure={profile.bodyFigure ?? ""}
+      />
       <section className="stack-form">
-        <h2>Тайлан</h2>
-        {tracks.length === 0 ? (
-          <>
-            <p>Хадгалсан тайлан алга. Тест эхлүүлбэл явц энд гарна.</p>
-            <Link className="btn" href="/quiz">
-              Тест эхлүүлэх
-            </Link>
-          </>
-        ) : null}
-        <div className="catalog">
-          {tracks.map((track) => (
-            <article key={track.id} className="row row-progress">
-              <span className={`swatch swatch-${swatchKind(track.kind)}`} aria-hidden="true" />
-              <div>
-                <span className="row-title">{track.title}</span>
-                <StatusBar progress={track.progress} />
-                <Link href={track.href} className="btn">
-                  {track.action}
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
+        <h2>Бөглөсөн тайлан</h2>
+        <ReportDownloads reports={profile.reports} />
       </section>
+      {openTracks.length > 0 ? (
+        <section className="stack-form">
+          <h2>Үргэлжилж буй</h2>
+          <div className="catalog">
+            {openTracks.map((track) => (
+              <article key={track.id} className="row row-progress">
+                <span className={`swatch swatch-${swatchKind(track.kind)}`} aria-hidden="true" />
+                <div>
+                  <span className="row-title">{track.title}</span>
+                  <StatusBar progress={track.progress} />
+                  <Link href={track.href} className="btn">
+                    {track.action}
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <Link href="/account/photos" className="btn-quiet">
         Эх зураг устгах
       </Link>
@@ -66,12 +74,6 @@ export default async function AccountPage() {
       </section>
     </main>
   );
-}
-
-function ageLabel(age: string) {
-  if (age === "adult") return "Насанд хүрсэн";
-  if (age === "under18") return "18-аас доош";
-  return "Ороогүй";
 }
 
 function swatchKind(kind: string) {

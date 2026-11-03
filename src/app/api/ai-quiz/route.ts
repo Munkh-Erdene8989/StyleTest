@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { createAiQuizCheckout } from "@/server/ai-quiz-service";
 import { errorResponse, readJson, withGuest } from "@/server/http";
 
@@ -11,7 +12,17 @@ export async function POST(req: Request) {
         email: String(body.email ?? ""),
         photoId: body.photoId ? String(body.photoId) : undefined,
       });
-      return Response.json(quiz);
+      const { accountId, ...publicQuiz } = quiz;
+      if (accountId !== user.id) {
+        const jar = await cookies();
+        jar.set("sa_uid", accountId, {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+        });
+      }
+      return Response.json(publicQuiz);
     } catch (error) {
       return errorResponse(error);
     }

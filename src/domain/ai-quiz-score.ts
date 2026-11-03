@@ -302,6 +302,24 @@ export function scoreArchetype(bank: ArchetypeBank, answers: Record<string, AiAn
   };
 }
 
+export function bodyShapeResult(bank: BodyBank, answers: Record<string, AiAnswer>) {
+  const scored = scoreBody(bank, answers);
+  if (scored.brief.status !== "ready") return null;
+  const label = scored.brief.sections[0]?.heading ?? "";
+  const shape = bank.result_types.find((item) => item.label === label);
+  if (!shape) return null;
+  return { id: shape.id, label: shape.label };
+}
+
+export function faceShapeLabel(answers: Record<string, AiAnswer>) {
+  const scored = scoreFace(answers);
+  if (scored.brief.status === "insufficient_data") return null;
+  const section = scored.brief.sections.find((item) => item.heading === "Нүүрний хэлбэр");
+  const name = section?.body.split(".")[0]?.trim() ?? "";
+  if (!name || name.startsWith("Нүүрний хэлбэрийн оноо")) return null;
+  return name;
+}
+
 export function scoreAiQuiz(
   kind: AiQuizKind,
   answers: Record<string, AiAnswer>,

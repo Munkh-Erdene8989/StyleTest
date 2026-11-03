@@ -18,6 +18,15 @@ export function ageBandFromDob(dob: string, now = new Date()): AgeBand {
   return age >= 18 ? "adult" : "under18";
 }
 
+export function ageYears(dob: string | null, now = new Date()) {
+  if (!dob || ageBandFromDob(dob, now) === "unknown") return null;
+  const [year, month, day] = dob.split("-").map(Number);
+  let age = now.getUTCFullYear() - year;
+  const monthDelta = now.getUTCMonth() - (month - 1);
+  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < day)) age -= 1;
+  return age;
+}
+
 export function canStartTest(kind: TestKind, age: AgeBand) {
   if (age === "unknown") return false;
   if (kind === "fun") return true;

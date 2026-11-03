@@ -9,11 +9,13 @@ import { paymentRequired, type ObservedPayment } from "@/domain/payment";
 import { iso } from "@/domain/time";
 import type { Upload, User } from "@/domain/types";
 import { loadArchetypeBank, normalizeAnswers } from "./ai-quiz-banks";
+import { attachEmail } from "./auth";
 import { sendEmail } from "./email";
 import { ensureQuizReportPdf } from "./face-report-pdf";
 import { limit } from "./limit";
 import { checkInvoice, createInvoice, simulatePayAllowed } from "./qpay";
 import { settlePayment } from "./settlement";
+import { rememberQuizProfile } from "./profile-service";
 import { getStore } from "./store";
 
 const KINDS: AiQuizKind[] = ["face_beauty", "body_shape", "archetype"];
@@ -53,10 +55,12 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
   if (!parsed || parsed.missing.length) throw new AppError("answers_incomplete", 400);
   await limit(email, "ai_quiz_create", 8);
   const listing = quizByKind(kind);
+  const stored = (await getStore().getUser(user.id)) ?? user;
+  const owner = stored.email ? stored : await attachEmail(stored.id, email);
   const quiz: AiQuizRecord = {
     id: `aiq_${randomUUID()}`,
     kind,
-    ownerUid: user.id,
+    ownerUid: owner.id,
     email,
     answers: parsed.answers,
     amount: STYLE_QUIZ_PRICE_MNT,
@@ -68,13 +72,14 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
     reportStatus: "pending",
     createdAt: iso(),
   };
-  await attachQuizPhoto(user, quiz, input.photoId);
+  await attachQuizPhoto(owner, quiz, input.photoId);
   if (!paymentRequired()) {
     quiz.paymentStatus = "paid";
     quiz.paidAt = iso();
     await getStore().saveAiQuiz(quiz);
+    await rememberQuizProfile(owner.id, quiz);
     scheduleReport(quiz);
-    return publicQuiz(quiz);
+    return publicQuiz(quiz, owner.id);
   }
   const invoice = await createInvoice({
     id: quiz.id,
@@ -85,7 +90,18 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
   quiz.qrImage = invoice.qrImage;
   quiz.urls = invoice.urls;
   await getStore().saveAiQuiz(quiz);
-  return publicQuiz(quiz);
+  await rememberQuizProfile(owner.id, quiz);
+  return publicQuiz(quiz, owner.id);
+}
+
+export async function downloadAiQuizPdf(user: User, id: string) {
+  const quiz = await loadQuiz(id);
+  const sameAccount = quiz.ownerUid === user.id || Boolean(user.email && quiz.email.toLowerCase() === user.email.toLowerCase());
+  if (!sameAccount) throw new AppError("not_found", 404);
+  if (quiz.paymentStatus !== "paid") throw new AppError("unpaid", 402);
+  const photo = await quizPhoto(quiz);
+  const report = await ensureQuizReportPdf(quiz, photo);
+  return report.pdf;
 }
 
 export async function readAiQuiz(user: User, id: string) {
@@ -208,7 +224,7 @@ function scheduleReport(quiz: AiQuizRecord) {
   }
 }
 
-function publicQuiz(quiz: AiQuizRecord) {
+function publicQuiz(quiz: AiQuizRecord, accountId = quiz.ownerUid) {
   const paid = quiz.paymentStatus === "paid";
   const qrImage = quiz.qrImage
     ? quiz.qrImage.startsWith("data:")
@@ -227,6 +243,7 @@ function publicQuiz(quiz: AiQuizRecord) {
     simulate: simulatePayAllowed() && quiz.paymentStatus !== "paid",
     reportStatus: quiz.reportStatus,
     brief: paid ? quiz.brief : null,
+    accountId,
   };
 }
 

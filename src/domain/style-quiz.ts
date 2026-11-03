@@ -8,6 +8,7 @@ export type StyleQuizPayLink = { name: string; link: string; logo?: string };
 
 export type StyleQuizRecord = {
   id: string;
+  ownerUid?: string;
   name: string;
   email: string;
   answers: Record<string, StyleQuizAnswer>;

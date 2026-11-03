@@ -3,7 +3,9 @@ import { faceQuestions } from "@/content/quizzes/face-beauty";
 import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
 import type { User } from "@/domain/types";
 import { publicQuestions } from "./ai-quiz-banks";
+import { blankUser } from "./auth";
 import { createAiQuizCheckout, readAiQuiz, saveQuizPhoto, simulateAiQuiz } from "./ai-quiz-service";
+import { loadProfile } from "./profile-service";
 import { sendEmail } from "./email";
 import { createInvoice } from "./qpay";
 import { getStore, resetStoreForTests } from "./store";
@@ -129,6 +131,21 @@ describe("ai quiz checkout", () => {
       email: "saraa@example.com",
       photoId: photo.id,
     })).rejects.toMatchObject({ code: "invalid_image" });
+  });
+
+  it("writes the delivery email and face shape onto the account", async () => {
+    const guest = blankUser("guest_quiz");
+    await getStore().saveUser(guest);
+    const created = await createAiQuizCheckout(guest, {
+      kind: "face_beauty",
+      answers: faceAnswers(),
+      email: "guest@example.com",
+    });
+    expect(created.accountId).toBe(guest.id);
+    const saved = await getStore().getUser(guest.id);
+    expect(saved?.email).toBe("guest@example.com");
+    expect(saved?.faceShape).toBeTruthy();
+    expect((await loadProfile(saved!)).faceShape).toBe(saved?.faceShape);
   });
 
   it("asks for the delivery email on the quiz", async () => {
