@@ -2540,6 +2540,12 @@ body:has(.admin-root) .shell > main {
   padding: 1.5rem 1.25rem 1.35rem;
 }
 
+@media (max-width: 899px) {
+  .body-controls {
+    padding-right: 3.35rem;
+  }
+}
+
 .body-preview {
   scroll-margin-top: 6.25rem;
   background: var(--cream-dark);
