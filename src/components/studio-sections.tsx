@@ -74,11 +74,8 @@ export function StudioHero({ studio }: { studio: StudioProfile }) {
           Мэргэжлийн өнгө тодорхойлох үйлчилгээ. Таны өвөрмөц гоо үзэсгэлэнг нээж, хэзээч өөрчлөгдөхгүй өнгөний палитрыг бүтээнэ.
         </p>
         <div className="stage-actions">
-          <Link className="btn" href="/quiz">
+          <Link className="btn" href="/tests">
             Яг одоо тодорхойлох
-          </Link>
-          <Link className="btn-ghost" href="/quiz">
-            Стайл тест авах
           </Link>
         </div>
       </div>
