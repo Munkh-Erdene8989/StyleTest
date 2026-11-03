@@ -81,7 +81,7 @@ export async function updateProfile(
   if (email && email !== (user.email ?? "")) account = await attachEmail(user.id, email);
   const fresh = (await getStore().getUser(account.id)) ?? account;
   const quizzes = await quizzesFor(fresh);
-  const body = newestShape(quizzes, "body_shape");
+  const body = newestShape(quizzes);
   const suggested = body ? figureFromBodyShape(body.id) : null;
   const figure = nextFigureState(chosen, suggested);
   fresh.dateOfBirth = dateOfBirth;
