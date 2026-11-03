@@ -78,14 +78,15 @@ export function SiteHeader({
               </Link>
             );
           })}
-          {loggedIn ? null : (
+        </nav>
+        <div className="bar-end">
+          {loggedIn ? (
+            <ColorPlate navOpen={open} onNavigate={() => setOpen(false)} />
+          ) : (
             <Link href="/login" className="nav-cta" onClick={() => setOpen(false)}>
               Нэвтрэх
             </Link>
           )}
-        </nav>
-        <div className="bar-end">
-          <ColorPlate navOpen={open} onNavigate={() => setOpen(false)} />
           {loggedIn ? <ProfileMenu email={email} pathname={pathname} navOpen={open} onNavigate={() => setOpen(false)} /> : null}
           <button
             type="button"
