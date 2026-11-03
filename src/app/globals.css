@@ -31,6 +31,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --font-weight-normal: 480;
 }
 
 :root {
@@ -102,6 +103,7 @@ body {
   color: var(--ink);
   font-family: var(--font-sans), "Manrope", sans-serif;
   font-size: 1.0625rem;
+  font-weight: 480;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }
@@ -2034,7 +2036,7 @@ main.studio {
   margin-top: 0.15rem;
   color: rgb(255 255 255 / 72%);
   font-size: 0.92rem;
-  font-weight: 400;
+  font-weight: 480;
 }
 
 .stars {
