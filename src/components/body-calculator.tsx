@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Measurements = {
   bust: number;
@@ -168,11 +168,59 @@ function BodyPreview({ measurements }: { measurements: Measurements }) {
   );
 }
 
+function BodyEdgeMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="4.15" r="2.05" />
+      <path d="M8.15 9.05c.45-1.15 1.7-1.9 3.85-1.9s3.4.75 3.85 1.9c.35.9-.35 1.45-1.05 1.35.15 1.7.35 3.55.55 5.35.15 1.35-1.85 1.7-2.15.35L12.6 14.2h-1.2l-.6 1.9c-.3 1.35-2.3 1-2.15-.35.2-1.8.4-3.65.55-5.35-.7.1-1.4-.45-1.05-1.35Z" />
+    </svg>
+  );
+}
+
 export function BodyCalculator() {
+  const previewRef = useRef<HTMLDivElement>(null);
   const [measurements, setMeasurements] = useState<Measurements>(defaults);
+  const [showJump, setShowJump] = useState(false);
   const bodyType = useMemo(() => getBodyType(measurements), [measurements]);
   const bodyInfo = bodyTypeInfo[bodyType];
   const isDefault = controls.every(({ key }) => measurements[key] === defaults[key]);
+
+  useEffect(() => {
+    const node = previewRef.current;
+    if (!node) return;
+    const media = window.matchMedia("(max-width: 899px)");
+
+    const observe = () => {
+      if (!media.matches) {
+        setShowJump(false);
+        return undefined;
+      }
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          setShowJump(!entry.isIntersecting || entry.intersectionRatio < 0.28);
+        },
+        { threshold: [0, 0.28, 0.6], rootMargin: "-100px 0px -88px 0px" },
+      );
+      observer.observe(node);
+      return () => observer.disconnect();
+    };
+
+    let stop = observe();
+    const onChange = () => {
+      stop?.();
+      stop = observe();
+    };
+    media.addEventListener("change", onChange);
+    return () => {
+      stop?.();
+      media.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  function jumpToPreview() {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    previewRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
 
   const updateMeasurement = (key: MeasurementKey, value: number) => {
     const control = controls.find((item) => item.key === key)!;
@@ -242,7 +290,21 @@ export function BodyCalculator() {
         </p>
       </div>
 
-      <div className="body-preview">
+      <button
+        type="button"
+        className={showJump ? "body-edge body-edge-on" : "body-edge"}
+        onClick={jumpToPreview}
+        aria-label="Body calculator, дүрслэл рүү очих"
+        aria-hidden={showJump ? undefined : true}
+        tabIndex={showJump ? 0 : -1}
+      >
+        <span className="body-edge-mark" aria-hidden="true">
+          <BodyEdgeMark />
+        </span>
+        <span className="body-edge-copy">Body calculator</span>
+      </button>
+
+      <div className="body-preview" id="body-preview" ref={previewRef}>
         <div className="body-panel-head">
           <div>
             <p className="kicker">Алхам 02</p>

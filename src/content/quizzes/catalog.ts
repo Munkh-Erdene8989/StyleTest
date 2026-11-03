@@ -13,7 +13,7 @@ export const AI_QUIZ_CATALOG: AiQuizListing[] = [
     kind: "face_beauty",
     slug: "face",
     title: "Нүүр ба гоо сайхан",
-    description: "32 асуултаар нүүрний хэлбэр, өнгө, контраст, essence. Төлсний дараа товч тайлан гарна.",
+    description: "32 асуултаар нүүрний хэлбэр, өнгө, контраст, essence. Төлсний дараа бүрэн тайлан имэйлээр очно.",
     minutes: "5–8",
   },
   {

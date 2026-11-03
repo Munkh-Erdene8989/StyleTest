@@ -11,10 +11,9 @@ type Checkout = {
   paymentStatus: "invoiced" | "paid";
   email: string;
   qrImage?: string;
-  urls: { name: string; link: string }[];
+  urls: { name: string; link: string; logo?: string }[];
   simulate: boolean;
   reportStatus: "pending" | "sending" | "sent" | "failed";
-  brief: { title: string; sections: { heading: string; body: string }[] } | null;
 };
 
 type Stage = "intro" | "questions" | "email";
@@ -28,12 +27,19 @@ function checkoutError(code?: string) {
   return "Илгээж чадсангүй. Дахин оролдоно уу.";
 }
 
+function checkError(code?: string) {
+  if (code === "rate_limited") return "Хэт олон удаа шалгалаа. Түр хүлээгээд дахин оролдоно уу.";
+  if (code === "qpay_check" || code === "qpay_unconfigured" || code === "qpay_auth") return "Төлбөрийг QPay-ээс шалгаж чадсангүй. Дахин оролдоно уу.";
+  if (code === "not_found" || code === "invoice_missing") return "Нэхэмжлэл олдсонгүй. Хуудсыг шинэчлээд дахин оролдоно уу.";
+  return "Төлбөрийг одоогоор шалгаж чадсангүй. Дахин оролдоно уу.";
+}
+
 const INTRO: Record<AiQuizKind, { kicker: string; title: string; emphasis?: string; body: string; stats: [string, string][] }> = {
   face_beauty: {
     kicker: "Шинэ · AI Beauty Analysis",
     title: "Face & Beauty",
     emphasis: "Style",
-    body: "32 асуултаар нүүрний хэлбэр, өнгө, контраст, essence-ийг тодорхойлно. Төлсний дараа товч тайлан гарна.",
+    body: "32 асуултаар нүүрний хэлбэр, өнгө, контраст, essence-ийг тодорхойлно. Төлсний дараа бүрэн тайлан имэйлээр очно.",
     stats: [
       ["32", "асуулт"],
       ["5–8", "минут"],
@@ -89,6 +95,8 @@ export function AiQuizRunner({
   const [restored, setRestored] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoConsent, setPhotoConsent] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [payNotice, setPayNotice] = useState("");
   const wantsPhoto = kind === "face_beauty" || kind === "body_shape" || kind === "archetype";
   const question = questions[index];
 
@@ -139,10 +147,31 @@ export function AiQuizRunner({
     checkout?.paymentStatus === "paid" ? 100 : stage === "intro" ? 0 : stage === "email" ? 94 : Math.round(6 + ((index + 1) / questions.length) * 84);
 
   async function refresh(id: string, confirm: boolean) {
-    const response = await fetch(confirm ? `/api/ai-quiz/${id}/confirm` : `/api/ai-quiz/${id}`, { method: confirm ? "POST" : "GET" });
-    if (!response.ok) return;
-    const payload = (await response.json()) as Checkout & { quiz?: Checkout };
-    setCheckout(payload.quiz ?? payload);
+    if (confirm) {
+      setChecking(true);
+      setPayNotice("");
+    }
+    try {
+      const response = await fetch(confirm ? `/api/ai-quiz/${id}/confirm` : `/api/ai-quiz/${id}`, { method: confirm ? "POST" : "GET" });
+      const payload = (await response.json().catch(() => ({}))) as Checkout & { quiz?: Checkout; error?: string };
+      if (!response.ok) {
+        if (confirm) setPayNotice(checkError(payload.error));
+        return;
+      }
+      const next = payload.quiz ?? payload;
+      if (!next?.id) {
+        if (confirm) setPayNotice(checkError());
+        return;
+      }
+      setCheckout(next);
+      if (confirm && next.paymentStatus !== "paid") {
+        setPayNotice("Төлбөр хүлээгдэж байна. Төлсний дараа дахин шалгана уу.");
+      }
+    } catch {
+      if (confirm) setPayNotice("Төлбөрийг одоогоор шалгаж чадсангүй. Дахин оролдоно уу.");
+    } finally {
+      if (confirm) setChecking(false);
+    }
   }
 
   async function submit(deliveryEmail: string) {
@@ -242,43 +271,41 @@ export function AiQuizRunner({
   }
 
   let body = null;
-  if (checkout?.paymentStatus === "paid" && checkout.brief) {
+  if (checkout?.paymentStatus === "paid") {
     body = (
-      <section className="animate-[fadeIn_.3s_ease-out] overflow-hidden rounded-[2rem] border border-white/80 bg-white/60 shadow-xl shadow-charcoal/5 backdrop-blur-sm">
-        <div className="bg-gradient-to-br from-bordeaux to-bordeaux-light px-6 py-10 text-center text-white sm:px-10">
-          <p className="mx-auto mb-4 w-fit rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-light">Товч тайлан</p>
-          <h2 className="quiz-hero">{checkout.brief.title}</h2>
-        </div>
-        <div className="space-y-4 p-5 sm:p-9">
-          {checkout.brief.sections.map((section) => (
-            <article key={section.heading} className="rounded-2xl border border-cream-dark bg-white p-5">
-              <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted">{section.heading}</p>
-              <p className="mt-2 text-sm leading-relaxed text-charcoal-soft">{section.body}</p>
-            </article>
-          ))}
+      <section className="animate-[fadeIn_.3s_ease-out] rounded-[2rem] border border-white/80 bg-white/60 p-5 shadow-xl shadow-charcoal/5 backdrop-blur-sm sm:p-9">
+        <p className="mb-4 w-fit rounded-full bg-blush px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-bordeaux">Төлбөр</p>
+        <h2 className="quiz-question">Тайлан имэйлээр очно</h2>
+        <p className="mt-3 text-sm leading-relaxed text-muted">Төлбөр баталгаажлаа. Бүрэн тайлан бэлэн болмогц {checkout.email} хаяг руу очно.</p>
+        <div className="mt-6">
           <ReportStatus checkout={checkout} pending={pending} onRetry={() => void retry()} />
         </div>
       </section>
     );
   } else if (checkout) {
+    const banks = checkout.urls.filter((url) => url.logo);
     body = (
       <section className="animate-[fadeIn_.3s_ease-out] rounded-[2rem] border border-white/80 bg-white/60 p-5 shadow-xl shadow-charcoal/5 backdrop-blur-sm sm:p-9">
         <p className="mb-4 w-fit rounded-full bg-blush px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-bordeaux">Төлбөр</p>
-        <h2 className="quiz-question">Товч тайлангийн өмнө</h2>
+        <h2 className="quiz-question">Тайлан имэйлээр очно</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          {formatMnt(checkout.amount)}₮. Төлбөр баталгаажмагц товч тайлан гарна. Дэлгэрэнгүй тайлан бэлэн болмогц {checkout.email} хаяг руу очно.
+          {formatMnt(checkout.amount)}₮. Төлбөр баталгаажмагц бүрэн тайлан {checkout.email} хаяг руу очно.
         </p>
         {checkout.qrImage ? <img src={checkout.qrImage} alt="QPay QR" className="mx-auto mt-6 w-56 rounded-2xl bg-white p-3" /> : null}
         <div className="mt-6 grid gap-3">
-          {checkout.urls.map((url) => (
-            <a key={url.link} href={url.link} className="rounded-full bg-bordeaux px-6 py-4 text-center font-semibold text-white">
-              {url.name}
-            </a>
-          ))}
           {checkout.qrImage || checkout.urls.length ? (
-            <button type="button" onClick={() => void refresh(checkout.id, true)} className="rounded-full border border-cream-dark bg-white px-6 py-4 text-sm font-semibold text-charcoal">
-              Төлбөр шалгах
+            <button type="button" onClick={() => void refresh(checkout.id, true)} disabled={checking} className="rounded-full bg-bordeaux px-6 py-4 font-semibold text-white disabled:opacity-60">
+              {checking ? "Шалгаж байна…" : "Төлбөр шалгах"}
             </button>
+          ) : null}
+          {banks.length ? (
+            <div className="grid grid-cols-3 gap-3">
+              {banks.map((url) => (
+                <a key={url.link} href={url.link} aria-label={url.name} className="flex h-16 items-center justify-center rounded-2xl border border-cream-dark bg-white p-2.5">
+                  <img src={url.logo} alt="" className="max-h-10 w-full object-contain" />
+                </a>
+              ))}
+            </div>
           ) : null}
           {checkout.simulate ? (
             <button type="button" onClick={() => void simulate()} disabled={pending} className="rounded-full border border-bordeaux px-6 py-4 text-sm font-semibold text-bordeaux disabled:opacity-60">
@@ -286,6 +313,11 @@ export function AiQuizRunner({
             </button>
           ) : null}
         </div>
+        {payNotice ? (
+          <p role="status" className="mt-4 text-center text-sm text-bordeaux">
+            {payNotice}
+          </p>
+        ) : null}
       </section>
     );
   } else if (stage === "email") {
@@ -293,7 +325,7 @@ export function AiQuizRunner({
       <section className="animate-[fadeIn_.3s_ease-out] rounded-[2rem] border border-white/80 bg-white/60 p-5 shadow-xl shadow-charcoal/5 backdrop-blur-sm sm:p-9">
         <p className="mb-4 w-fit rounded-full bg-blush px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-bordeaux">Тайлангаа хадгалаарай</p>
         <h2 className="quiz-question">Үр дүнг тань хаашаа илгээх вэ?</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">Дэлгэрэнгүй тайлан энэ хаяг руу очно. Төлбөр баталгаажсаны дараа товч тайлан энд гарна.</p>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">Бүрэн тайлан энэ хаяг руу очно.</p>
         <form
           className="mt-6 space-y-4"
           onSubmit={(event) => {
@@ -381,7 +413,7 @@ export function AiQuizRunner({
           <button type="button" onClick={() => setStage("questions")} className="mt-7 w-full rounded-full bg-bordeaux px-6 py-4 font-semibold text-white shadow-lg shadow-bordeaux/15 transition hover:-translate-y-0.5 hover:bg-bordeaux-dark">
             {Object.keys(answers).length ? "Үргэлжлүүлэх" : "Тестээ эхлүүлэх"}
           </button>
-          <p className="mt-4 text-center text-xs text-muted">Тест бүр {formatMnt(price)}₮. Төлсний дараа товч тайлан, дэлгэрэнгүй тайлан таны оруулсан имэйл рүү.</p>
+          <p className="mt-4 text-center text-xs text-muted">Тест бүр {formatMnt(price)}₮. Төлсний дараа бүрэн тайлан таны оруулсан имэйл рүү очно.</p>
         </div>
       </section>
     );
@@ -463,19 +495,19 @@ export function AiQuizRunner({
 
 function ReportStatus({ checkout, pending, onRetry }: { checkout: Checkout; pending: boolean; onRetry: () => void }) {
   if (checkout.reportStatus === "sent") {
-    return <p role="status" className="text-center text-sm text-muted">Дэлгэрэнгүй тайланг {checkout.email} хаяг руу илгээлээ.</p>;
+    return <p role="status" className="text-center text-sm text-muted">Тайланг {checkout.email} хаяг руу илгээлээ.</p>;
   }
   if (checkout.reportStatus === "failed") {
     return (
       <div className="text-center">
-        <p role="alert" className="text-sm text-bordeaux">Дэлгэрэнгүй тайлан илгээгдсэнгүй. Дахин төлбөр авахгүй.</p>
+        <p role="alert" className="text-sm text-bordeaux">Тайлан илгээгдсэнгүй. Дахин төлбөр авахгүй.</p>
         <button type="button" onClick={onRetry} disabled={pending} className="mt-4 rounded-full bg-bordeaux px-6 py-3 text-sm font-semibold text-white">
           Дахин илгээх
         </button>
       </div>
     );
   }
-  return <p role="status" className="text-center text-sm text-muted">Дэлгэрэнгүй тайлан бэлтгэгдэж байна. Бэлэн болмогц {checkout.email} хаяг руу очно.</p>;
+  return <p role="status" className="text-center text-sm text-muted">Тайлан бэлтгэгдэж байна. Бэлэн болмогц {checkout.email} хаяг руу очно.</p>;
 }
 
 function optionClass(selected: boolean) {

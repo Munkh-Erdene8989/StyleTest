@@ -89,7 +89,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <StudioFooterBrand />
             <StudioFooterContact studio={studio} />
           </div>
-          <p className="bar foot-copy">© 2024 Naruka Styling Studio. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>
+          <p className="bar foot-copy">© {new Date().getFullYear()} Naruka Styling Studio. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>
         </footer>
       </body>
     </html>
