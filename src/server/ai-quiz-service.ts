@@ -179,7 +179,6 @@ export async function applyAiQuizObservation(id: string, observed: ObservedPayme
 
 async function attachQuizPhoto(user: User, quiz: AiQuizRecord, photoId?: string) {
   if (!photoId) return;
-  if (quiz.kind === "archetype") throw new AppError("invalid_image", 400);
   const upload = await getStore().getUpload(photoId);
   const expected = quiz.kind === "face_beauty" ? "face" : "body";
   if (!upload || upload.ownerUid !== user.id || upload.deletedAt || upload.role !== expected || !upload.consentAt) {
@@ -192,7 +191,7 @@ async function attachQuizPhoto(user: User, quiz: AiQuizRecord, photoId?: string)
 }
 
 async function quizPhoto(quiz: AiQuizRecord) {
-  if (!quiz.photoUploadId || quiz.kind === "archetype") return undefined;
+  if (!quiz.photoUploadId) return undefined;
   const upload = await getStore().getUpload(quiz.photoUploadId);
   if (!upload || upload.ownerUid !== quiz.ownerUid || upload.deletedAt) return undefined;
   const object = await getStore().getObject(upload.path);

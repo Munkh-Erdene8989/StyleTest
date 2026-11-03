@@ -42,4 +42,28 @@ describe("photo analysis gate", () => {
     expect(photoAgrees("Лийр хэлбэр", "pear")).toBe(true);
     expect(photoAgrees("Урвуу гурвалжин", "triangle")).toBe(false);
   });
+
+  it("keeps a clothing line from the visible person and rejects an unknown line", () => {
+    const woman = checkPhotoAnalysis("body_front", {
+      status: "retake",
+      quality_issues: ["алхаж байна"],
+      body_label: null,
+      face_label: null,
+      wardrobe: "womenswear",
+      observations: [],
+      retake_instructions: ["эгц зогсоно уу"],
+    });
+    expect(woman.ok).toBe(true);
+    if (woman.ok) expect(woman.analysis.wardrobe).toBe("womenswear");
+    const unknown = checkPhotoAnalysis("body_front", {
+      status: "retake",
+      quality_issues: ["алхаж байна"],
+      body_label: null,
+      face_label: null,
+      wardrobe: "both",
+      observations: [],
+      retake_instructions: ["эгц зогсоно уу"],
+    });
+    expect(unknown.ok).toBe(false);
+  });
 });

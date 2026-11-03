@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { faceQuestions } from "@/content/quizzes/face-beauty";
 import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
 import type { User } from "@/domain/types";
+import { publicQuestions } from "./ai-quiz-banks";
 import { createAiQuizCheckout, readAiQuiz, saveQuizPhoto, simulateAiQuiz } from "./ai-quiz-service";
 import { sendEmail } from "./email";
 import { createInvoice } from "./qpay";
@@ -111,6 +112,22 @@ describe("ai quiz checkout", () => {
       answers: faceAnswers(),
       email: "saraa@example.com",
       photoId: bodyPhoto.id,
+    })).rejects.toMatchObject({ code: "invalid_image" });
+    const archetypeAnswers = Object.fromEntries(
+      publicQuestions("archetype").map((question) => [question.id, { type: "single" as const, optionId: question.options?.[0]?.id ?? "" }]),
+    );
+    const styled = await createAiQuizCheckout(user, {
+      kind: "archetype",
+      answers: archetypeAnswers,
+      email: "saraa@example.com",
+      photoId: bodyPhoto.id,
+    });
+    expect((await getStore().getAiQuiz(styled.id))?.photoUploadId).toBe(bodyPhoto.id);
+    await expect(createAiQuizCheckout(user, {
+      kind: "archetype",
+      answers: archetypeAnswers,
+      email: "saraa@example.com",
+      photoId: photo.id,
     })).rejects.toMatchObject({ code: "invalid_image" });
   });
 

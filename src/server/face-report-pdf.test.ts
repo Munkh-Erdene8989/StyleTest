@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FACE_MANIFEST, applyLocated, assertLandscapePdf, placeCallout, printHtmlToPdf, renderQuizReportHtml, type FaceDraft } from "./face-report-pdf";
+import { FACE_MANIFEST, applyLocated, assertLandscapePdf, placeCallout, printHtmlToPdf, renderQuizReportHtml, resolveReferencePhoto, type FaceDraft } from "./face-report-pdf";
 import { reportDesign } from "./report-design";
 import { MANIFESTS, developerPrompt, imageJobsFor, imagePrompt, userMessage } from "./report-prompts";
 
@@ -62,15 +62,27 @@ describe("face report pdf", () => {
     expect(face.filter((job) => job.id.startsWith("glasses_"))).toHaveLength(3);
     expect(imagePrompt(face[0], true)).toContain("plain white background");
     expect(imageJobsFor("body_shape").filter((job) => job.kind === "outfit").every((job) => job.role === "body")).toBe(true);
-    expect(imageJobsFor("archetype").every((job) => job.role === "none")).toBe(true);
+    const archetype = imageJobsFor("archetype");
+    expect(archetype.filter((job) => job.kind === "outfit").every((job) => job.role === "body")).toBe(true);
+    expect(archetype.filter((job) => job.kind === "still").every((job) => job.role === "none")).toBe(true);
     const shortened = imageJobsFor("face_beauty", ["short"]);
     expect(shortened.some((job) => job.id === "hair_short")).toBe(false);
     expect(shortened.flatMap((job) => job.pages).sort((a, b) => a - b)).toEqual(Array.from({ length: 25 }, (_, index) => index + 1));
     const outfit = imageJobsFor("body_shape").find((job) => job.kind === "outfit");
     expect(outfit).toBeTruthy();
     expect(imagePrompt(outfit!, true)).toContain("Do not slim the waist");
+    expect(imagePrompt(outfit!, true, "", "womenswear")).toContain("Women's clothing only");
+    expect(imagePrompt(outfit!, true, "straight trousers", "womenswear")).toContain("No men's shirts");
+    expect(imagePrompt(outfit!, false, "", "menswear")).toContain("Men's clothing only");
+    expect(imagePrompt(outfit!, false, "", "menswear")).toContain("full-body man fashion mannequin");
+    const capsule = imageJobsFor("body_shape").find((job) => job.id === "still_capsule");
+    expect(imagePrompt(capsule!, false, "", "womenswear")).toContain("Women's clothing only");
     expect(imagePrompt(outfit!, false)).toContain("mannequin");
-    expect(imagePrompt(imageJobsFor("archetype")[1], true)).toContain("mannequin");
+    const archetypeLook = imageJobsFor("archetype").find((job) => job.kind === "outfit");
+    expect(archetypeLook).toBeTruthy();
+    expect(imagePrompt(archetypeLook!, true)).toContain("Do not slim the waist");
+    expect(imagePrompt(archetypeLook!, false)).toContain("mannequin");
+    expect(imagePrompt(archetypeLook!, true, "a cream shirt and straight trousers", "womenswear")).toContain("Women's clothing only");
     const hat = imageJobsFor("face_beauty").find((job) => job.id === "hat_suit");
     expect(hat).toBeTruthy();
     const personalHat = imagePrompt(hat!, true, "a narrow cloche above a long forehead");
@@ -78,6 +90,7 @@ describe("face report pdf", () => {
     expect(personalHat).toContain("Hat only");
     expect(personalHat).toContain("No collage");
     expect(personalHat).not.toContain("One soft hat shape");
+    expect(imagePrompt(hat!, true, "", "womenswear")).not.toContain("Women's clothing");
     expect(imagePrompt(hat!, true)).not.toContain("narrow cloche");
     expect(imagePrompt(hat!, true)).toContain("One soft hat shape");
     const hatMark = { title: "Малгай", text: "Нарийн хүрээ", side: "R" as const, cx: 512, cy: 140, size: 180 };
@@ -110,6 +123,130 @@ describe("face report pdf", () => {
     expect(developerPrompt("face_beauty")).toContain("зохихгүй");
     expect(developerPrompt("body_shape")).toContain("PAGE_MANIFEST_BODY");
     expect(developerPrompt("archetype")).toContain("PAGE_MANIFEST_ARCHETYPE");
+    expect(developerPrompt("archetype")).toContain("dimension_scores");
+    expect(developerPrompt("archetype")).toContain("нэг богино өгүүлбэр");
+  });
+
+  it("makes a compliant studio photo from a rejected upload and uses that photo next", async () => {
+    const upload = Buffer.from("beach");
+    const made = Buffer.from("studio");
+    const seen: string[] = [];
+    let checks = 0;
+    const ready = await resolveReferencePhoto({
+      kind: "body_shape",
+      photo: upload,
+      mime: "image/png",
+      analyze: async () => ({
+        status: "ready",
+        quality_issues: [],
+        body_label: "hourglass",
+        face_label: null,
+        observations: [],
+        retake_instructions: [],
+      }),
+      render: async () => {
+        throw new Error("should not render a photo that already passes");
+      },
+    });
+    expect(ready.personal).toBe(true);
+    expect(ready.photo).toBe(upload);
+    expect(ready.notice).toBeUndefined();
+
+    const prepared = await resolveReferencePhoto({
+      kind: "body_shape",
+      photo: upload,
+      mime: "image/png",
+      analyze: async ({ bytes }) => {
+        checks += 1;
+        seen.push(bytes.toString());
+        if (checks === 1) {
+          return {
+            status: "retake",
+            quality_issues: ["алхаж байна"],
+            body_label: null,
+            face_label: null,
+            wardrobe: "womenswear" as const,
+            observations: [],
+            retake_instructions: ["эгц зогсоно уу"],
+          };
+        }
+        return {
+          status: "ready",
+          quality_issues: [],
+          body_label: "hourglass",
+          face_label: null,
+          wardrobe: "womenswear" as const,
+          observations: [],
+          retake_instructions: [],
+        };
+      },
+      render: async (args) => {
+        expect(args.photo).toBe(upload);
+        expect(args.mime).toBe("image/png");
+        expect(args.size).toBe("1024x1536");
+        expect(args.prompt).toContain("fitted t-shirt and straight trousers");
+        expect(args.prompt).toContain("Do not slim");
+        expect(args.prompt).toContain("No swimwear");
+        expect(args.prompt).toContain("Women's clothing only");
+        return { bytes: made, mime: "image/jpeg" };
+      },
+    });
+    expect(seen).toEqual(["beach", "studio"]);
+    expect(prepared.personal).toBe(true);
+    expect(prepared.photo).toBe(made);
+    expect(prepared.mime).toBe("image/jpeg");
+    expect(prepared.notice).toContain("шаардлагад нийцсэн зураг");
+    expect(prepared.wardrobe).toBe("womenswear");
+
+    const rejected = await resolveReferencePhoto({
+      kind: "face_beauty",
+      photo: Buffer.from("snap"),
+      analyze: async () => ({
+        status: "review",
+        quality_issues: ["нүүр халхалсан"],
+        body_label: null,
+        face_label: null,
+        observations: [],
+        retake_instructions: [],
+      }),
+      render: async (args) => {
+        expect(args.size).toBe("1024x1024");
+        expect(args.prompt).toContain("front portrait");
+        return { bytes: Buffer.from("still-bad"), mime: "image/jpeg" };
+      },
+    });
+    expect(rejected.personal).toBe(false);
+    expect(rejected.notice).toContain("маникен");
+
+    const failed = await resolveReferencePhoto({
+      kind: "body_shape",
+      photo: Buffer.from("snap"),
+      analyze: async () => null,
+      render: async () => {
+        throw new Error("image_http_400");
+      },
+    });
+    expect(failed.personal).toBe(false);
+    expect(failed.notice).toContain("маникен");
+
+    const archetypeReady = await resolveReferencePhoto({
+      kind: "archetype",
+      photo: upload,
+      analyze: async () => ({
+        status: "ready",
+        quality_issues: [],
+        body_label: null,
+        face_label: null,
+        wardrobe: "menswear",
+        observations: [],
+        retake_instructions: [],
+      }),
+      render: async () => {
+        throw new Error("should not render a photo that already passes");
+      },
+    });
+    expect(archetypeReady.personal).toBe(true);
+    expect(archetypeReady.wardrobe).toBe("menswear");
   });
 
   it("prints 25 landscape A4 pages", async () => {

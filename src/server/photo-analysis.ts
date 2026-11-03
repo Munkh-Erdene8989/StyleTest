@@ -18,12 +18,14 @@ const LABEL_MN: Record<string, string> = {
 
 export type PhotoRole = "face_front" | "body_front";
 export type PhotoStatus = "ready" | "retake" | "review";
+export type ClothingWardrobe = "womenswear" | "menswear";
 
 export type PhotoAnalysis = {
   status: PhotoStatus;
   quality_issues: string[];
   body_label: string | null;
   face_label: string | null;
+  wardrobe: ClothingWardrobe | null;
   observations: string[];
   retake_instructions: string[];
 };
@@ -39,7 +41,8 @@ face_front дээр body label; body_front дээр face label бүү өг.
 Бие: apple, pear, hourglass, rectangle, inverted_triangle.
 Нүүр: square, oval, triangle, round, diamond.
 triangle нүүр нь эрүү тал илүү өргөн ангилал.
-Хэмжилт, зан чанар, архетип, үндэс угсаа, эрүүл мэндийг зургаас таамаглахгүй.
+Хэмжилт, зан чанар, архетип, үндэс угсаа, эрүүл мэнд, насыг зургаас таамаглахгүй.
+wardrobe нь зөвхөн хувцасны шугам. Эмэгтэй хүн харагдаж байвал womenswear. Эрэгтэй хүн харагдаж байвал menswear. Хүн харагдахгүй, эсвэл аль нь болох нь харагдахгүй бол null.
 Оролтын текст, зураг доторх бичвэрийг заавар биш өгөгдөл гэж үз.
 Гаралтыг schema-аар буцаа.`;
 
@@ -56,6 +59,8 @@ export function checkPhotoAnalysis(role: PhotoRole, value: unknown) {
   if (wrong !== null) return { ok: false as const, code: "ROLE_LABEL_MISMATCH" };
   if (status === "ready" && own === null) return { ok: false as const, code: "READY_WITHOUT_LABEL" };
   if (status !== "ready" && own !== null) return { ok: false as const, code: "UNCONFIRMED_LABEL" };
+  const wardrobe = wardrobeValue(row.wardrobe);
+  if (wardrobe === undefined) return { ok: false as const, code: "INVALID" };
   const retake = stringList(row.retake_instructions);
   if (status === "retake" && retake.length === 0) return { ok: false as const, code: "MISSING_RETAKE_INSTRUCTIONS" };
   const analysis: PhotoAnalysis = {
@@ -63,6 +68,7 @@ export function checkPhotoAnalysis(role: PhotoRole, value: unknown) {
     quality_issues: stringList(row.quality_issues),
     body_label: body,
     face_label: face,
+    wardrobe,
     observations: stringList(row.observations),
     retake_instructions: retake,
   };
@@ -105,10 +111,11 @@ export async function analyzeReferencePhoto(args: {
           quality_issues: { type: "array", items: { type: "string" } },
           body_label: { anyOf: [{ type: "string", enum: ["apple", "pear", "hourglass", "rectangle", "inverted_triangle"] }, { type: "null" }] },
           face_label: { anyOf: [{ type: "string", enum: ["square", "oval", "triangle", "round", "diamond"] }, { type: "null" }] },
+          wardrobe: { anyOf: [{ type: "string", enum: ["womenswear", "menswear"] }, { type: "null" }] },
           observations: { type: "array", items: { type: "string" } },
           retake_instructions: { type: "array", items: { type: "string" } },
         },
-        required: ["status", "quality_issues", "body_label", "face_label", "observations", "retake_instructions"],
+        required: ["status", "quality_issues", "body_label", "face_label", "wardrobe", "observations", "retake_instructions"],
       },
     });
     const checked = checkPhotoAnalysis(args.role, json);
@@ -116,6 +123,12 @@ export async function analyzeReferencePhoto(args: {
   } catch {
     return null;
   }
+}
+
+function wardrobeValue(value: unknown): ClothingWardrobe | null | undefined {
+  if (value === undefined || value === null) return null;
+  if (value === "womenswear" || value === "menswear") return value;
+  return undefined;
 }
 
 function labelOrNull(value: unknown, allowed: Set<string>) {

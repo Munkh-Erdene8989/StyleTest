@@ -21,7 +21,7 @@ function afterLogin(admin: boolean) {
   return admin ? "/admin" : "/account";
 }
 
-export function LoginForm({ adminDesk = false }: { adminDesk?: boolean }) {
+export function LoginForm({ adminDesk = false, idPrefix = "" }: { adminDesk?: boolean; idPrefix?: string }) {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
@@ -132,10 +132,10 @@ export function LoginForm({ adminDesk = false }: { adminDesk?: boolean }) {
   if (step === "code") {
     return (
       <form onSubmit={verifyCode} className="stack-form">
-        <label htmlFor="code">
+        <label htmlFor={`${idPrefix}code`}>
           Баталгаажуулах код
           <input
-            id="code"
+            id={`${idPrefix}code`}
             className="field"
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -192,10 +192,10 @@ export function LoginForm({ adminDesk = false }: { adminDesk?: boolean }) {
       }}
       className="stack-form"
     >
-      <label htmlFor="email">
+      <label htmlFor={`${idPrefix}email`}>
         И-мэйл
         <input
-          id="email"
+          id={`${idPrefix}email`}
           className="field"
           type="email"
           required
@@ -204,10 +204,10 @@ export function LoginForm({ adminDesk = false }: { adminDesk?: boolean }) {
           onChange={(event) => setEmail(event.target.value)}
         />
       </label>
-      <label htmlFor="password">
+      <label htmlFor={`${idPrefix}password`}>
         Нууц үг
         <input
-          id="password"
+          id={`${idPrefix}password`}
           className="field"
           type="password"
           autoComplete="current-password"

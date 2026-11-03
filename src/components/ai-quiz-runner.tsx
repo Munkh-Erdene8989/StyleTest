@@ -53,7 +53,7 @@ const INTRO: Record<AiQuizKind, { kicker: string; title: string; emphasis?: stri
   archetype: {
     kicker: "Шинэ · Хувийн шинжилгээ",
     title: "Таны гол архетип юу вэ?",
-    body: "Зөв, буруу хариулт байхгүй. Сүүлийн үеийн бодит зан үйлдээ тулгуурлан хамгийн ойр санагдсан хариултыг сонгоно уу.",
+    body: "40 мэдэгдлээр 10 хэмжээсийг тооцож, 25 хуудастай хувийн стилийн тайлан гаргана. Зөв, буруу хариулт байхгүй.",
     stats: [
       ["40", "мэдэгдэл"],
       ["5–8", "минут"],
@@ -89,7 +89,7 @@ export function AiQuizRunner({
   const [restored, setRestored] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoConsent, setPhotoConsent] = useState(false);
-  const wantsPhoto = kind === "face_beauty" || kind === "body_shape";
+  const wantsPhoto = kind === "face_beauty" || kind === "body_shape" || kind === "archetype";
   const question = questions[index];
 
   useEffect(() => {
@@ -158,7 +158,7 @@ export function AiQuizRunner({
       if (photo && wantsPhoto) {
         const form = new FormData();
         form.set("file", photo);
-        form.set("role", kind === "body_shape" ? "body" : "face");
+        form.set("role", kind === "face_beauty" ? "face" : "body");
         form.set("consent", "true");
         const uploaded = await fetch("/api/ai-quiz/photo", { method: "POST", body: form });
         const saved = (await uploaded.json()) as { id?: string; error?: string };
@@ -320,7 +320,7 @@ export function AiQuizRunner({
           {wantsPhoto ? (
             <div className="rounded-2xl border border-cream-dark bg-white p-4">
               <label className="block text-sm text-muted">
-                {kind === "body_shape" ? "Бүтэн биеийн зураг, заавал биш" : "Нүүрний зураг, заавал биш"}
+                {kind === "face_beauty" ? "Нүүрний зураг, заавал биш" : "Бүтэн биеийн зураг, заавал биш"}
                 <input
                   id="quiz-photo"
                   type="file"

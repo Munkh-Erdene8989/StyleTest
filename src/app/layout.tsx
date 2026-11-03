@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
+import { MobileDock } from "@/components/mobile-dock";
 import { SiteHeader } from "@/components/site-header";
 import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sections";
 import { BRAND_DESCRIPTION, BRAND_FACEBOOK, BRAND_KEYWORDS, BRAND_NAME } from "@/domain/brand";
 import { studioFrom } from "@/domain/studio-profile";
+import { archetypeAvailable } from "@/server/ai-quiz-banks";
 import { optionalUser } from "@/server/auth";
 import { getStore } from "@/server/store";
 import "./globals.css";
@@ -81,6 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <AuthBootstrap />
         <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} />
         <div className="shell">{children}</div>
+        <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} />
         <footer className="foot">
           <div className="bar foot-grid">
             <StudioFooterBrand />

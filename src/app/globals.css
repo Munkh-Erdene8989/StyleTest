@@ -203,6 +203,172 @@ body {
   gap: 0.35rem;
 }
 
+.mobile-dock {
+  display: none;
+}
+
+.dock-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 91;
+  border: 0;
+  background: rgb(30 26 24 / 38%);
+  cursor: pointer;
+}
+
+.dock-sheet {
+  position: fixed;
+  right: 0;
+  bottom: calc(4.15rem + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  z-index: 92;
+  max-height: min(72dvh, 36rem);
+  overflow: auto;
+  padding: 0.35rem 1.15rem 1.15rem;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 1.35rem 1.35rem 0 0;
+  background: var(--sheet);
+  box-shadow: 0 -18px 40px rgb(30 26 24 / 12%);
+}
+
+.dock-sheet:focus {
+  outline: none;
+}
+
+.dock-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.85rem 0 0.7rem;
+  background: var(--sheet);
+}
+
+.dock-sheet-head h2 {
+  margin: 0;
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 1.85rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.dock-sheet-head button {
+  min-height: 2.4rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--soft);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dock-tests {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dock-tests li + li {
+  border-top: 1px solid var(--line);
+}
+
+.dock-tests a,
+.dock-tests div {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.95rem 0.15rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.dock-tests strong {
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.dock-tests span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.dock-tests a:hover strong,
+.dock-tests a:focus-visible strong {
+  color: var(--bordeaux);
+}
+
+.dock-sheet .stack-form {
+  padding: 0.2rem 0 0.2rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.dock-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 93;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--cream) 94%, white);
+  backdrop-filter: blur(16px);
+}
+
+.dock-bar button {
+  display: grid;
+  justify-items: center;
+  gap: 0.12rem;
+  min-height: 3.15rem;
+  padding: 0.28rem 0.2rem 0.2rem;
+  border: 0;
+  border-radius: 0.9rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.dock-bar svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.dock-bar .dock-on {
+  color: var(--bordeaux);
+}
+
+.dock-bar .dock-on svg {
+  fill: var(--dye-soft);
+}
+
+.dock-bar button:focus-visible {
+  outline: 2px solid var(--bordeaux);
+  outline-offset: 2px;
+}
+
 .nav-toggle {
   display: none;
   width: 2.4rem;
@@ -2075,6 +2241,18 @@ main.studio {
   .color-plate-pop {
     width: min(16.25rem, calc(100vw - 2rem));
   }
+
+  body:not(:has(.admin-root)) {
+    padding-bottom: calc(4.35rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-dock {
+    display: block;
+  }
+
+  .quiz-shell {
+    padding-bottom: calc(4.35rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2087,7 +2265,8 @@ main.studio {
 }
 
 body:has(.admin-root) .top,
-body:has(.admin-root) > footer {
+body:has(.admin-root) > footer,
+body:has(.admin-root) .mobile-dock {
   display: none;
 }
 

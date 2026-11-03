@@ -221,6 +221,30 @@ export function scoreBody(bank: BodyBank, answers: Record<string, AiAnswer>): Sc
   };
 }
 
+export type ArchetypeScore = { name: string; score: number };
+
+export function archetypeScores(bank: ArchetypeBank, answers: Record<string, AiAnswer>): ArchetypeScore[] | null {
+  if (!bank.questions.length || bank.questions.some((question) => scaleValue(answers[question.id]) === null)) return null;
+  return bank.dimensions
+    .flatMap((dimension) => {
+      const questions = bank.questions.filter((question) => question.dimension === dimension.id);
+      if (!questions.length) return [];
+      const total = questions.reduce((sum, question) => {
+        const value = scaleValue(answers[question.id]) ?? 0;
+        return sum + (question.reverse ? 6 - value : value);
+      }, 0);
+      const copy = ARCHETYPE_COPY[dimension.id];
+      return [{
+        id: dimension.id,
+        name: copy?.name || dimension.label || dimension.id,
+        description: copy?.description || "",
+        score: Math.round(25 * (total / questions.length - 1)),
+      }];
+    })
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+    .map(({ name, score }) => ({ name, score }));
+}
+
 export function scoreArchetype(bank: ArchetypeBank, answers: Record<string, AiAnswer>): ScoredQuiz {
   const missing = bank.questions.filter((question) => scaleValue(answers[question.id]) === null);
   const labels = bank.questions.flatMap((question) => {
@@ -228,7 +252,8 @@ export function scoreArchetype(bank: ArchetypeBank, answers: Record<string, AiAn
     if (value === null) return [];
     return [{ question: question.text || question.id, answer: String(value) }];
   });
-  if (missing.length || bank.questions.length === 0) {
+  const dimensions = archetypeScores(bank, answers);
+  if (!dimensions) {
     return {
       brief: {
         title: "Өөрийгөө таних ба хувийн стиль",
@@ -236,36 +261,23 @@ export function scoreArchetype(bank: ArchetypeBank, answers: Record<string, AiAn
         sections: [
           {
             heading: "Оноо гараагүй",
-            body: "Бүх асуулт бөглөгдсөн үед л хэмжээс бүрийн оноог гаргана. Алгассан хариуг дундаж гэж тооцохгүй.",
+            body: missing.length || bank.questions.length === 0
+              ? "Бүх асуулт бөглөгдсөн үед л хэмжээс бүрийн оноог гаргана. Алгассан хариуг дундаж гэж тооцохгүй."
+              : "Хэмжээсийн оноо гараагүй.",
           },
         ],
       },
       labels,
     };
   }
-  const dimensions = bank.dimensions
-    .map((dimension) => {
-      const questions = bank.questions.filter((question) => question.dimension === dimension.id);
-      if (!questions.length) return null;
-      const total = questions.reduce((sum, question) => {
-        const value = scaleValue(answers[question.id]) ?? 0;
-        return sum + (question.reverse ? 6 - value : value);
-      }, 0);
-      const score = Math.round(25 * (total / questions.length - 1));
-      const copy = ARCHETYPE_COPY[dimension.id];
-      return {
-        id: dimension.id,
-        name: copy?.name || dimension.label || dimension.id,
-        description: copy?.description || "",
-        score,
-      };
-    })
-    .filter((item): item is { id: string; name: string; description: string; score: number } => Boolean(item))
-    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
-  const top = dimensions[0];
+  const ranked = dimensions.map((item) => ({
+    ...item,
+    description: Object.values(ARCHETYPE_COPY).find((copy) => copy.name === item.name)?.description || "",
+  }));
+  const top = ranked[0];
   const tied = top ? dimensions.filter((item) => item.score === top.score) : [];
   const primary = tied.length === 1 ? top : null;
-  const lines = dimensions.map((item) => `${item.name}: ${item.score}`);
+  const lines = ranked.map((item) => `${item.name}: ${item.score}`);
   const sections: AiQuizSection[] = [
     { heading: "Хэмжээсүүд", body: lines.join(". ") + "." },
   ];

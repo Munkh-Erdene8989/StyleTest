@@ -1,4 +1,5 @@
 import type { AiQuizKind } from "@/domain/ai-quiz";
+import type { ClothingWardrobe } from "./photo-analysis";
 
 export const EDITORIAL_RULES = `Та NARUKA-ийн стилист. Хүнтэй нүүр тулан суугаад зөвлөгөө өгч байгаа мэт бич.
 "Та" гэж хандана. Эхлээд дүгнэлтээ хэл, дараа нь яагаад танд тохирохыг
@@ -93,24 +94,20 @@ apple/pear/hourglass/rectangle/inverted_triangle нь биеийн хэлбэр�
 тохирохгүй footwear, байхгүй garment-тай combination бүү зохио.
 Buy list-д priority, gap, selection criteria, existing substitute,
 budget status өг; бодит каталоггүй бол URL/price=null.
-PAGE_MANIFEST_BODY-г дага.`,
+PAGE_MANIFEST_BODY-г дага.
+wardrobe=womenswear бол edit_en болон зөвлөмж зөвхөн эмэгтэй хувцас. wardrobe=menswear бол зөвхөн эрэгтэй хувцас. Холихгүй. wardrobe хоосон бол хувцасны хүйсийг бүү зохио.`,
   archetype: `REPORT_KIND=archetype. classification_system=naruka_dimensions_10.
-Хэмжээсүүд: SOC=Холбогч, EXP=Судлаач, CARE=Халамжлагч,
-ORG=Зохион байгуулагч, CALM=Тэнцвэржүүлэгч, GOAL=Тэмүүлэгч,
-STYLE=Бүтээгч, ANL=Мэргэн, SAFE=Хамгаалагч, VOICE=Өмгөөлөгч.
-Энэ нь 10 хэмжээсийн өөрийн үнэлгээ. 12 Jung архетип эсвэл клиник,
-баталгаажсан сэтгэлзүйн онош гэж бүү танилцуул. Top rank нь хувь хүний
-бүх мөн чанар биш. Тэнцүү/ойр оноог хүчээр нэг winner болгохгүй.
-Тайлангийн гол хэсэг нь өөрийгөө таних, давуу талаа нөхцөлд ашиглах,
-харилцаа/ажлын дадал/хил хязгаар/шийдвэр гаргах арга; түүнтэй уялдсан
-хувийн стиль нь сонголтын жишээ байна. Зан төлөв→тодорхой хувцас заавал
-тохирно гэсэн шинжлэх ухааны шалтгаант холбоо бүү зохио.
-Стиль зөвлөмжийг хэрэглэгчийн style preferences-ээр бататга. Жишээ нь
-ORG өндөр + хялбар хувцаслах хүсэл → давтагдах 3 outfit formula турших.
-Зураг зөвхөн хувцаслалтын visualization; оноонд нөлөөлөхгүй.
-Тайланг Face/Body тайлан шиг нууцаар ангилахгүй, тэдгээрийн үр дүн зөвшөөрөлтэй
-орж ирээгүй бол face shape/season/body type-г шинээр бүү оноо.
-PAGE_MANIFEST_ARCHETYPE-г дага.`,
+Хэмжээсүүд: Холбогч, Судлаач, Халамжлагч, Зохион байгуулагч, Тэнцвэржүүлэгч, Тэмүүлэгч, Бүтээгч, Мэргэн, Хамгаалагч, Өмгөөлөгч.
+Энэ нь 10 хэмжээсийн өөрийн үнэлгээ. 12 Jung архетип, клиник онош гэж бүү танилцуул.
+INPUT доторх dimension_scores бол хариултаас тооцсон 0–100 оноо. Түүнийг унш. Оноо байхгүй бол зөвхөн хариултаас бич.
+Тэнцүү, ойр оноог хүчээр нэг ялагч болгохгүй. Ангиллын код бүү гарга.
+Хуудас бүр нэг богино өгүүлбэр, нэг алхам. Урт тайлбар, хүснэгт, онооны график бүү бич.
+Зураг нь хувцасны жишээ. Зан төлөвөөс заавал нэг хувцас гарна гэж бүү бич. Нүүрний хэлбэр, өнгөний улирал, биеийн хэлбэр бүү оноо.
+Стиль зөвлөмжийг өндөр хэмжээстэй уялдуулж, өнөөдөр туршиж болох нэг алхам болго.
+PAGE_MANIFEST_ARCHETYPE-ийн 25 хуудсыг дага.
+callouts зөвхөн нэр ба 2–5 үг. Координат, side, kind бүү бич.
+edit_en нь энэ хуудсын ганцхан тодорхой хувцас, англиар. «soft outfit» гэж бүдэг бичиж болохгүй.
+wardrobe=womenswear бол edit_en болон зөвлөмж зөвхөн эмэгтэй хувцас. wardrobe=menswear бол зөвхөн эрэгтэй хувцас. Холихгүй. wardrobe хоосон бол хувцасны хүйсийг бүү зохио.`,
 };
 
 export type ReportPageKind = "base" | "change";
@@ -193,31 +190,31 @@ export const MANIFESTS: Record<AiQuizKind, ReportPage[]> = {
     ["30 хоногийн хэрэгжүүлэх төлөвлөгөө", "Шүүгээ шалгах, 3 look турших, gap авах", "action_plan"],
   ], () => "change"),
   archetype: pages([
-    ["Өөрийгөө таних ба стиль", "Top dimensions, өөрийн сонгосон зорилго", "cover", true],
-    ["Оноог зөв унших", "10 хэмжээс, 0–100 гэдэг утга, хязгаар", "dashboard"],
-    ["Тэргүүлэх хэмжээс", "2–3 бодит answer evidence", "hero_notes"],
-    ["Хоёрдогч хэмжээс", "Primary-г хэрхэн нөхөж болох нэг нөхцөл", "hero_notes"],
-    ["Хэмжээсийн хослол", "Давуу тал ба зөрчилдөх нэг нөхцөл", "dashboard"],
-    ["Давуу талаа ашиглах", "3 нөхцөл, үйлдэл, ажиглах үр дүн", "grid", true],
-    ["Өөрт хэрэгтэй орчин", "Чимээ, хүмүүс, бүтэц, шинэлэг байдал", "compare_two"],
-    ["Ажиллах дадал", "2 жижиг routine, өдөрт хийх алхам", "action_plan"],
-    ["Шийдвэр гаргах арга", "Evidence-based 4-step checklist", "detail_steps"],
-    ["Харилцааны хэв маяг", "Сонсох, хүсэлт хэлэх 2 жишээ өгүүлбэр", "grid"],
-    ["Хил хязгаар, өөрийгөө илэрхийлэх", "Нэг нөхцөлд 3 хэллэг", "table"],
-    ["Ачаалалтай үеийн хэвшил", "Анзаарах дохио, завсарлага; оношгүй", "action_plan"],
-    ["Хүсэж буй стиль", "Өөрийн дүр төрхийг 3 үгээр, preference evidence", "grid", true],
-    ["Стилээр илэрхийлэх 3 чиглэл", "Dimension нь inspiration, style choice нь preference", "compare_three"],
-    ["Өнгөний хувийн сонголт", "3 neutral + 3 accent; season биш", "palette"],
-    ["Материал ба деталь", "Minimal/detail, soft/structured-ийг preference-р сонгох", "grid"],
-    ["Signature look A", "Өдөр тутмын орчинд нэг хувийн look", "hero_notes"],
-    ["Signature look B", "Ажил/танилцуулгын үед илэрхийлэх стиль", "hero_notes"],
-    ["Signature look C", "Амралт/нийгмийн нөхцөлд өөрийн сонголт", "hero_notes"],
-    ["Аксессуарын хувийн тэмдэг", "3 accent item, function/meaning", "grid"],
-    ["8-piece mini wardrobe", "Давтагдах хувийн хувцаслах систем", "capsule"],
-    ["Хэрэглээнд шилжүүлэх 6 хослол", "Mini wardrobe ID-аас 6 combination", "table"],
-    ["7 хоногийн жижиг туршилт", "3 behavior + 2 style experiment", "action_plan"],
-    ["30 хоногийн өсөлтийн төлөвлөгөө", "2 dimension goal, 2 style goal", "action_plan"],
-    ["Өөртөө зориулсан нэг хуудас", "Хувийн 5 дүрэм, 3 reflection question", "dashboard"],
+    ["Хувийн стилийн чиглэл", "Хамгийн өндөр хэмжээс, өнөөдрийн нэг чиглэл", "cover", true],
+    ["Тэргүүлэх хэмжээс", "Нэг хэмжээс, нэг бодит хариу", "hero_notes"],
+    ["Хоёрдогч хэмжээс", "Тэргүүлэхийг нөхөх нэг нөхцөл", "hero_notes"],
+    ["Өдөр тутмын силуэт", "Энэ хүнд ойр нэг силуэт", "compare_three"],
+    ["Өнгөний суурь", "Гурван тайван өнгийн нэг нь", "palette"],
+    ["Нэг акцент", "Нэг өнгө эсвэл нэг эд зүйл", "hero_notes"],
+    ["Ажлын хувцас", "Ажил дээрх нэг иж бүрдэл", "hero_notes"],
+    ["Хүрэм", "Нэг урт, нэг мөр", "compare_two"],
+    ["Давхарлалт", "Хоёр давхарга", "detail_steps"],
+    ["Материал", "Нэг уналт", "grid"],
+    ["Цамц", "Нэг зах, нэг суулт", "grid"],
+    ["Даавуу", "Нэг бүтэц", "grid", true],
+    ["Хүсэж буй өнгө", "Нэг өнгөний самбар", "palette"],
+    ["Арга хэмжээ", "Нэг accent-тай look", "hero_notes"],
+    ["Өдрийн look", "Өдөр тутмын нэг look", "hero_notes"],
+    ["Ажлын look", "Танилцуулгын нэг look", "hero_notes"],
+    ["Нийгмийн look", "Уулзалтын нэг look", "hero_notes"],
+    ["Амралтын look", "Чөлөөт цагийн нэг look", "hero_notes"],
+    ["Гутал", "Нэг нам ул", "grid", true],
+    ["Аксессуар", "Нэг хувийн тэмдэг", "grid"],
+    ["Мини капсул", "Давтагдах найман зүйл", "capsule", true],
+    ["Нэг хослол", "Капсулаас нэг хослол", "hero_notes"],
+    ["Долоо хоногийн алхам", "Өнөөдөр турших нэг зүйл", "action_plan"],
+    ["Гучин хоногийн алхам", "Нэг дадал", "action_plan"],
+    ["Нэг дүрэм", "Өөртөө үлдээх нэг дүрэм", "dashboard"],
   ], () => "change"),
 };
 
@@ -314,12 +311,12 @@ const BODY_JOBS: Omit<ReportImageJob, "landmarks">[] = [
 ];
 
 const ARCHETYPE_JOBS: Omit<ReportImageJob, "landmarks">[] = [
-  { id: "still_cover", kind: "still", pages: [1, 2, 25], role: "none", change: "Person-free still life of a notebook, ceramic cup, and a folded neutral textile on a cream desk, soft daylight, no readable text." },
-  { id: "look_daily", kind: "outfit", pages: [3, 14, 17, 22], role: "none", change: "A modest everyday outfit on a mannequin, cream background." },
-  { id: "look_work", kind: "outfit", pages: [4, 10, 15, 18, 23], role: "none", change: "A modest work outfit on a mannequin, cream background." },
-  { id: "look_social", kind: "outfit", pages: [5, 11, 12, 19, 20, 24], role: "none", change: "A modest social outfit on a mannequin, cream background." },
-  { id: "still_focus", kind: "still", pages: [6, 7, 8, 9], role: "none", change: "Person-free still life of a calm workspace with paper cards and a pen, no readable text." },
-  { id: "still_mood", kind: "still", pages: [13, 16, 21], role: "none", change: "Person-free mood board of fabric, paper, and a single accessory arranged on cream, no letters." },
+  { id: "still_cover", kind: "still", pages: [1, 21, 22, 23, 24, 25], role: "none", change: "Person-free flat lay of a coordinated outfit: shirt, trousers, and a light jacket on an off-white surface, entire garments visible." },
+  { id: "look_daily", kind: "outfit", pages: [2, 3, 4, 5, 6, 15], role: "body", change: "A modest everyday top and straight trousers in cream and charcoal." },
+  { id: "look_work", kind: "outfit", pages: [7, 8, 9, 10, 11, 16], role: "body", change: "A modest work outfit: soft jacket, simple top, and straight trousers." },
+  { id: "still_fabric", kind: "still", pages: [12, 13], role: "none", change: "Six different textile swatches showing drape, thickness, and texture on cream paper, entire swatches visible." },
+  { id: "look_social", kind: "outfit", pages: [14, 17, 18, 20], role: "body", change: "A modest social outfit with one quiet accent color, fully clothed." },
+  { id: "still_shoes", kind: "still", pages: [19], role: "none", change: "Three different low shoes laid fully visible on off-white linen, catalog still life." },
 ];
 
 export const IMAGE_JOBS: Record<AiQuizKind, ReportImageJob[]> = {
@@ -393,16 +390,53 @@ function lockOf(job: ReportImageJob) {
   return "";
 }
 
-export function imagePrompt(job: ReportImageJob, personal: boolean, variation = "") {
+const COMPLIANT_BODY = `Edit the supplied photograph of this consenting adult into one studio reference photo.
+One person only. Standing straight, facing the camera. The full body is visible from the top of the head to both feet.
+Shoulders relaxed. Arms a little away from the torso. The camera is level with the chest, not looking down or up.
+Plain light wall, even daylight, sharp focus, no motion blur.
+Clothing is a modest fitted t-shirt and straight trousers that follow the silhouette without hiding it. No swimwear, no underwear, no bare torso.
+Keep this person's face, skin tone, apparent age, and body proportions: shoulder width, waist, hips, and limb length.
+Do not slim, lengthen, widen, or reshape the body. Do not replace the person.
+No text, logo, watermark, collage, or second person.`;
+
+const COMPLIANT_FACE = `Edit the supplied photograph of this consenting adult into one front portrait.
+One person only, head and shoulders, facing the camera. The whole face is visible. No sunglasses, no hat, and hair does not cover the eyes or jaw.
+Plain light background, even daylight, sharp focus.
+Keep facial geometry, skin tone, apparent age, and identity. Do not beautify or reshape the face.
+Modest clothing at the neckline. No text, logo, watermark, or collage.`;
+
+export function clothingDirective(wardrobe?: ClothingWardrobe | null) {
+  if (wardrobe === "womenswear") return "Women's clothing only, cut for a woman. No men's shirts, men's trousers, men's jackets, or men's shoes.";
+  if (wardrobe === "menswear") return "Men's clothing only, cut for a man. No dresses, skirts, women's blouses, or women's shoes.";
+  return "";
+}
+
+export function compliantReferencePrompt(kind: AiQuizKind, wardrobe?: ClothingWardrobe | null) {
+  const base = kind === "face_beauty" ? COMPLIANT_FACE : COMPLIANT_BODY;
+  const line = kind === "face_beauty" ? "" : clothingDirective(wardrobe);
+  return line ? `${base}\n${line}` : base;
+}
+
+export function compliantReferenceSize(kind: AiQuizKind) {
+  return kind === "face_beauty" ? "1024x1024" : "1024x1536";
+}
+
+function wearsClothing(job: ReportImageJob) {
+  if (job.role === "face" || job.kind === "hair" || job.kind === "makeup" || job.kind === "accessory") return false;
+  if (job.id === "still_fabric" || job.id === "still_cover" || job.id === "still_focus" || job.id === "still_mood") return false;
+  return job.role === "body" || job.kind === "outfit" || job.id === "still_capsule" || job.id === "still_shoes";
+}
+
+export function imagePrompt(job: ReportImageJob, personal: boolean, variation = "", wardrobe?: ClothingWardrobe | null) {
   const specific = variation.replace(/\s+/g, " ").trim();
-  const change = specific
-    ? `${specific} ${lockOf(job)} Show this one shape only.`
-    : job.change;
+  const line = wearsClothing(job) ? clothingDirective(wardrobe) : "";
+  const change = [specific ? `${specific} ${lockOf(job)} Show this one shape only.` : job.change, line].filter(Boolean).join(" ");
   if (personal && job.role === "body" && job.kind === "outfit") return OUTFIT_EDIT.replace("{{change}}", change);
   if (personal && job.role === "face" && job.kind !== "still") return FACE_EDIT.replace("{{change}}", change);
   if (job.kind === "still") return `${change} No text, no letters, no logo, no watermark.`;
+  const person = wardrobe === "womenswear" ? "woman" : wardrobe === "menswear" ? "man" : "adult";
   const framing = job.kind === "outfit"
-    ? "full-body adult fashion mannequin with head and feet visible"
+    ? `full-body ${wearsClothing(job) ? person : "adult"} fashion mannequin with head and feet visible`
     : "head-and-shoulders adult fashion mannequin";
   const background = job.role === "face" ? "plain white background" : "cream background";
   return `Studio photograph of one ${framing}, modest everyday clothing, ${background}, soft daylight. Demonstrate: ${change}. Do not slim, lengthen, or reshape the body. No text, no letters, no logo, no watermark. This is a mannequin example, not a real customer.`;

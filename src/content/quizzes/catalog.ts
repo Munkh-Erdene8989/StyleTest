@@ -27,7 +27,7 @@ export const AI_QUIZ_CATALOG: AiQuizListing[] = [
     kind: "archetype",
     slug: "archetype",
     title: "Өөрийгөө таних ба хувийн стиль",
-    description: "Хэмжээсүүдийн оноо ба хувийн стилийн чиглэл.",
+    description: "10 хэмжээсийн оноо. Төлсний дараа 25 хуудастай стилийн тайлан.",
     minutes: "8–12",
   },
 ];

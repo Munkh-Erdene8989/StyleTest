@@ -6,13 +6,13 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { PDFDocument } from "pdf-lib";
 import type { AiQuizBrief, AiQuizDetail, AiQuizKind, AiQuizRecord, AiQuizSection } from "@/domain/ai-quiz";
-import { labelQuizAnswers } from "@/domain/ai-quiz-score";
+import { archetypeScores, labelQuizAnswers, type ArchetypeScore } from "@/domain/ai-quiz-score";
 import { imageFormatOk } from "@/domain/images";
 import { bodyQuizBank, loadArchetypeBank } from "./ai-quiz-banks";
-import { analyzeReferencePhoto } from "./photo-analysis";
+import { analyzeReferencePhoto, type ClothingWardrobe, type PhotoAnalysis, type PhotoRole } from "./photo-analysis";
 import { renderImage, responsesJson } from "./model-transport";
 import { calloutAnchor, reportCss, reportDesign, stackCalloutYs } from "./report-design";
-import { developerPrompt, imageJobsFor, imagePrompt, MANIFESTS, SECTION_LABEL, userMessage } from "./report-prompts";
+import { compliantReferencePrompt, compliantReferenceSize, developerPrompt, imageJobsFor, imagePrompt, MANIFESTS, SECTION_LABEL, userMessage } from "./report-prompts";
 import { getStore } from "./store";
 
 const execFileAsync = promisify(execFile);
@@ -84,7 +84,7 @@ async function cachedReport(key: string): Promise<QuizReportFile | null> {
 export async function ensureQuizReportPdf(quiz: AiQuizRecord, options?: { referencePhoto?: Buffer; mime?: string }): Promise<QuizReportFile> {
   const store = getStore();
   const referencePhoto = options?.referencePhoto?.length ? options.referencePhoto : undefined;
-  const canPersonal = Boolean(referencePhoto) && quiz.kind !== "archetype";
+  const canPersonal = Boolean(referencePhoto);
   const plainKey = reportObjectKey(quiz.id, quiz.kind, false);
   if (!canPersonal) {
     const ready = await cachedReport(plainKey);
@@ -93,19 +93,22 @@ export async function ensureQuizReportPdf(quiz: AiQuizRecord, options?: { refere
     const ready = await cachedReport(reportObjectKey(quiz.id, quiz.kind, true));
     if (ready) return ready;
   }
-  const gate = await photoGate(quiz.kind, referencePhoto, options?.mime);
+  const gate = await resolveReferencePhoto({ kind: quiz.kind, photo: referencePhoto, mime: options?.mime });
   if (!gate.personal) {
     const ready = await cachedReport(plainKey);
     if (ready) return ready;
   }
   const key = reportObjectKey(quiz.id, quiz.kind, gate.personal);
+  const archetypeBank = quiz.kind === "archetype" ? loadArchetypeBank() : null;
   const draft = await draftQuizReport({
     kind: quiz.kind,
     reportId: quiz.id,
-    answers: labelQuizAnswers(quiz.kind, quiz.answers, { body: bodyQuizBank(), archetype: loadArchetypeBank() }),
-    referencePhoto: gate.personal ? referencePhoto : undefined,
-    mime: options?.mime,
+    answers: labelQuizAnswers(quiz.kind, quiz.answers, { body: bodyQuizBank(), archetype: archetypeBank }),
+    dimensions: archetypeBank ? archetypeScores(archetypeBank, quiz.answers) : null,
+    referencePhoto: gate.personal ? gate.photo : undefined,
+    mime: gate.mime,
     notice: gate.notice,
+    wardrobe: gate.wardrobe,
   });
   const copy = reportCopy(quiz.kind, draft);
   const pdf = await assertLandscapePdf(await printHtmlToPdf(renderQuizReportHtml(draft, quiz.kind)));
@@ -130,16 +133,21 @@ export async function draftQuizReport(input: {
   kind: AiQuizKind;
   reportId: string;
   answers: { question: string; answer: string }[];
+  dimensions?: ArchetypeScore[] | null;
   referencePhoto?: Buffer;
   mime?: string;
   notice?: string;
+  wardrobe?: ClothingWardrobe | null;
 }): Promise<FaceDraft> {
   if (!process.env.OPENAI_API_KEY) throw new Error("openai_unconfigured");
   const manifest = MANIFESTS[input.kind];
   const hasReference = Boolean(input.referencePhoto?.length);
+  const wardrobe = input.kind === "face_beauty" ? null : input.wardrobe ?? null;
   const context = {
     quiz_type: input.kind,
     personal_visuals_mode: hasReference ? "reference_photo" : "inspiration_only",
+    wardrobe,
+    ...(input.dimensions?.length ? { dimension_scores: input.dimensions } : {}),
     answers: input.answers.slice(0, 120),
     limitation: hasReference
       ? "Баталсан эх зураг байна. Зураг зөвхөн харагдах жишээ. Хариултыг зургаар үгүйсгэхгүй."
@@ -165,7 +173,7 @@ export async function draftQuizReport(input: {
     const size = job.kind === "outfit" ? "1024x1536" : "1024x1024";
     const variation = job.pages.map((page) => pages.find((item) => item.page_number === page)?.edit_en ?? "").filter(Boolean).join(" ");
     try {
-      const image = await exampleImage(imagePrompt(job, personal, variation), personal ? input.referencePhoto : undefined, size, input.mime);
+      const image = await exampleImage(imagePrompt(job, personal, variation, wardrobe), personal ? input.referencePhoto : undefined, size, input.mime);
       for (const page of job.pages) {
         images[page] = image;
         captions[page] = "";
@@ -191,14 +199,62 @@ export async function draftQuizReport(input: {
   };
 }
 
-async function photoGate(kind: AiQuizKind, photo: Buffer | undefined, mime?: string) {
-  if (!photo?.length || kind === "archetype") return { personal: false, notice: undefined as string | undefined };
-  const role = kind === "face_beauty" ? "face_front" : "body_front";
-  const analysis = await analyzeReferencePhoto({ bytes: photo, mime: mime || "image/jpeg", role });
-  if (!analysis || analysis.status !== "ready") {
-    return { personal: false, notice: "Оруулсан зураг хангалтгүй тул жишээ нь маникен дээр." };
+const MANNEQUIN_NOTICE = "Оруулсан зураг хангалтгүй тул жишээ нь маникен дээр.";
+const PREPARED_NOTICE = "Оруулсан зураг шаардлага хангаагүй тул түүнээс шаардлагад нийцсэн зураг үүсгэж ашиглав.";
+
+type ReferenceAnalyzer = (args: { bytes: Buffer; mime: string; role: PhotoRole }) => Promise<PhotoAnalysis | null>;
+type ReferenceRenderer = (args: { prompt: string; photo: Buffer; mime: string; size: string }) => Promise<{ bytes: Buffer; mime: string }>;
+
+export async function resolveReferencePhoto(input: {
+  kind: AiQuizKind;
+  photo?: Buffer;
+  mime?: string;
+  analyze?: ReferenceAnalyzer;
+  render?: ReferenceRenderer;
+}) {
+  const photo = input.photo;
+  const mime = input.mime || "image/jpeg";
+  if (!photo?.length) return { personal: false as const, wardrobe: null };
+  const analyze = input.analyze ?? analyzeReferencePhoto;
+  const role: PhotoRole = input.kind === "face_beauty" ? "face_front" : "body_front";
+  const analysis = await analyze({ bytes: photo, mime, role });
+  let wardrobe = wardrobeOf(analysis);
+  if (analysis?.status === "ready") return { personal: true as const, photo, mime, wardrobe };
+  try {
+    const made = await (input.render ?? renderCompliantReference)({
+      prompt: compliantReferencePrompt(input.kind, wardrobe),
+      photo,
+      mime,
+      size: compliantReferenceSize(input.kind),
+    });
+    if (!made.bytes.length) return { personal: false as const, notice: MANNEQUIN_NOTICE, wardrobe };
+    const again = await analyze({ bytes: made.bytes, mime: made.mime, role });
+    wardrobe = wardrobeOf(again) ?? wardrobe;
+    if (again?.status !== "ready") return { personal: false as const, notice: MANNEQUIN_NOTICE, wardrobe };
+    return { personal: true as const, photo: made.bytes, mime: made.mime, notice: PREPARED_NOTICE, wardrobe };
+  } catch {
+    return { personal: false as const, notice: MANNEQUIN_NOTICE, wardrobe };
   }
-  return { personal: true, notice: undefined as string | undefined };
+}
+
+function wardrobeOf(analysis: PhotoAnalysis | null): ClothingWardrobe | null {
+  return analysis?.wardrobe === "womenswear" || analysis?.wardrobe === "menswear" ? analysis.wardrobe : null;
+}
+
+async function renderCompliantReference(args: { prompt: string; photo: Buffer; mime: string; size: string }) {
+  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+  const image = await renderImage({
+    model,
+    prompt: args.prompt,
+    size: args.size,
+    outputFormat: "jpeg",
+    quality: "medium",
+    timeoutMs: 180_000,
+    reference: { bytes: args.photo, mime: args.mime },
+  });
+  const mime = imageFormatOk(image.bytes, "image/jpeg") ? "image/jpeg" : imageFormatOk(image.bytes, "image/png") ? "image/png" : "";
+  if (!mime) throw new Error("image_invalid");
+  return { bytes: image.bytes, mime };
 }
 
 export function renderFaceReportHtml(draft: FaceDraft) {
