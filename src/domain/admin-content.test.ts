@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalogFromLibrary, sanitizeDraft, sanitizeNews, scoreSpan } from "./admin-content";
+import { catalogFromLibrary, listedOnSite, sanitizeDraft, sanitizeNews, scoreSpan } from "./admin-content";
 
 describe("admin content", () => {
   it("covers the built-in quizzes without score gaps", () => {
@@ -7,6 +7,7 @@ describe("admin content", () => {
     expect(catalog.length).toBeGreaterThan(0);
     for (const row of catalog) {
       expect(row.issues).toEqual([]);
+      expect(listedOnSite(row)).toBe(false);
       const saved = sanitizeDraft(row, catalog);
       expect("draft" in saved).toBe(true);
     }

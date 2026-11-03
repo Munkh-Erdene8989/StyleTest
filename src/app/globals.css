@@ -366,9 +366,92 @@ body {
   fill: var(--dye-soft);
 }
 
+.dock-bar .dock-feature {
+  align-self: end;
+  justify-self: center;
+  width: 5.35rem;
+  min-height: 4.15rem;
+  margin: -1.35rem 0 0.08rem;
+  padding: 0.48rem 0.4rem 0.34rem;
+  border-radius: 999px;
+  background: var(--bordeaux);
+  color: #fffdfb;
+  box-shadow:
+    0 0 0 3px var(--cream),
+    0 0 0 4px color-mix(in srgb, var(--gold) 70%, var(--bordeaux)),
+    0 10px 18px rgb(92 26 48 / 24%);
+  animation: dock-feature-glow 3.4s ease-in-out infinite;
+}
+
+.dock-feature span {
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.dock-bar .dock-feature svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.dock-bar .dock-feature,
+.dock-bar .dock-feature.dock-on {
+  color: #fffdfb;
+}
+
+.dock-bar .dock-feature svg,
+.dock-bar .dock-feature.dock-on svg {
+  fill: rgb(255 253 251 / 16%);
+  stroke: currentColor;
+}
+
+.dock-bar .dock-feature.dock-on {
+  background: var(--bordeaux-dark);
+}
+
+.dock-glint {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dock-glint 2.4s ease-in-out infinite;
+}
+
+@keyframes dock-glint {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.78);
+  }
+  46% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes dock-feature-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px var(--cream),
+      0 0 0 4px color-mix(in srgb, var(--gold) 52%, var(--bordeaux)),
+      0 8px 16px rgb(92 26 48 / 20%);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px var(--cream),
+      0 0 0 5px color-mix(in srgb, var(--gold) 88%, white),
+      0 12px 22px rgb(92 26 48 / 30%);
+  }
+}
+
 .dock-bar button:focus-visible {
   outline: 2px solid var(--bordeaux);
   outline-offset: 2px;
+}
+
+.dock-bar .dock-feature:focus-visible {
+  outline-color: var(--gold);
 }
 
 .nav-toggle {

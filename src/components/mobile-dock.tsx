@@ -140,13 +140,13 @@ export function MobileDock({
         </button>
         <button
           type="button"
-          className={magicOn ? "dock-on" : undefined}
+          className={magicOn ? "dock-feature dock-on" : "dock-feature"}
           aria-expanded={sheet === "magic"}
           aria-controls={sheet === "magic" ? sheetId : undefined}
           onClick={openMagic}
         >
           <MagicMark />
-          <span>Magic</span>
+          <span>Stylish</span>
         </button>
         <button
           type="button"
@@ -176,7 +176,7 @@ function MagicMark() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 3.2 13.55 8.7 19 10.2 13.55 11.7 12 17.2 10.45 11.7 5 10.2 10.45 8.7Z" />
-      <path d="M18.2 14.4 18.9 16.3 20.8 17 18.9 17.7 18.2 19.6 17.5 17.7 15.6 17 17.5 16.3Z" />
+      <path className="dock-glint" d="M18.2 14.4 18.9 16.3 20.8 17 18.9 17.7 18.2 19.6 17.5 17.7 15.6 17 17.5 16.3Z" />
     </svg>
   );
 }

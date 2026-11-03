@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { listedOnSite } from "@/domain/admin-content";
 import { quizPriceError } from "@/domain/money";
 import { formatMnt } from "@/lib/format";
 import { DeskTitle } from "./admin-frame";
@@ -77,7 +78,7 @@ export function TestList() {
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">{statusLabel[test.version.status] ?? test.version.status}</Badge>
                 {test.builtin ? <Badge variant="secondary">Систем</Badge> : <Badge variant="secondary">Өөрийн</Badge>}
-                {test.hidden ? <Badge variant="outline">Нуусан</Badge> : <Badge>Сайт дээр</Badge>}
+                {listedOnSite(test) ? <Badge>Сайт дээр</Badge> : <Badge variant="outline">Сайт дээр гарахгүй</Badge>}
                 {test.issues.length ? <Badge variant="warn">Муж шалгах</Badge> : null}
               </div>
             </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AI_QUIZ_CATALOG } from "@/content/quizzes/catalog";
+import { listedOnSite } from "@/domain/admin-content";
 import { canStartTest } from "@/domain/age";
 import { formatMnt } from "@/lib/format";
 import { archetypeAvailable } from "@/server/ai-quiz-banks";
@@ -23,7 +24,7 @@ export default async function TestsPage() {
   const archetypeReady = archetypeAvailable();
   const user = await optionalUser();
   const age = user?.ageBand === "under18" ? "under18" : "adult";
-  const catalog = (await loadCatalog()).filter((row) => !row.hidden && row.issues.length === 0 && canStartTest(row.version.kind, age));
+  const catalog = (await loadCatalog()).filter((row) => listedOnSite(row) && canStartTest(row.version.kind, age));
   return (
     <main>
       <p className="kicker">Тест</p>

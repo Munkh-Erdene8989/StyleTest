@@ -31,6 +31,10 @@ export type CatalogTest = TestDraft & {
   issues: string[];
 };
 
+export function listedOnSite(row: { hidden: boolean; issues: string[]; version: { status: string } }) {
+  return !row.hidden && row.issues.length === 0 && row.version.status !== "demo";
+}
+
 const QUIZ_KINDS: TestKind[] = ["personality", "stress", "fun", "youth"];
 const STATUSES: VersionStatus[] = ["demo", "license_pending", "approved"];
 const SWATCHES: NewsSwatch[] = ["personality", "style", "earth"];

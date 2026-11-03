@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { listedOnSite } from "@/domain/admin-content";
 import { NEWS_POSTS } from "@/domain/news";
 import { loadCatalog, publishedNews } from "@/server/catalog";
 
@@ -8,9 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let catalogPaths: string[] = [];
   try {
     newsPaths = (await publishedNews()).map((post) => `/news/${post.slug}`);
-    catalogPaths = (await loadCatalog())
-      .filter((row) => !row.hidden && row.issues.length === 0)
-      .map((row) => `/tests/${row.test.slug}/quiz`);
+    catalogPaths = (await loadCatalog()).filter((row) => listedOnSite(row)).map((row) => `/tests/${row.test.slug}/quiz`);
   } catch {
     newsPaths = NEWS_POSTS.map((post) => `/news/${post.slug}`);
   }

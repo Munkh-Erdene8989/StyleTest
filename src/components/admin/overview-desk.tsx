@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { listedOnSite } from "@/domain/admin-content";
 import { formatDay, formatMnt } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -39,7 +40,7 @@ export function OverviewDesk() {
                       {test.version.questions.length} асуулт · оноо {test.span.min}–{test.span.max}
                     </span>
                   </span>
-                  {test.hidden ? <Badge variant="outline">Нуусан</Badge> : test.issues.length ? <Badge variant="warn">Муж дутуу</Badge> : <Badge>Нээлттэй</Badge>}
+                  {listedOnSite(test) ? <Badge>Нээлттэй</Badge> : test.issues.length ? <Badge variant="warn">Муж дутуу</Badge> : <Badge variant="outline">Сайт дээр гарахгүй</Badge>}
                 </Link>
               </li>
             ))}
