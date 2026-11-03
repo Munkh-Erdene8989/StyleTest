@@ -14,6 +14,17 @@ const OTP_ATTEMPTS = 5;
 const OTP_SUBJECT = "1 удаагийн баталгаажуулах код";
 const RESET_TTL_MS = 30 * 60 * 1000;
 const RESET_SUBJECT = "Админ нууц үг шинэчлэх";
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+
+export function userSessionCookie() {
+  return {
+    httpOnly: true as const,
+    sameSite: "lax" as const,
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: SESSION_MAX_AGE,
+  };
+}
 
 export function soleAdminEmail() {
   return (process.env.BOOTSTRAP_ADMIN_EMAIL || "").trim().toLowerCase();
@@ -66,6 +77,13 @@ export async function ensureGuest() {
     path: "/",
     secure: process.env.NODE_ENV === "production",
   });
+  return user;
+}
+
+export async function assumeAdult(user: User) {
+  if (user.ageBand !== "unknown") return user;
+  user.ageBand = "adult";
+  await getStore().saveUser(user);
   return user;
 }
 

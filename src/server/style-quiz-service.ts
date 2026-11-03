@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { after } from "next/server";
 import { AppError } from "@/domain/errors";
-import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
+import { currentQuizPrice } from "./quiz-price";
 import { paymentRequired, type ObservedPayment } from "@/domain/payment";
 import type { StyleQuizAnswer, StyleQuizRecord } from "@/domain/style-quiz";
 import { iso } from "@/domain/time";
@@ -27,14 +27,14 @@ export async function createStyleQuizCheckout(input: { name: string; email: stri
     name,
     email,
     answers,
-    amount: STYLE_QUIZ_PRICE_MNT,
+    amount: await currentQuizPrice(),
     currency: "MNT",
     paymentStatus: "invoiced",
     urls: [],
     reportStatus: "pending",
     createdAt: iso(),
   };
-  if (!paymentRequired()) {
+  if (!paymentRequired() || quiz.amount === 0) {
     quiz.paymentStatus = "paid";
     quiz.paidAt = iso();
     await getStore().saveStyleQuiz(quiz);

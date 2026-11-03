@@ -4,7 +4,8 @@ import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
 import type { User } from "@/domain/types";
 import { publicQuestions } from "./ai-quiz-banks";
 import { blankUser } from "./auth";
-import { createAiQuizCheckout, readAiQuiz, saveQuizPhoto, simulateAiQuiz } from "./ai-quiz-service";
+import { createAiQuizCheckout, fulfillAiQuiz, readAiQuiz, saveQuizPhoto, simulateAiQuiz } from "./ai-quiz-service";
+import { ensureQuizReportPdf } from "./face-report-pdf";
 import { loadProfile } from "./profile-service";
 import { sendEmail } from "./email";
 import { createInvoice } from "./qpay";
@@ -89,6 +90,49 @@ describe("ai quiz checkout", () => {
     const again = await simulateAiQuiz(user, created.id);
     expect(again.duplicate).toBe(true);
     expect(createInvoice).toHaveBeenCalledTimes(1);
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a paid report again after the first delivery fails, and skips a fresh send lock", async () => {
+    vi.mocked(ensureQuizReportPdf).mockRejectedValueOnce(new Error("spawn chrome ENOENT"));
+    const created = await createAiQuizCheckout({ ...user, email: null }, {
+      kind: "face_beauty",
+      answers: faceAnswers(),
+      email: "saraa@example.com",
+    });
+    await simulateAiQuiz(user, created.id);
+    await vi.waitFor(async () => {
+      expect((await getStore().getAiQuiz(created.id))?.reportStatus).toBe("failed");
+    });
+    expect(sendEmail).not.toHaveBeenCalled();
+
+    await fulfillAiQuiz(created.id);
+    expect((await getStore().getAiQuiz(created.id))?.reportStatus).toBe("sent");
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+
+    const second = await createAiQuizCheckout(user, {
+      kind: "face_beauty",
+      answers: faceAnswers(),
+      email: "saraa@example.com",
+    });
+    await simulateAiQuiz(user, second.id);
+    await vi.waitFor(async () => {
+      expect((await getStore().getAiQuiz(second.id))?.reportStatus).toBe("sent");
+    });
+    await getStore().updateAiQuiz(second.id, (quiz) => ({
+      ...quiz,
+      reportStatus: "sending",
+      reportStartedAt: new Date().toISOString(),
+      brief: null,
+    }));
+    vi.mocked(sendEmail).mockClear();
+    await fulfillAiQuiz(second.id);
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect((await getStore().getAiQuiz(second.id))?.reportStatus).toBe("sending");
+
+    await getStore().updateAiQuiz(second.id, (quiz) => ({ ...quiz, reportStatus: "sending", reportStartedAt: undefined }));
+    await fulfillAiQuiz(second.id);
+    expect((await getStore().getAiQuiz(second.id))?.reportStatus).toBe("sent");
     expect(sendEmail).toHaveBeenCalledTimes(1);
   });
 

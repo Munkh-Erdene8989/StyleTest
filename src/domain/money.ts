@@ -16,6 +16,27 @@ export const PRICES: Record<ProductCode, number> = {
 };
 
 export const STYLE_QUIZ_PRICE_MNT = 150;
+export const QUIZ_PRICE_MIN_MNT = 100;
+export const QUIZ_PRICE_MAX_MNT = 5_000_000;
+export const QUIZ_PRICE_MIN_MESSAGE = "0 дүн оруулж болохгүй. Хамгийн багадаа 100₮ оруулна.";
+export const QUIZ_PRICE_RANGE_MESSAGE = "Үнэ 100–5,000,000₮ хооронд бүхэл тоо байна.";
+
+export function quizPriceError(value: unknown) {
+  if (value === undefined || value === null || (typeof value === "string" && !value.trim())) return QUIZ_PRICE_MIN_MESSAGE;
+  const number = typeof value === "number" ? value : Number(String(value).trim());
+  if (!Number.isFinite(number) || number < QUIZ_PRICE_MIN_MNT) return QUIZ_PRICE_MIN_MESSAGE;
+  if (!Number.isInteger(number) || number > QUIZ_PRICE_MAX_MNT) return QUIZ_PRICE_RANGE_MESSAGE;
+  return null;
+}
+
+export function parseQuizPrice(value: unknown) {
+  if (quizPriceError(value)) return null;
+  return typeof value === "number" ? value : Number(String(value).trim());
+}
+
+export function storedQuizPrice(value: unknown) {
+  return parseQuizPrice(value) ?? STYLE_QUIZ_PRICE_MNT;
+}
 
 export function textCostUsd(inputTokens: number, outputTokens: number) {
   const inputRate = numberEnv("OPENAI_INPUT_USD_PER_MTOK", 2);

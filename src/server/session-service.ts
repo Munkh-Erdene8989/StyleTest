@@ -9,6 +9,7 @@ import { bandFor, scoreAnswers } from "@/domain/score";
 import { pickDirections } from "@/domain/style-match";
 import { DAY_MS, iso, plus } from "@/domain/time";
 import type { GenerationJob, Report, Session, StyleInput, Upload, User } from "@/domain/types";
+import { assumeAdult } from "./auth";
 import { effectiveVersion, loadCatalog, testBySlug } from "./catalog";
 import { enqueueJob } from "./enqueue";
 import { recordOnce } from "./events";
@@ -18,8 +19,9 @@ import { getStore } from "./store";
 export async function createQuizSession(user: User, slug: string) {
   const row = await testBySlug(slug);
   if (!row) throw new AppError("not_found", 404);
+  const ready = await assumeAdult(user);
   const { test, version } = row;
-  if (!canStartTest(version.kind, user.ageBand)) throw new AppError("age_restricted", 403);
+  if (!canStartTest(version.kind, ready.ageBand)) throw new AppError("age_restricted", 403);
   await limit(user.id, "session_create", 40);
   const now = iso();
   const session: Session = {
@@ -124,7 +126,8 @@ export async function completeQuiz(user: User, sessionId: string) {
 }
 
 export async function createStyleSession(user: User) {
-  if (!canStartTest("style", user.ageBand)) throw new AppError("age_restricted", 403);
+  const ready = await assumeAdult(user);
+  if (!canStartTest("style", ready.ageBand)) throw new AppError("age_restricted", 403);
   await limit(user.id, "session_create", 40);
   const now = iso();
   const session: Session = {

@@ -14,7 +14,6 @@ import {
 import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type { BodyFigure, Gender, User } from "@/domain/types";
 import { bodyQuizBank } from "./ai-quiz-banks";
-import { attachEmail } from "./auth";
 import { getStore } from "./store";
 
 export type ProfileReportItem = {
@@ -70,16 +69,13 @@ export async function rememberQuizProfile(userId: string, quiz: AiQuizRecord) {
 
 export async function updateProfile(
   user: User,
-  input: { dateOfBirth: string; gender: string; email: string; phone: string; bodyFigure: string },
+  input: { dateOfBirth: string; gender: string; phone: string; bodyFigure: string },
 ) {
   const dateOfBirth = parseDob(input.dateOfBirth);
   const gender = readGender(input.gender);
   const phone = readPhone(input.phone);
   const chosen = readFigure(input.bodyFigure);
-  const email = input.email.trim().toLowerCase();
-  let account = user;
-  if (email && email !== (user.email ?? "")) account = await attachEmail(user.id, email);
-  const fresh = (await getStore().getUser(account.id)) ?? account;
+  const fresh = (await getStore().getUser(user.id)) ?? user;
   const quizzes = await quizzesFor(fresh);
   const body = newestShape(quizzes);
   const suggested = body ? figureFromBodyShape(body.id) : null;

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { AI_QUIZ_CATALOG } from "@/content/quizzes/catalog";
-import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
 import { formatMnt } from "@/lib/format";
 import { LoginForm } from "@/components/login-form";
 
@@ -13,9 +12,11 @@ type Sheet = "magic" | "profile" | null;
 export function MobileDock({
   loggedIn,
   archetypeReady,
+  price,
 }: {
   loggedIn: boolean;
   archetypeReady: boolean;
+  price: number;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -103,7 +104,7 @@ export function MobileDock({
                     <Link href={`/tests/${quiz.slug}`} onClick={() => setSheet(null)}>
                       <strong>{quiz.title}</strong>
                       <span>
-                        {quiz.minutes} минут · {formatMnt(STYLE_QUIZ_PRICE_MNT)}₮
+                        {quiz.minutes} минут · {formatMnt(price)}₮
                       </span>
                     </Link>
                   )}

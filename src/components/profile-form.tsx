@@ -26,7 +26,6 @@ export function ProfileForm({
   const router = useRouter();
   const [dob, setDob] = useState(dateOfBirth);
   const [sex, setSex] = useState(gender);
-  const [mail, setMail] = useState(email);
   const [tel, setTel] = useState(phone);
   const [figure, setFigure] = useState(bodyFigure);
   const [message, setMessage] = useState("");
@@ -39,7 +38,7 @@ export function ProfileForm({
     const response = await fetch("/api/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dateOfBirth: dob, gender: sex, email: mail, phone: tel, bodyFigure: figure }),
+      body: JSON.stringify({ dateOfBirth: dob, gender: sex, phone: tel, bodyFigure: figure }),
     });
     setPending(false);
     if (!response.ok) {
@@ -69,10 +68,12 @@ export function ProfileForm({
           ))}
         </select>
       </label>
-      <label>
-        И-мэйл
-        <input className="field" type="email" inputMode="email" autoComplete="email" value={mail} onChange={(event) => setMail(event.target.value)} />
-      </label>
+      {email ? (
+        <p className="profile-fact">
+          <span>И-мэйл</span>
+          <strong>{email}</strong>
+        </p>
+      ) : null}
       <label>
         Утас
         <input className="field" type="tel" inputMode="tel" autoComplete="tel" placeholder="88112233" value={tel} onChange={(event) => setTel(event.target.value)} />
@@ -112,7 +113,6 @@ export function ProfileForm({
 function messageFor(code: string) {
   if (code === "invalid_age") return "Төрсөн өдрөө зөв оруулна уу.";
   if (code === "invalid_phone") return "Утасны дугаар 8 оронтой байна.";
-  if (code === "invalid_email") return "И-мэйл хаягаа зөв оруулна уу.";
   if (code === "invalid_gender") return "Хүйсээ сонгоно уу.";
   if (code === "invalid_figure") return "Биеийн хэмжээний төрлөө сонгоно уу.";
   return "Хадгалж чадсангүй.";

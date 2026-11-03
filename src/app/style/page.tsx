@@ -1,4 +1,4 @@
-import { AgeForm } from "@/components/age-form";
+import { ContinueAsAdult } from "@/components/continue-as-adult";
 import { StyleWizard } from "@/components/style-wizard";
 import { STYLE_EXAMPLES } from "@/domain/content";
 import { optionalUser } from "@/server/auth";
@@ -11,8 +11,7 @@ export default async function StylePage() {
     return (
       <main>
         <h1>Стайлын зөвлөмж</h1>
-        <p>Төрсөн өдрөө нэг удаа оруулна. Таны нас хэрэглэгчийн мэдээлэлд хадгалагдаж, дараагийн тестэд дахин асуухгүй.</p>
-        <AgeForm />
+        <ContinueAsAdult />
       </main>
     );
   }

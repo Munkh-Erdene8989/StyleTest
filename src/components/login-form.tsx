@@ -121,7 +121,7 @@ export function LoginForm({ adminDesk = false, idPrefix = "" }: { adminDesk?: bo
         setError(loginError(String(data.error ?? ""), "code"));
         return;
       }
-      setMessage("Нэвтэрлээ.");
+      setMessage("Нэвтэрлээ. 30 хоног нэвтэрсэн хэвээр байна.");
       router.push(afterLogin(false));
       router.refresh();
     } finally {
@@ -129,7 +129,7 @@ export function LoginForm({ adminDesk = false, idPrefix = "" }: { adminDesk?: bo
     }
   }
 
-  if (step === "code") {
+  if (!adminDesk && step === "code") {
     return (
       <form onSubmit={verifyCode} className="stack-form">
         <label htmlFor={`${idPrefix}code`}>
@@ -184,6 +184,40 @@ export function LoginForm({ adminDesk = false, idPrefix = "" }: { adminDesk?: bo
     );
   }
 
+  if (!adminDesk) {
+    return (
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void sendCode();
+        }}
+        className="stack-form"
+      >
+        <label htmlFor={`${idPrefix}email`}>
+          И-мэйл
+          <input
+            id={`${idPrefix}email`}
+            className="field"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </label>
+        <button type="submit" className="btn" disabled={pending}>
+          Код илгээх
+        </button>
+        {message ? <p role="status">{message}</p> : null}
+        {error ? (
+          <p role="alert" className="alert">
+            {error}
+          </p>
+        ) : null}
+      </form>
+    );
+  }
+
   return (
     <form
       onSubmit={(event) => {
@@ -221,11 +255,6 @@ export function LoginForm({ adminDesk = false, idPrefix = "" }: { adminDesk?: bo
       <button type="button" className="btn-quiet" disabled={pending || !email} onClick={() => void sendReset()}>
         Нууц үг имэйлээр шинэчлэх
       </button>
-      {adminDesk ? null : (
-        <button type="button" className="btn-quiet" disabled={pending} onClick={() => void sendCode()}>
-          Код авах
-        </button>
-      )}
       {message ? <p role="status">{message}</p> : null}
       {error ? (
         <p role="alert" className="alert">

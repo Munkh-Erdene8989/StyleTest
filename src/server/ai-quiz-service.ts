@@ -4,12 +4,12 @@ import { quizByKind } from "@/content/quizzes/catalog";
 import type { AiQuizKind, AiQuizRecord } from "@/domain/ai-quiz";
 import { AppError } from "@/domain/errors";
 import { imageFormatOk } from "@/domain/images";
-import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
+import { currentQuizPrice } from "./quiz-price";
 import { paymentRequired, type ObservedPayment } from "@/domain/payment";
 import { iso } from "@/domain/time";
 import type { Upload, User } from "@/domain/types";
 import { loadArchetypeBank, normalizeAnswers } from "./ai-quiz-banks";
-import { attachEmail } from "./auth";
+import { assumeAdult, attachEmail } from "./auth";
 import { sendEmail } from "./email";
 import { ensureQuizReportPdf } from "./face-report-pdf";
 import { limit } from "./limit";
@@ -20,6 +20,15 @@ import { getStore } from "./store";
 
 const KINDS: AiQuizKind[] = ["face_beauty", "body_shape", "archetype"];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REPORT_LOCK_MS = 15 * 60 * 1000;
+
+function reportLocked(quiz: AiQuizRecord, now = Date.now()) {
+  if (quiz.reportStatus === "sent") return true;
+  if (quiz.reportStatus !== "sending") return false;
+  if (!quiz.reportStartedAt) return false;
+  const started = new Date(quiz.reportStartedAt).getTime();
+  return Number.isFinite(started) && now - started < REPORT_LOCK_MS;
+}
 
 export async function saveQuizPhoto(user: User, input: { role: string; bytes: Buffer; contentType: string; consent: boolean }) {
   if (!input.consent) throw new AppError("consent_required", 400);
@@ -55,7 +64,7 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
   if (!parsed || parsed.missing.length) throw new AppError("answers_incomplete", 400);
   await limit(email, "ai_quiz_create", 8);
   const listing = quizByKind(kind);
-  const stored = (await getStore().getUser(user.id)) ?? user;
+  const stored = await assumeAdult((await getStore().getUser(user.id)) ?? user);
   const owner = stored.email ? stored : await attachEmail(stored.id, email);
   const quiz: AiQuizRecord = {
     id: `aiq_${randomUUID()}`,
@@ -63,7 +72,7 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
     ownerUid: owner.id,
     email,
     answers: parsed.answers,
-    amount: STYLE_QUIZ_PRICE_MNT,
+    amount: await currentQuizPrice(),
     currency: "MNT",
     paymentStatus: "invoiced",
     urls: [],
@@ -73,7 +82,7 @@ export async function createAiQuizCheckout(user: User, input: { kind: string; an
     createdAt: iso(),
   };
   await attachQuizPhoto(owner, quiz, input.photoId);
-  if (!paymentRequired()) {
+  if (!paymentRequired() || quiz.amount === 0) {
     quiz.paymentStatus = "paid";
     quiz.paidAt = iso();
     await getStore().saveAiQuiz(quiz);
@@ -106,6 +115,7 @@ export async function downloadAiQuizPdf(user: User, id: string) {
 
 export async function readAiQuiz(user: User, id: string) {
   const quiz = await loadOwned(user, id);
+  if (quiz.paymentStatus === "paid") scheduleReport(quiz);
   return publicQuiz(quiz);
 }
 
@@ -132,22 +142,26 @@ export async function simulateAiQuiz(user: User, id: string) {
 export async function retryAiQuiz(user: User, id: string) {
   const quiz = await loadOwned(user, id);
   if (quiz.paymentStatus !== "paid") throw new AppError("unpaid", 402);
-  if (quiz.reportStatus === "sent" || quiz.reportStatus === "sending") return publicQuiz(quiz);
-  await getStore().updateAiQuiz(id, (current) => ({ ...current, reportStatus: "pending" }));
-  scheduleReport({ ...quiz, reportStatus: "pending" });
-  return publicQuiz({ ...quiz, reportStatus: "pending" });
+  if (reportLocked(quiz)) return publicQuiz(quiz);
+  await getStore().updateAiQuiz(id, (current) => {
+    if (reportLocked(current)) return current;
+    return { ...current, reportStatus: "pending", reportStartedAt: undefined };
+  });
+  const next = { ...quiz, reportStatus: "pending" as const, reportStartedAt: undefined };
+  scheduleReport(next);
+  return publicQuiz(next);
 }
 
 export async function fulfillAiQuiz(id: string) {
   const store = getStore();
   const current = await store.getAiQuiz(id);
-  if (!current || current.paymentStatus !== "paid") return;
-  if (current.reportStatus === "sent" || current.reportStatus === "sending") return;
+  if (!current || current.paymentStatus !== "paid" || reportLocked(current)) return;
+  const startedAt = iso();
   const { previous } = await store.updateAiQuiz(id, (quiz) => {
-    if (quiz.reportStatus === "sent" || quiz.reportStatus === "sending") return quiz;
-    return { ...quiz, reportStatus: "sending" };
+    if (reportLocked(quiz)) return quiz;
+    return { ...quiz, reportStatus: "sending", reportStartedAt: startedAt };
   });
-  if (previous.reportStatus === "sent" || previous.reportStatus === "sending") return;
+  if (reportLocked(previous)) return;
   try {
     const photo = await quizPhoto(current);
     const report = await ensureQuizReportPdf(current, photo);
@@ -216,7 +230,7 @@ async function quizPhoto(quiz: AiQuizRecord) {
 }
 
 function scheduleReport(quiz: AiQuizRecord) {
-  if (quiz.paymentStatus !== "paid" || quiz.reportStatus === "sent") return;
+  if (quiz.paymentStatus !== "paid" || reportLocked(quiz)) return;
   try {
     after(() => fulfillAiQuiz(quiz.id));
   } catch {

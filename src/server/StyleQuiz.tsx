@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { STYLE_QUIZ_PRICE_MNT } from '@/domain/money';
+import { formatMnt } from '@/lib/format';
 
 type Answer = {
   value: string | string[] | number;
@@ -53,6 +55,26 @@ const steps = [
 ] as const;
 
 type Step = typeof steps[number];
+
+const GATES = new Set<Step>(['age', 'photo']);
+const ADULT_AGE: Answer = {
+  value: '26–35',
+  label: '26–35',
+  insight: 'Насанд хүрсэн хэрэглэгчийн амьдралын хэмнэлд тохирсон, удаан хэрэглэх стайлын зөвлөмж.',
+};
+
+function afterGate(from: number) {
+  let index = Math.max(0, from);
+  while (index < steps.length && GATES.has(steps[index])) index += 1;
+  return Math.min(steps.length - 1, index);
+}
+
+function beforeGate(from: number) {
+  let index = Math.min(steps.length - 1, from);
+  while (index > 0 && GATES.has(steps[index])) index -= 1;
+  if (GATES.has(steps[index])) return afterGate(0);
+  return index;
+}
 
 const basicQuestions: Partial<Record<Step, { eyebrow: string; title: string; subtitle?: string; options: Option[]; multi?: boolean }>> = {
   feel: {
@@ -279,10 +301,10 @@ function ExpertInsight({ text }: { text: string }) {
   );
 }
 
-export default function StyleQuiz({ onClose }: { onClose?: () => void }) {
+export default function StyleQuiz({ onClose, price = STYLE_QUIZ_PRICE_MNT }: { onClose?: () => void; price?: number }) {
   const router = useRouter();
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<Answers>({});
+  const [index, setIndex] = useState(() => afterGate(0));
+  const [answers, setAnswers] = useState<Answers>({ age: ADULT_AGE });
   const [multiDraft, setMultiDraft] = useState<string[]>([]);
   const [outfitIndex, setOutfitIndex] = useState(0);
   const [outfitRatings, setOutfitRatings] = useState<Record<string, string>>({});
@@ -313,10 +335,12 @@ export default function StyleQuiz({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as { answers?: Answers; name?: string; email?: string; step?: number };
-      if (saved.answers && typeof saved.answers === 'object') setAnswers(saved.answers);
+      if (saved.answers && typeof saved.answers === 'object') {
+        setAnswers({ age: ADULT_AGE, ...saved.answers, age: saved.answers.age ?? ADULT_AGE });
+      }
       if (typeof saved.name === 'string') setName(saved.name);
       if (typeof saved.email === 'string') setEmail(saved.email);
-      if (Number.isInteger(saved.step) && (saved.step ?? 0) >= 0 && (saved.step ?? 0) < steps.length) setIndex(saved.step ?? 0);
+      if (Number.isInteger(saved.step) && (saved.step ?? 0) >= 0 && (saved.step ?? 0) < steps.length) setIndex(afterGate(saved.step ?? 0));
     } catch {
       // Keep the blank quiz if stored progress cannot be read.
     }
@@ -367,12 +391,12 @@ export default function StyleQuiz({ onClose }: { onClose?: () => void }) {
 
   function next() {
     setMultiDraft([]);
-    setIndex(value => Math.min(steps.length - 1, value + 1));
+    setIndex(value => afterGate(value + 1));
   }
 
   function back() {
     setMultiDraft([]);
-    setIndex(value => Math.max(0, value - 1));
+    setIndex(value => beforeGate(value - 1));
   }
 
   function save(key: string, answer: Answer, auto = true) {
@@ -608,7 +632,7 @@ export default function StyleQuiz({ onClose }: { onClose?: () => void }) {
           <div className="rounded-3xl border border-bordeaux bg-blush p-5 ring-2 ring-bordeaux/10">
             <div className="flex items-center justify-between gap-4">
               <p className="font-semibold text-charcoal">Хувийн стайл тайлан</p>
-              <p className="font-[family-name:var(--font-display)] text-3xl text-bordeaux">150₮</p>
+              <p className="font-[family-name:var(--font-display)] text-3xl text-bordeaux">{formatMnt(checkout?.amount ?? price)}₮</p>
             </div>
             <p className="mt-2 text-sm text-muted">Өнгө, силуэт, өдөр тутмын хослол, худалдан авалтын зөвлөгөө. {email}</p>
           </div>
@@ -631,7 +655,7 @@ export default function StyleQuiz({ onClose }: { onClose?: () => void }) {
               {checkout.simulate ? <button type="button" onClick={() => void simulatePay()} className="w-full rounded-full border border-bordeaux px-6 py-3 text-sm font-semibold text-bordeaux">Туршилтын төлбөр баталгаажуулах</button> : null}
             </div>
           ) : (
-            <div className="mt-6"><PrimaryButton onClick={() => void startPay()} disabled={paying}>{paying ? 'Нэхэмжлэл үүсгэж байна…' : '150₮ төлөөд тайлан авах'}</PrimaryButton></div>
+            <div className="mt-6"><PrimaryButton onClick={() => void startPay()} disabled={paying}>{paying ? 'Нэхэмжлэл үүсгэж байна…' : `${formatMnt(price)}₮ төлөөд тайлан авах`}</PrimaryButton></div>
           )}
           {payError ? <p className="mt-4 text-center text-sm text-bordeaux">{payError}</p> : null}
         </Screen>
@@ -648,7 +672,7 @@ export default function StyleQuiz({ onClose }: { onClose?: () => void }) {
         <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-3">
           <button onClick={close} aria-label="Тест хаах" className="flex size-10 items-center justify-center rounded-full border border-transparent text-xl text-charcoal-soft transition hover:border-[#E8DDD5] hover:bg-white">×</button>
           <img src="/naruka-logo.png" alt="Naruka Styling Studio" className="h-9 w-auto object-contain brightness-0" />
-          <button onClick={back} disabled={index === 0 || step === 'loader'} className="rounded-full px-3 py-2 text-sm font-semibold text-bordeaux transition hover:bg-blush disabled:invisible">Буцах</button>
+          <button onClick={back} disabled={index <= afterGate(0) || step === 'loader'} className="rounded-full px-3 py-2 text-sm font-semibold text-bordeaux transition hover:bg-blush disabled:invisible">Буцах</button>
         </div>
         <div className="relative h-1 bg-cream-dark"><div className="h-full rounded-r-full bg-gradient-to-r from-gold to-bordeaux transition-all duration-500" style={{ width: `${progress}%` }} /></div>
       </header>

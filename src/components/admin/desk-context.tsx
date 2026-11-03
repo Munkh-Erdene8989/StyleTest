@@ -8,6 +8,7 @@ import type { StudioProfile } from "@/domain/types";
 export type Desk = {
   viewer: { id: string; email: string | null; role: string; canReadSensitive: boolean };
   appName: string;
+  quizPriceMnt: number;
   studio: StudioProfile;
   admins: string[];
   helpContacts: { name: string; phone: string; note: string; source: string }[];

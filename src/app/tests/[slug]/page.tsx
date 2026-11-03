@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { quizBySlug } from "@/content/quizzes/catalog";
 import { AiQuizRunner } from "@/components/ai-quiz-runner";
-import { STYLE_QUIZ_PRICE_MNT } from "@/domain/money";
 import { archetypeAvailable, publicQuestions } from "@/server/ai-quiz-banks";
+import { currentQuizPrice } from "@/server/quiz-price";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -31,7 +31,7 @@ export default async function AiQuizPage({ params }: Params) {
   if (!questions.length) notFound();
   return (
     <main>
-      <AiQuizRunner kind={quiz.kind} title={quiz.title} description={quiz.description} questions={questions} price={STYLE_QUIZ_PRICE_MNT} />
+      <AiQuizRunner kind={quiz.kind} title={quiz.title} description={quiz.description} questions={questions} price={await currentQuizPrice()} />
     </main>
   );
 }

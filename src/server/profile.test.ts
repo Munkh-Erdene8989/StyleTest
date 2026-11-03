@@ -48,10 +48,10 @@ describe("profile", () => {
     expect(view.bodyFigure).toBe("pear");
     expect(view.faceShape).toBeTruthy();
     expect(view.reports.map((item) => item.title)).toEqual([
-      "Нүүр ба гоо сайхан",
+      "Нүүрний хэлбэр",
       "Стайлын зөвлөмж",
-      "Биеийн хэлбэр ба хувцаслалт",
-      "Биеийн хэлбэр ба хувцаслалт",
+      "Биеийн хэлбэр",
+      "Биеийн хэлбэр",
       "Хөгжилтэй",
     ]);
     expect(view.reports.find((item) => item.id === "aiq_new")?.pdf).toBe(false);
@@ -60,7 +60,6 @@ describe("profile", () => {
     const saved = await updateProfile(user, {
       dateOfBirth: "1994-04-02",
       gender: "female",
-      email: "saraa@example.com",
       phone: "9911 2233",
       bodyFigure: "hourglass",
     });
@@ -74,7 +73,6 @@ describe("profile", () => {
     const followed = await updateProfile(saved, {
       dateOfBirth: "1994-04-02",
       gender: "female",
-      email: "saraa@example.com",
       phone: "99112233",
       bodyFigure: "pear",
     });
@@ -83,7 +81,6 @@ describe("profile", () => {
     await expect(updateProfile(followed, {
       dateOfBirth: "1994-04-02",
       gender: "female",
-      email: "saraa@example.com",
       phone: "12",
       bodyFigure: "pear",
     })).rejects.toMatchObject({ code: "invalid_phone" });

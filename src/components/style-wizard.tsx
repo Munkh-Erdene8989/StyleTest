@@ -24,7 +24,6 @@ export function StyleWizard({
   const [comfort, setComfort] = useState("");
   const [request, setRequest] = useState("");
   const [usePersonality, setUsePersonality] = useState(false);
-  const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -55,7 +54,7 @@ export function StyleWizard({
     form.set("file", await prepareImage(file));
     form.set("role", role);
     form.set("sessionId", sessionId);
-    form.set("consent", String(consent));
+    form.set("consent", "true");
     const response = await fetch("/api/uploads", { method: "POST", body: form });
     if (!response.ok) throw new Error(await errorCode(response));
   }
@@ -68,7 +67,6 @@ export function StyleWizard({
       const form = new FormData(event.currentTarget);
       const face = form.get("face");
       const body = form.get("body");
-      if (!consent) throw new Error("consent_required");
       if (!(face instanceof File) || face.size === 0 || !(body instanceof File) || body.size === 0) {
         throw new Error("invalid_image");
       }
@@ -135,11 +133,7 @@ export function StyleWizard({
       ) : null}
       {step === 2 ? (
         <form onSubmit={finish} className="stack-form">
-          <p>Нүүр тод, гэрэл жигд, бүтэн бие хувцастай, хэт тайралтгүй зураг оруулна уу. PNG, JPEG, WEBP болон iPhone-ийн HEIC зураг авна. Зөвхөн өөрийн зураг.</p>
-          <label className="check">
-            <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-            Өөрийн зургийг стайлын дүрслэлд ашиглахыг зөвшөөрч байна
-          </label>
+          <p>Нүүр тод, гэрэл жигд, бүтэн бие хувцастай, хэт тайралтгүй зураг оруулна уу. PNG, JPEG, WEBP болон iPhone-ийн HEIC зураг авна. Оруулсан зургийг насанд хүрсэн, зөвшөөрсөн зураг гэж бүртгэнэ.</p>
           <label>
             Нүүрний зураг
             <input className="field" name="face" type="file" accept={PHOTO_ACCEPT} required />

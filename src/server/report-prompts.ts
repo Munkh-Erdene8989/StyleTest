@@ -219,9 +219,9 @@ export const MANIFESTS: Record<AiQuizKind, ReportPage[]> = {
 };
 
 export const SECTION_LABEL: Record<AiQuizKind, string> = {
-  face_beauty: "Нүүр ба гоо сайхан",
-  body_shape: "Биеийн хэлбэр ба хувцаслалт",
-  archetype: "Өөрийгөө таних ба хувийн стиль",
+  face_beauty: "Нүүрний хэлбэр",
+  body_shape: "Биеийн хэлбэр",
+  archetype: "Өөрийгөө таних ба хувийн хэв маяг",
 };
 
 export type ReportImageKind = "still" | "makeup" | "hair" | "glasses" | "accessory" | "outfit";

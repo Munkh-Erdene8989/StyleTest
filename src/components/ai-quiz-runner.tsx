@@ -19,7 +19,7 @@ type Checkout = {
 type Stage = "intro" | "questions" | "email";
 
 function checkoutError(code?: string) {
-  if (code === "invalid_contact") return "И-мэйл хаягаа зөв оруулна уу.";
+  if (code === "invalid_contact") return "Цахим шуудангийн хаягаа зөв оруулна уу.";
   if (code === "answers_incomplete") return "Бүх асуултад хариулна уу.";
   if (code === "consent_required") return "Зураг ашиглах зөвшөөрлөө батална уу.";
   if (code === "invalid_image") return "Зургийн файл тохирохгүй байна.";
@@ -36,10 +36,9 @@ function checkError(code?: string) {
 
 const INTRO: Record<AiQuizKind, { kicker: string; title: string; emphasis?: string; body: string; stats: [string, string][] }> = {
   face_beauty: {
-    kicker: "Шинэ · AI Beauty Analysis",
-    title: "Face & Beauty",
-    emphasis: "Style",
-    body: "32 асуултаар нүүрний хэлбэр, өнгө, контраст, essence-ийг тодорхойлно. Төлсний дараа бүрэн тайлан имэйлээр очно.",
+    kicker: "Шинэ · Нүүрний шинжилгээ",
+    title: "Нүүрний хэлбэр",
+    body: "32 асуултаар нүүрний хэлбэр, өнгө, ялгарал, нүүрний төрхийг тодорхойлно. Төлсний дараа бүрэн тайлан цахим шуудангаар очно.",
     stats: [
       ["32", "асуулт"],
       ["5–8", "минут"],
@@ -48,8 +47,8 @@ const INTRO: Record<AiQuizKind, { kicker: string; title: string; emphasis?: stri
   },
   body_shape: {
     kicker: "Шинэ · Биеийн шугамын тест",
-    title: "Миний биеийн хэлбэр",
-    body: "Харьцаа, хувцасны суулт, тав тухаа ажиглаж, биеийн хэлбэрт ойр хувцасны чиглэл авна.",
+    title: "Биеийн хэлбэр",
+    body: "Биеийн харьцаа, хувцас хэрхэн суух, хэр тухтай байхыг ажиглаж, биеийн хэлбэрт ойр хувцасны чиглэл авна.",
     stats: [
       ["24", "асуулт"],
       ["6–10", "минут"],
@@ -58,12 +57,12 @@ const INTRO: Record<AiQuizKind, { kicker: string; title: string; emphasis?: stri
   },
   archetype: {
     kicker: "Шинэ · Хувийн шинжилгээ",
-    title: "Таны гол архетип юу вэ?",
-    body: "40 мэдэгдлээр 10 хэмжээсийг тооцож, 25 хуудастай хувийн стилийн тайлан гаргана. Зөв, буруу хариулт байхгүй.",
+    title: "Таны гол онцлог юу вэ?",
+    body: "40 мэдэгдлээр 10 үзүүлэлтийг тооцож, 25 хуудастай хувийн хэв маягийн тайлан гаргана. Зөв, буруу хариулт байхгүй.",
     stats: [
       ["40", "мэдэгдэл"],
       ["5–8", "минут"],
-      ["10", "чадвар"],
+      ["10", "үзүүлэлт"],
     ],
   },
 };
@@ -94,7 +93,6 @@ export function AiQuizRunner({
   const [pending, setPending] = useState(false);
   const [restored, setRestored] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
-  const [photoConsent, setPhotoConsent] = useState(false);
   const [checking, setChecking] = useState(false);
   const [payNotice, setPayNotice] = useState("");
   const wantsPhoto = kind === "face_beauty" || kind === "body_shape" || kind === "archetype";
@@ -175,10 +173,6 @@ export function AiQuizRunner({
   }
 
   async function submit(deliveryEmail: string) {
-    if (photo && !photoConsent) {
-      setError("Зураг ашиглах зөвшөөрлөө батална уу.");
-      return;
-    }
     setPending(true);
     setError("");
     try {
@@ -275,7 +269,7 @@ export function AiQuizRunner({
     body = (
       <section className="animate-[fadeIn_.3s_ease-out] rounded-[2rem] border border-white/80 bg-white/60 p-5 shadow-xl shadow-charcoal/5 backdrop-blur-sm sm:p-9">
         <p className="mb-4 w-fit rounded-full bg-blush px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-bordeaux">Төлбөр</p>
-        <h2 className="quiz-question">Тайлан имэйлээр очно</h2>
+        <h2 className="quiz-question">Тайлан цахим шуудангаар очно</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">Төлбөр баталгаажлаа. Бүрэн тайлан бэлэн болмогц {checkout.email} хаяг руу очно.</p>
         <div className="mt-6">
           <ReportStatus checkout={checkout} pending={pending} onRetry={() => void retry()} />
@@ -287,7 +281,7 @@ export function AiQuizRunner({
     body = (
       <section className="animate-[fadeIn_.3s_ease-out] rounded-[2rem] border border-white/80 bg-white/60 p-5 shadow-xl shadow-charcoal/5 backdrop-blur-sm sm:p-9">
         <p className="mb-4 w-fit rounded-full bg-blush px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-bordeaux">Төлбөр</p>
-        <h2 className="quiz-question">Тайлан имэйлээр очно</h2>
+        <h2 className="quiz-question">Тайлан цахим шуудангаар очно</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           {formatMnt(checkout.amount)}₮. Төлбөр баталгаажмагц бүрэн тайлан {checkout.email} хаяг руу очно.
         </p>
@@ -332,14 +326,14 @@ export function AiQuizRunner({
             event.preventDefault();
             const next = email.trim().toLowerCase();
             if (!EMAIL.test(next)) {
-              setError("И-мэйл хаягаа шалгана уу.");
+              setError("Цахим шуудангийн хаягаа шалгана уу.");
               return;
             }
             void submit(next);
           }}
         >
           <label className="block text-sm text-muted">
-            И-мэйл
+            Цахим шуудан
             <input
               required
               type="email"
@@ -357,26 +351,13 @@ export function AiQuizRunner({
                   id="quiz-photo"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => {
-                    setPhoto(event.target.files?.[0] ?? null);
-                    if (!event.target.files?.[0]) setPhotoConsent(false);
-                  }}
+                  onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
                   className="mt-2 block w-full text-sm text-charcoal"
                 />
               </label>
               <p className="mt-3 text-sm leading-relaxed text-muted">
-                Зураг нь шинжилгээ болон хувцас, үс, будалтын туршилтад ашиглагдана. Эх зураг тусад нь хадгалагдана. Та устгаж болно.
+                Оруулсан зургийг насанд хүрсэн, зөвшөөрсөн зураг гэж бүртгэж, шинжилгээ болон хувцас, үс, будалтын туршилтад ашиглана. Эх зураг тусад нь хадгалагдана. Та устгаж болно.
               </p>
-              <label className="mt-3 flex items-start gap-3 text-sm text-charcoal">
-                <input
-                  id="quiz-photo-consent"
-                  type="checkbox"
-                  checked={photoConsent}
-                  onChange={(event) => setPhotoConsent(event.target.checked)}
-                  className="mt-1"
-                />
-                Энэ бол миний эсвэл зөвшөөрөлтэй зураг. Шинжилгээ, зураг засварлах, хадгалах нөхцөлийг зөвшөөрч байна.
-              </label>
             </div>
           ) : null}
           <button type="submit" disabled={pending} className="w-full rounded-full bg-bordeaux px-6 py-4 font-semibold text-white shadow-lg shadow-bordeaux/15 transition hover:bg-bordeaux-dark disabled:opacity-60">
@@ -413,7 +394,7 @@ export function AiQuizRunner({
           <button type="button" onClick={() => setStage("questions")} className="mt-7 w-full rounded-full bg-bordeaux px-6 py-4 font-semibold text-white shadow-lg shadow-bordeaux/15 transition hover:-translate-y-0.5 hover:bg-bordeaux-dark">
             {Object.keys(answers).length ? "Үргэлжлүүлэх" : "Тестээ эхлүүлэх"}
           </button>
-          <p className="mt-4 text-center text-xs text-muted">Тест бүр {formatMnt(price)}₮. Төлсний дараа бүрэн тайлан таны оруулсан имэйл рүү очно.</p>
+          <p className="mt-4 text-center text-xs text-muted">Тест бүр {formatMnt(price)}₮. Төлсний дараа бүрэн тайлан таны оруулсан цахим шуудан руу очно.</p>
         </div>
       </section>
     );
@@ -455,7 +436,7 @@ export function AiQuizRunner({
               </button>
             ) : null}
             <button type="button" onClick={goNext} className="rounded-full bg-bordeaux px-6 py-4 font-semibold text-white sm:col-start-2">
-              {index === questions.length - 1 ? "И-мэйл рүү" : "Дараагийн асуулт"}
+              {index === questions.length - 1 ? "Цахим шуудан" : "Дараагийн асуулт"}
             </button>
           </div>
         )}

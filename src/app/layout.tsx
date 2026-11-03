@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sections";
 import { BRAND_DESCRIPTION, BRAND_FACEBOOK, BRAND_KEYWORDS, BRAND_NAME } from "@/domain/brand";
 import { studioFrom } from "@/domain/studio-profile";
+import { storedQuizPrice } from "@/domain/money";
 import { archetypeAvailable } from "@/server/ai-quiz-banks";
 import { optionalUser } from "@/server/auth";
 import { getStore } from "@/server/store";
@@ -54,7 +55,8 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const studio = studioFrom((await getStore().getSiteConfig()).studio);
+  const site = await getStore().getSiteConfig();
+  const studio = studioFrom(site.studio);
   const user = await optionalUser();
   const jsonLd = {
     "@context": "https://schema.org",
@@ -85,7 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} />
         <div className="shell">{children}</div>
         <BodyEdgeLink />
-        <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} />
+        <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} price={storedQuizPrice(site.quizPriceMnt)} />
         <footer className="foot">
           <div className="bar foot-grid">
             <StudioFooterBrand />

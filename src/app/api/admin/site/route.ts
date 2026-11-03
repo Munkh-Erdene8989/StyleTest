@@ -10,7 +10,13 @@ export async function POST(req: Request) {
       appName: typeof body.appName === "string" ? body.appName : undefined,
       helpContacts: Array.isArray(body.helpContacts) ? (body.helpContacts as HelpContact[]) : undefined,
       studio: body.studio && typeof body.studio === "object" ? (body.studio as StudioProfile) : undefined,
+      quizPriceMnt: "quizPriceMnt" in body ? body.quizPriceMnt : undefined,
     });
-    return Response.json({ appName: site.appName, helpContacts: site.helpContacts, studio: studioFrom(site.studio) });
+    return Response.json({
+      appName: site.appName,
+      helpContacts: site.helpContacts,
+      studio: studioFrom(site.studio),
+      quizPriceMnt: site.quizPriceMnt,
+    });
   });
 }

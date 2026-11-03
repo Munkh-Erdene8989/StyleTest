@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { catalogFromLibrary, sanitizeDraft, sanitizeNews, scoreSpan, bandIssues } from "@/domain/admin-content";
 import { AppError } from "@/domain/errors";
+import { parseQuizPrice, quizPriceError, storedQuizPrice } from "@/domain/money";
 import { iso } from "@/domain/time";
 import { questionAnswerPairs } from "@/domain/score";
 import { studioFrom } from "@/domain/studio-profile";
@@ -64,10 +65,15 @@ export async function adminOverview(user: User) {
   };
 }
 
-export async function updateSite(user: User, input: { appName?: string; helpContacts?: HelpContact[]; studio?: StudioProfile }) {
+export async function updateSite(user: User, input: { appName?: string; helpContacts?: HelpContact[]; studio?: StudioProfile; quizPriceMnt?: unknown }) {
   assertOps(user);
   const store = getStore();
   const site = await store.getSiteConfig();
+  if (input.quizPriceMnt !== undefined) {
+    const price = parseQuizPrice(input.quizPriceMnt);
+    if (price === null) throw new AppError("invalid_price", 400, [quizPriceError(input.quizPriceMnt) ?? "Үнэ 100–5,000,000₮ хооронд бүхэл тоо байна."]);
+    site.quizPriceMnt = price;
+  }
   if (typeof input.appName === "string" && input.appName.trim()) site.appName = input.appName.trim().slice(0, 40);
   if (input.studio) site.studio = cleanStudio(input.studio);
   if (Array.isArray(input.helpContacts)) {
@@ -204,6 +210,7 @@ export async function adminDesk(user: User) {
     },
     appName: site.appName,
     helpContacts: site.helpContacts,
+    quizPriceMnt: storedQuizPrice(site.quizPriceMnt),
     funCopy: site.funCopy,
     studio: studioFrom(site.studio),
     admins: await adminEmails(),
@@ -413,9 +420,9 @@ export async function removeAdmin(user: User, email: string) {
 }
 
 const AI_TITLES: Record<AiQuizKind, string> = {
-  face_beauty: "Нүүрний гоо сайхан",
+  face_beauty: "Нүүрний хэлбэр",
   body_shape: "Биеийн хэлбэр",
-  archetype: "Архетип",
+  archetype: "Хувийн хэв маяг",
 };
 
 export async function userAnswers(actor: User, userId: string) {

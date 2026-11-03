@@ -1,7 +1,7 @@
 import { profileReportPdf } from "@/server/profile-pdf";
 import { withUser } from "@/server/http";
 
-export const maxDuration = 120;
+export const maxDuration = 800;
 
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;

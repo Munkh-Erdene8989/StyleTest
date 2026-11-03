@@ -1,9 +1,6 @@
-import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { PDFDocument } from "pdf-lib";
 import type { AiQuizBrief, AiQuizDetail, AiQuizKind, AiQuizRecord, AiQuizSection } from "@/domain/ai-quiz";
 import { archetypeScores, labelQuizAnswers, type ArchetypeScore } from "@/domain/ai-quiz-score";
@@ -15,8 +12,15 @@ import { calloutAnchor, reportCss, reportDesign, stackCalloutYs } from "./report
 import { compliantReferencePrompt, compliantReferenceSize, developerPrompt, imageJobsFor, imagePrompt, MANIFESTS, SECTION_LABEL, userMessage } from "./report-prompts";
 import { getStore } from "./store";
 
-const execFileAsync = promisify(execFile);
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME_CANDIDATES = [
+  process.env.CHROME_PATH,
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].filter((item): item is string => Boolean(item));
+const CHROMIUM_VERSION = "153.0.0";
 const LOGO_SRC = `data:image/jpeg;base64,${readFileSync(path.join(process.cwd(), "public/naruka-report-logo.jpg")).toString("base64")}`;
 
 export const FACE_MANIFEST = MANIFESTS.face_beauty;
@@ -100,7 +104,8 @@ export async function ensureQuizReportPdf(quiz: AiQuizRecord, options?: { refere
   }
   const key = reportObjectKey(quiz.id, quiz.kind, gate.personal);
   const archetypeBank = quiz.kind === "archetype" ? loadArchetypeBank() : null;
-  const draft = await draftQuizReport({
+  const savedDraft = await storedDraft(draftObjectKey(key));
+  const draft = savedDraft ?? await draftQuizReport({
     kind: quiz.kind,
     reportId: quiz.id,
     answers: labelQuizAnswers(quiz.kind, quiz.answers, { body: bodyQuizBank(), archetype: archetypeBank }),
@@ -110,6 +115,9 @@ export async function ensureQuizReportPdf(quiz: AiQuizRecord, options?: { refere
     notice: gate.notice,
     wardrobe: gate.wardrobe,
   });
+  if (!savedDraft) {
+    await store.putObject(draftObjectKey(key), Buffer.from(JSON.stringify(draft)), "application/json");
+  }
   const copy = reportCopy(quiz.kind, draft);
   const pdf = await assertLandscapePdf(await printHtmlToPdf(renderQuizReportHtml(draft, quiz.kind)));
   await store.putObject(key, pdf, "application/pdf");
@@ -292,24 +300,72 @@ ${reportCss()}
 </style></head><body>${pages}</body></html>`;
 }
 
-export async function printHtmlToPdf(html: string) {
-  const dir = await mkdtemp(path.join(tmpdir(), "naruka-pdf-"));
-  const htmlPath = path.join(dir, "report.html");
-  const pdfPath = path.join(dir, "report.pdf");
-  await writeFile(htmlPath, html);
+function draftObjectKey(pdfKey: string) {
+  return pdfKey.replace(/\.pdf$/, ".draft.json");
+}
+
+async function storedDraft(key: string): Promise<FaceDraft | null> {
+  const stored = await getStore().getObject(key);
+  if (!stored?.bytes.length) return null;
   try {
-    await execFileAsync(CHROME, [
-      "--headless=new",
-      "--disable-gpu",
-      "--no-pdf-header-footer",
-      "--virtual-time-budget=45000",
-      `--print-to-pdf=${pdfPath}`,
-      `file://${htmlPath}`,
-    ], { timeout: 120_000 });
-    return await readFile(pdfPath);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
+    const draft = JSON.parse(stored.bytes.toString("utf8")) as FaceDraft;
+    if (draft.pages?.length !== 25 || !draft.reportId) return null;
+    return draft;
+  } catch {
+    return null;
   }
+}
+
+async function localChrome() {
+  for (const candidate of CHROME_CANDIDATES) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function chromiumPackUrl() {
+  const arch = process.arch === "arm64" ? "arm64" : "x64";
+  return `https://github.com/Sparticuz/chromium/releases/download/v${CHROMIUM_VERSION}/chromium-v${CHROMIUM_VERSION}-pack.${arch}.tar`;
+}
+
+export async function printHtmlToPdf(html: string) {
+  const local = await localChrome();
+  const { launch } = await import("puppeteer-core");
+  const browser = local
+    ? await launch({
+      executablePath: local,
+      headless: true,
+      args: ["--disable-gpu", "--no-first-run", "--no-default-browser-check"],
+    })
+    : await launchServerless(launch);
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0", timeout: 45_000 });
+    const pdf = await page.pdf({
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      timeout: 60_000,
+    });
+    return Buffer.from(pdf);
+  } finally {
+    await browser.close();
+  }
+}
+
+async function launchServerless(launch: typeof import("puppeteer-core").launch) {
+  const chromium = (await import("@sparticuz/chromium-min")).default;
+  chromium.setGraphicsMode = false;
+  return launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(chromiumPackUrl()),
+    headless: "shell",
+  });
 }
 
 export async function assertLandscapePdf(bytes: Buffer) {

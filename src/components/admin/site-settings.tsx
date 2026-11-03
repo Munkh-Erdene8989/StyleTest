@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { quizPriceError } from "@/domain/money";
 import type { HelpContact, StudioMember, StudioProfile, StudioReview } from "@/domain/types";
+import { QuizPriceField } from "./quiz-price-field";
 import { useDesk } from "./desk-context";
 
 export function SiteSettings() {
   const { desk, reload } = useDesk();
   const [studio, setStudio] = useState<StudioProfile | null>(desk?.studio ?? null);
   const [name, setName] = useState(desk?.appName ?? "");
+  const [price, setPrice] = useState(desk ? String(desk.quizPriceMnt) : "");
   const [contacts, setContacts] = useState<HelpContact[]>(desk?.helpContacts ?? []);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -45,13 +48,19 @@ export function SiteSettings() {
       className="desk-bento"
       onSubmit={async (event) => {
         event.preventDefault();
+        const priceIssue = quizPriceError(price);
+        if (priceIssue) {
+          setMessage(priceIssue);
+          return;
+        }
         setMessage("");
         const response = await fetch("/api/admin/site", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ appName: name, helpContacts: contacts, studio }),
+          body: JSON.stringify({ appName: name, helpContacts: contacts, studio, quizPriceMnt: price.trim() }),
         });
-        setMessage(response.ok ? "Хадгаллаа." : "Хадгалж чадсангүй.");
+        const json = (await response.json().catch(() => ({}))) as { issues?: string[] };
+        setMessage(response.ok ? "Хадгаллаа." : json.issues?.[0] ?? "Хадгалж чадсангүй.");
         if (response.ok) await reload();
       }}
     >
@@ -83,6 +92,15 @@ export function SiteSettings() {
         <Input id="site-email" type="email" value={studio.email} onChange={(event) => setStudio({ ...studio, email: event.target.value })} />
         <Label htmlFor="app-name">Сайтын нэр</Label>
         <Input id="app-name" value={name} onChange={(event) => setName(event.target.value)} />
+        <QuizPriceField
+          id="settings-quiz-price"
+          label="Тестийн үнэ, ₮"
+          value={price}
+          onChange={(value) => {
+            setPrice(value);
+            setMessage("");
+          }}
+        />
         <Label htmlFor="site-address">Хаяг</Label>
         <textarea
           id="site-address"
@@ -277,8 +295,8 @@ export function SiteSettings() {
       </section>
 
       <div className="bento-12 flex flex-wrap items-center gap-3">
-        <Button type="submit">Хадгалах</Button>
-        {message ? <p>{message}</p> : null}
+        <Button type="submit" disabled={Boolean(quizPriceError(price))}>Хадгалах</Button>
+        {message ? <p className={quizPriceError(price) ? "text-sm text-destructive" : undefined}>{message}</p> : null}
       </div>
     </form>
   );

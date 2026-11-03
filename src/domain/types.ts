@@ -324,6 +324,7 @@ export type SiteConfig = {
   helpContacts: HelpContact[];
   funCopy: Record<string, { title: string; summary: string }>;
   studio?: StudioProfile;
+  quizPriceMnt?: number;
 };
 
 export type VersionOverride = {

@@ -46,7 +46,7 @@ const ARCHETYPE_COPY: Record<string, { name: string; description: string }> = {
   },
   VOICE: {
     name: "Өмгөөлөгч",
-    description: "Өөрийн байр суурь, хил хязгаарыг хүндэтгэлтэй бөгөөд тодорхой илэрхийлдэг.",
+    description: "Өөрийн байр суурь, хувийн заагийг хүндэтгэлтэй бөгөөд тодорхой илэрхийлдэг.",
   },
 };
 
@@ -61,8 +61,10 @@ const attributeNames: Record<string, string> = {
   warm: "Дулаан",
   cool: "Хүйтэн",
   neutral: "Төвийг сахисан",
+  neutral_warm: "Бага зэрэг дулаан",
   light: "Цайвар",
   medium: "Дунд",
+  medium_deep: "Дунд бараан",
   deep: "Гүн",
   soft: "Зөөлөн",
   bright: "Тод",
@@ -114,12 +116,12 @@ export function scoreFace(answers: Record<string, AiAnswer>): ScoredQuiz {
   if (missing.length) {
     return {
       brief: {
-        title: "Нүүр ба гоо сайхан",
+        title: "Нүүрний хэлбэр",
         status: "insufficient_data",
         sections: [
           {
             heading: "Ангилал гараагүй",
-            body: `Бүх асуулт бөглөгдөөгүй тул нүүрний хэлбэр, өнгө, контрастыг батлаагүй. Дутуу: ${missing.map((question) => question.id).join(", ")}.`,
+            body: `Бүх асуулт бөглөгдөөгүй тул нүүрний хэлбэр, өнгө, ялгарлыг батлаагүй. Дутуу: ${missing.map((question) => question.id).join(", ")}.`,
           },
         ],
       },
@@ -143,7 +145,7 @@ export function scoreFace(answers: Record<string, AiAnswer>): ScoredQuiz {
   const ready = Boolean(face.winner && contrast.winner);
   return {
     brief: {
-      title: "Нүүр ба гоо сайхан",
+      title: "Нүүрний хэлбэр",
       status: tied && !ready ? "tied" : ready ? "ready" : "insufficient_data",
       sections,
     },
@@ -213,7 +215,7 @@ export function scoreBody(bank: BodyBank, answers: Record<string, AiAnswer>): Sc
   sections.push({ heading: "Хязгаар", body: bank.test.disclaimer });
   return {
     brief: {
-      title: "Биеийн хэлбэр ба хувцаслалт",
+      title: "Биеийн хэлбэр",
       status: shape ? "ready" : conflicting ? "tied" : "insufficient_data",
       sections,
     },
@@ -256,14 +258,14 @@ export function scoreArchetype(bank: ArchetypeBank, answers: Record<string, AiAn
   if (!dimensions) {
     return {
       brief: {
-        title: "Өөрийгөө таних ба хувийн стиль",
+        title: "Өөрийгөө таних ба хувийн хэв маяг",
         status: "insufficient_data",
         sections: [
           {
             heading: "Оноо гараагүй",
             body: missing.length || bank.questions.length === 0
-              ? "Бүх асуулт бөглөгдсөн үед л хэмжээс бүрийн оноог гаргана. Алгассан хариуг дундаж гэж тооцохгүй."
-              : "Хэмжээсийн оноо гараагүй.",
+              ? "Бүх асуулт бөглөгдсөн үед л үзүүлэлт бүрийн оноог гаргана. Алгассан хариуг дундаж гэж тооцохгүй."
+              : "Үзүүлэлтийн оноо гараагүй.",
           },
         ],
       },
@@ -279,22 +281,22 @@ export function scoreArchetype(bank: ArchetypeBank, answers: Record<string, AiAn
   const primary = tied.length === 1 ? top : null;
   const lines = ranked.map((item) => `${item.name}: ${item.score}`);
   const sections: AiQuizSection[] = [
-    { heading: "Хэмжээсүүд", body: lines.join(". ") + "." },
+    { heading: "Үзүүлэлтүүд", body: lines.join(". ") + "." },
   ];
   if (primary) {
     sections.unshift({
       heading: primary.name,
-      body: primary.description || "Энэ хэмжээс хамгийн өндөр оноотой.",
+      body: primary.description || "Энэ үзүүлэлт хамгийн өндөр оноотой.",
     });
   } else if (tied.length > 1) {
     sections.unshift({
-      heading: "Тэнцсэн хэмжээс",
+      heading: "Тэнцсэн үзүүлэлт",
       body: `${tied.map((item) => item.name).join(", ")} ижил оноотой тул нэгийг нь гол гэж сонгоогүй.`,
     });
   }
   return {
     brief: {
-      title: "Өөрийгөө таних ба хувийн стиль",
+      title: "Өөрийгөө таних ба хувийн хэв маяг",
       status: primary ? "ready" : tied.length > 1 ? "tied" : "insufficient_data",
       sections,
     },
@@ -330,9 +332,9 @@ export function scoreAiQuiz(
   if (!banks.archetype) {
     return {
       brief: {
-        title: "Өөрийгөө таних ба хувийн стиль",
+        title: "Өөрийгөө таних ба хувийн хэв маяг",
         status: "insufficient_data",
-        sections: [{ heading: "Асуулт хүлээгдэж байна", body: "Архетипийн асуултын файл ороогүй тул оноо гаргаагүй." }],
+        sections: [{ heading: "Асуулт хүлээгдэж байна", body: "Хувийн хэв маягийн асуултын файл ороогүй тул оноо гаргаагүй." }],
       },
       labels: [],
     };
@@ -419,7 +421,7 @@ function faceSection(face: { winner: string | null; tied: string[] }, rows: [str
   const extra = second ? ` Хоёрдогч хэлбэр: ${labelOf(second[0])}.` : "";
   return {
     heading: "Нүүрний хэлбэр",
-    body: `${labelOf(face.winner)}.${extra} Нүүр орчимд зөөлөн баланс, зөв өргөн үүсгэх шугам тохирно.`,
+    body: `${labelOf(face.winner)}.${extra} Нүүр орчимд зөөлөн тэнцвэр, өргөнийг зөв гаргах шугам тохирно.`,
   };
 }
 
@@ -430,35 +432,35 @@ function colorSection(attributes: ReturnType<typeof attributeVotes>): AiQuizSect
       ? `Өнгөний улирал: ${seasonNames[attributes.season.winner] || attributes.season.winner}.`
       : "Өнгөний улирлыг батлаагүй.";
   const parts = [
-    named("Доод өнгө", attributes.undertone),
-    named("Value", attributes.value),
-    named("Chroma", attributes.chroma),
+    named("Суурь өнгө", attributes.undertone),
+    named("Өнгөний гүн", attributes.value),
+    named("Өнгөний цэвэршил", attributes.chroma),
   ].filter(Boolean);
   return { heading: "Өнгө", body: [season, ...parts].join(" ") };
 }
 
 function contrastSection(contrast: { winner: string | null; tied: string[] }): AiQuizSection {
   if (contrast.tied.length) {
-    return { heading: "Контраст", body: `Тэнцсэн: ${contrast.tied.map((item) => contrastNames[item] || item).join(", ")}. Нэгийг нь сонгоогүй.` };
+    return { heading: "Өнгөний ялгарал", body: `Тэнцсэн: ${contrast.tied.map((item) => contrastNames[item] || item).join(", ")}. Нэгийг нь сонгоогүй.` };
   }
-  if (!contrast.winner) return { heading: "Контраст", body: "Контрастын оноо хүрэлцэхгүй тул ангилаагүй." };
+  if (!contrast.winner) return { heading: "Өнгөний ялгарал", body: "Ялгарлын оноо хүрэлцэхгүй тул ангилаагүй." };
   const note =
     contrast.winner === "high"
-      ? "Тод өнгө, цэвэр хар-цагаан болон jewel tone танд сайн ажиллана."
+      ? "Тод өнгө, цэвэр хар цагаан, эрдэнийн тод өнгө танд сайн зохицно."
       : contrast.winner === "low"
-        ? "Зөөлөн, ойролцоо өнгийн tonal хослол нүүрийг илүү гэрэлтүүлнэ."
-        : "Дунд зэргийн контраст, нэг төвлөрсөн акцент хамгийн тэнцвэртэй.";
-  return { heading: "Контраст", body: `${contrastNames[contrast.winner] || contrast.winner}. ${note}` };
+        ? "Зөөлөн, хоорондоо ойр өнгийн хослол нүүрийг илүү гэрэлтүүлнэ."
+        : "Дунд зэргийн ялгаралд нэг онцлох өнгө хамгийн тэнцвэртэй.";
+  return { heading: "Өнгөний ялгарал", body: `${contrastNames[contrast.winner] || contrast.winner}. ${note}` };
 }
 
 function essenceSection(rows: [string, number][]): AiQuizSection {
-  if (!rows.length) return { heading: "Essence", body: "Essence-ийн оноо хүрэлцэхгүй." };
+  if (!rows.length) return { heading: "Нүүрний төрх", body: "Нүүрний төрхийн оноо хүрэлцэхгүй." };
   const third = rows[2]?.[1];
   const shown = third === undefined ? rows : rows.filter((row) => row[1] >= third);
   const total = rows.reduce((sum, [, score]) => sum + score, 0) || 1;
   const lines = shown.map(([key, score]) => `${essenceNames[key] || key} ${Math.round((score / total) * 100)}%`);
-  const tieNote = shown.length > 3 ? " Тэнцсэн essence-үүдийг хамтад нь үлдээсэн." : "";
-  return { heading: "Essence", body: `${lines.join(", ")}. Хувь нь бүх essence онооны нийлбэрт харьцуулсан бөгөөд 100 болгож хуваагаагүй.${tieNote}` };
+  const tieNote = shown.length > 3 ? " Тэнцсэн төрхүүдийг хамтад нь үлдээсэн." : "";
+  return { heading: "Нүүрний төрх", body: `${lines.join(", ")}. Хувь нь бүх төрхийн онооны нийлбэрт харьцуулсан тул нийлбэр нь 100 болох албагүй.${tieNote}` };
 }
 
 function featureSection(chosen: Record<string, string>): AiQuizSection {

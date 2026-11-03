@@ -1,6 +1,8 @@
 import { errorResponse, readJson } from "@/server/http";
 import { receivePaymentCallback } from "@/server/settlement";
 
+export const maxDuration = 800;
+
 export async function POST(req: Request) {
   try {
     const body = await readJson(req);
