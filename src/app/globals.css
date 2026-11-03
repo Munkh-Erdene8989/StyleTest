@@ -2189,7 +2189,92 @@ main.studio {
 }
 
 .body-edge {
-  display: none;
+  position: fixed;
+  right: 0;
+  bottom: 2rem;
+  z-index: 94;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: 4.6rem;
+  padding: 0.5rem 0.4rem 0.65rem;
+  border: 0;
+  border-radius: 0.95rem 0 0 0.95rem;
+  background: #fffdfb;
+  color: var(--bordeaux);
+  box-shadow:
+    -8px 14px 28px rgb(30 26 24 / 28%),
+    inset 1px 0 0 var(--bordeaux);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  opacity: 0;
+  transform: translate3d(110%, 0, 0);
+  pointer-events: none;
+  touch-action: manipulation;
+  transition:
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.body-edge-on {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.body-edge-on:hover {
+  color: var(--bordeaux);
+}
+
+.body-edge-on:active {
+  transform: translate3d(0.12rem, 0, 0);
+}
+
+.body-edge:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.body-edge-mark {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  background: var(--bordeaux);
+  color: #fffdfb;
+}
+
+.body-edge-mark svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: currentColor;
+}
+
+.body-edge-copy {
+  width: 100%;
+  color: var(--bordeaux);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+body:has(.dock-sheet) .body-edge,
+body:has(.nav-open) .body-edge,
+body:has(.admin-root) .body-edge {
+  opacity: 0;
+  transform: translate3d(110%, 0, 0);
+  pointer-events: none;
+}
+
+@media (min-width: 900px) {
+  .body-page {
+    padding-right: 3.4rem;
+  }
 }
 
 @media (max-width: 899px) {
@@ -2255,80 +2340,7 @@ main.studio {
   }
 
   .body-edge {
-    position: fixed;
-    right: 0;
     bottom: calc(5.35rem + env(safe-area-inset-bottom, 0px));
-    z-index: 90;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.45rem;
-    width: 2.85rem;
-    padding: 0.55rem 0.2rem 0.75rem;
-    border: 0;
-    border-radius: 0.95rem 0 0 0.95rem;
-    background: var(--bordeaux);
-    color: var(--cream);
-    box-shadow:
-      -10px 12px 28px rgb(92 26 48 / 24%),
-      inset 1px 0 0 rgb(232 211 176 / 55%);
-    font: inherit;
-    cursor: pointer;
-    opacity: 0;
-    transform: translate3d(110%, 0, 0);
-    pointer-events: none;
-    touch-action: manipulation;
-    transition:
-      opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
-      transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .body-edge-on {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-
-  .body-edge-on:active {
-    transform: translate3d(0.12rem, 0, 0);
-  }
-
-  .body-edge:focus-visible {
-    outline: 2px solid var(--gold);
-    outline-offset: 3px;
-  }
-
-  .body-edge-mark {
-    display: grid;
-    place-items: center;
-    width: 1.85rem;
-    height: 1.85rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--gold) 34%, transparent);
-    color: #f6ead8;
-  }
-
-  .body-edge-mark svg {
-    width: 1.15rem;
-    height: 1.15rem;
-    fill: currentColor;
-  }
-
-  .body-edge-copy {
-    color: var(--cream);
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    line-height: 1;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-  }
-
-  body:has(.dock-sheet) .body-edge,
-  body:has(.nav-open) .body-edge {
-    opacity: 0;
-    transform: translate3d(110%, 0, 0);
-    pointer-events: none;
   }
 
   .quiz-shell {
@@ -2542,7 +2554,7 @@ body:has(.admin-root) .shell > main {
 
 @media (max-width: 899px) {
   .body-controls {
-    padding-right: 3.35rem;
+    padding-right: 5.2rem;
   }
 }
 

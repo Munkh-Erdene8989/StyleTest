@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Measurements = {
   bust: number;
@@ -180,41 +181,13 @@ function BodyEdgeMark() {
 export function BodyCalculator() {
   const previewRef = useRef<HTMLDivElement>(null);
   const [measurements, setMeasurements] = useState<Measurements>(defaults);
-  const [showJump, setShowJump] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const bodyType = useMemo(() => getBodyType(measurements), [measurements]);
   const bodyInfo = bodyTypeInfo[bodyType];
   const isDefault = controls.every(({ key }) => measurements[key] === defaults[key]);
 
   useEffect(() => {
-    const node = previewRef.current;
-    if (!node) return;
-    const media = window.matchMedia("(max-width: 899px)");
-
-    const observe = () => {
-      if (!media.matches) {
-        setShowJump(false);
-        return undefined;
-      }
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          setShowJump(!entry.isIntersecting || entry.intersectionRatio < 0.28);
-        },
-        { threshold: [0, 0.28, 0.6], rootMargin: "-100px 0px -88px 0px" },
-      );
-      observer.observe(node);
-      return () => observer.disconnect();
-    };
-
-    let stop = observe();
-    const onChange = () => {
-      stop?.();
-      stop = observe();
-    };
-    media.addEventListener("change", onChange);
-    return () => {
-      stop?.();
-      media.removeEventListener("change", onChange);
-    };
+    setMounted(true);
   }, []);
 
   function jumpToPreview() {
@@ -290,19 +263,17 @@ export function BodyCalculator() {
         </p>
       </div>
 
-      <button
-        type="button"
-        className={showJump ? "body-edge body-edge-on" : "body-edge"}
-        onClick={jumpToPreview}
-        aria-label="Body calculator, дүрслэл рүү очих"
-        aria-hidden={showJump ? undefined : true}
-        tabIndex={showJump ? 0 : -1}
-      >
-        <span className="body-edge-mark" aria-hidden="true">
-          <BodyEdgeMark />
-        </span>
-        <span className="body-edge-copy">Body calculator</span>
-      </button>
+      {mounted
+        ? createPortal(
+            <button type="button" className="body-edge body-edge-on" onClick={jumpToPreview} aria-label="Body calculator, дүрслэл рүү очих">
+              <span className="body-edge-mark" aria-hidden="true">
+                <BodyEdgeMark />
+              </span>
+              <span className="body-edge-copy">Body calculator</span>
+            </button>,
+            document.body,
+          )
+        : null}
 
       <div className="body-preview" id="body-preview" ref={previewRef}>
         <div className="body-panel-head">

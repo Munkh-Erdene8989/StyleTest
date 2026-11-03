@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
+import { BodyEdgeLink } from "@/components/body-edge-link";
 import { MobileDock } from "@/components/mobile-dock";
 import { SiteHeader } from "@/components/site-header";
 import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sections";
@@ -83,6 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <AuthBootstrap />
         <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} />
         <div className="shell">{children}</div>
+        <BodyEdgeLink />
         <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} />
         <footer className="foot">
           <div className="bar foot-grid">
