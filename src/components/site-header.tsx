@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BRAND_NAME } from "@/domain/brand";
-
 export function SiteHeader({
   loggedIn,
   email,
+  name,
 }: {
   loggedIn: boolean;
   email: string;
+  name: string;
 }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -61,7 +61,7 @@ export function SiteHeader({
   return (
     <header className={`top${clear ? " top-clear" : ""}`}>
       <div className="bar">
-        <Link href="/" className="wordmark" aria-label={BRAND_NAME}>
+        <Link href="/" className="wordmark" aria-label={name}>
           <img src="/naruka-logo.png" alt="" />
         </Link>
         <nav className={`nav${open ? " nav-open" : ""}`}>

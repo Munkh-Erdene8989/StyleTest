@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       const consent = String(form.get("consent") ?? "") === "true";
       if (!(file instanceof File)) throw new AppError("invalid_image", 400);
       const bytes = Buffer.from(await file.arrayBuffer());
-      const photo = await saveQuizPhoto(user, { role, bytes, contentType: file.type, consent });
+      const photo = await saveQuizPhoto(user, { role, bytes, consent });
       return Response.json(photo);
     } catch (error) {
       return errorResponse(error);

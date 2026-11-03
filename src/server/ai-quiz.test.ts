@@ -141,10 +141,10 @@ describe("ai quiz checkout", () => {
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
       "base64",
     );
-    await expect(saveQuizPhoto(user, { role: "face", bytes: png, contentType: "image/png", consent: false })).rejects.toMatchObject({
+    await expect(saveQuizPhoto(user, { role: "face", bytes: png, consent: false })).rejects.toMatchObject({
       code: "consent_required",
     });
-    const photo = await saveQuizPhoto(user, { role: "face", bytes: png, contentType: "image/png", consent: true });
+    const photo = await saveQuizPhoto(user, { role: "face", bytes: png, consent: true });
     const created = await createAiQuizCheckout(user, {
       kind: "face_beauty",
       answers: faceAnswers(),
@@ -152,7 +152,7 @@ describe("ai quiz checkout", () => {
       photoId: photo.id,
     });
     expect((await getStore().getAiQuiz(created.id))?.photoUploadId).toBe(photo.id);
-    const bodyPhoto = await saveQuizPhoto(user, { role: "body", bytes: png, contentType: "image/png", consent: true });
+    const bodyPhoto = await saveQuizPhoto(user, { role: "body", bytes: png, consent: true });
     await expect(createAiQuizCheckout(user, {
       kind: "face_beauty",
       answers: faceAnswers(),

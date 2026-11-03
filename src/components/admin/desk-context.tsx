@@ -3,13 +3,14 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { CatalogTest, TestDraft } from "@/domain/admin-content";
 import type { NewsPost } from "@/domain/news";
-import type { StudioProfile } from "@/domain/types";
+import type { SiteOperations, StudioProfile } from "@/domain/types";
 
 export type Desk = {
   viewer: { id: string; email: string | null; role: string; canReadSensitive: boolean };
   appName: string;
   quizPriceMnt: number;
   studio: StudioProfile;
+  operations: SiteOperations;
   admins: string[];
   helpContacts: { name: string; phone: string; note: string; source: string }[];
   funCopy: Record<string, { title: string; summary: string }>;

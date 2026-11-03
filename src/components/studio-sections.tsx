@@ -1,130 +1,84 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { StudioGallery } from "@/components/studio-gallery";
-import type { StudioProfile } from "@/domain/types";
+import type { SiteOperations, StudioProfile } from "@/domain/types";
 
-const PHONE = "86106616";
-const FACEBOOK = "https://facebook.com/narukastylingstudio";
-const MAPS_URL = "https://maps.app.goo.gl/rjnJRU1CptBG6iE69";
-const MAPS_EMBED = "https://maps.google.com/maps?q=47.9193516,106.9209513+(City+tower+business+center)&z=17&hl=mn&output=embed";
+function actionHref(href: string, phone: string) {
+  if (href === "tel") return `tel:${phone.replace(/\s/g, "")}`;
+  return href;
+}
 
-const SERVICES = [
-  {
-    title: "Хувийн өнгө тодорхойлох",
-    subtitle: "Personal Color Analysis",
-    desc: "Олон улсын стандартын дагуу таны арьсны өнгө, нүдний болон үсний өнгийг судлан, насан туршид хэрэглэх өнгөний палитрыг тодорхойлно.",
-    includes: ["Хувцасны өнгө & хээ", "Нүүр будалтын шийдэл", "Хумс & үсний будаг", "Гоёл чимэглэлийн өнгө", "Цаасан & дижитал гарын авлага"],
-    img: "/studio/service-color.jpg",
-    tag: null,
-    href: `tel:${PHONE}`,
-    action: "Яг одоо тодорхойлох",
-  },
-  {
-    title: "Нүүр будалтын зөвлөгөө",
-    subtitle: "Makeup Consultation",
-    desc: "Өөрийн makeup-аа авч ирээд, таны өнгөний системд нийцэх хэрэглэлийг мэргэжлийн стилистаас шалгуулж, өдөр тутмын будалт хийж сур.",
-    includes: ["Makeup аудит", "Өнгөний тохирол шалгах", "Өдөр тутмын будалт сургах", "Оройн будалтын зөвлөмж"],
-    img: "/studio/service-makeup.jpg",
-    tag: null,
-    href: `tel:${PHONE}`,
-    action: "Яг одоо тодорхойлох",
-  },
-  {
-    title: "Стайлинг зөвлөгөө",
-    subtitle: "Styling Consultation",
-    desc: "Бие галбирт тохирсон хувцас, өмсгөлийн байршил, брэндийн дүр төрхийг бүтцийн аргаар шинжлэн гаргана.",
-    includes: ["Биеийн гарааны шинжилгээ", "Хувцасны зохилдлого", "Брэнд дүр бүрдүүлэх", "Дэлгүүр хэсэх гарын авлага"],
-    img: "/studio/service-styling.jpg",
-    tag: null,
-    href: `tel:${PHONE}`,
-    action: "Яг одоо тодорхойлох",
-  },
-  {
-    title: "Сэтгэлзүйн стайл тест",
-    subtitle: "Style Psychology Test",
-    desc: "Таны хувийн шинж чанар, амьдралын хэв маяг, зорилгод нийцэх дүр төрхийг сэтгэл судлалын аргаар тодорхойлно. Тест бөглөөд тайланг и-мэйлээр авна.",
-    includes: ["6 асуулт — 5 минут", "Стайл архетипийн тодорхойлолт", "Өнгөний палитрын зөвлөмж", "Хувийн стайлинг зөвлөгөө", "Тайланг и-мэйлээр авна"],
-    img: "/studio/service-test.jpg",
-    tag: "Онлайн",
-    href: "/quiz",
-    action: "Онлайн тест авах",
-  },
-];
+function SiteAction({ href, phone, className, children }: { href: string; phone: string; className: string; children: ReactNode }) {
+  const target = actionHref(href, phone);
+  if (target.startsWith("/") && !target.startsWith("//")) {
+    return (
+      <Link className={className} href={target}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a className={className} href={target}>
+      {children}
+    </a>
+  );
+}
 
-const LESSONS = [
-  { n: "01", title: "Өнгөний онол", desc: "Өнгөний дугуй, температур, гүн гэрэлтэй байдал, хуурмаг болон жинхэнэ өнгө" },
-  { n: "02", title: "Хувийн өнгө тодорхойлох", desc: "Алчуур ашиглан практик тодорхойлолт, 4 улирлын систем" },
-  { n: "03", title: "Makeup & гоо сайхан", desc: "Өнгөний системтэй нийцсэн makeup бүтээх, хэрэглэгчид зааж сургах" },
-  { n: "04", title: "Бизнес эрхлэлт", desc: "Үйлчилгээ тогтоох, харилцагч татах, брэнд бүтээх" },
-];
-
-export function StudioHero({ studio }: { studio: StudioProfile }) {
+export function StudioHero({ studio, ops }: { studio: StudioProfile; ops: SiteOperations }) {
   return (
     <section className="stage" id="home">
       <img className="stage-photo" src={studio.headerImage} alt="" />
       <div className="stage-shade" />
       <div className="stage-copy">
-        <p className="kicker">✦ Улаанбаатар, City Tower</p>
+        <p className="kicker">{ops.heroKicker}</p>
         <h1>
-          Өөрийн өнгөөр
+          {ops.heroTitle}
           <br />
-          <em>тод гэрэлт</em>
+          <em>{ops.heroEmphasis}</em>
         </h1>
-        <p className="stage-lede">
-          Мэргэжлийн өнгө тодорхойлох үйлчилгээ. Таны өвөрмөц гоо үзэсгэлэнг нээж, хэзээч өөрчлөгдөхгүй өнгөний палитрыг бүтээнэ.
-        </p>
+        <p className="stage-lede">{ops.heroLede}</p>
         <div className="stage-actions">
-          <Link className="btn" href="/tests">
-            Яг одоо тодорхойлох
-          </Link>
+          <SiteAction href={ops.heroHref} phone={studio.phone} className="btn">
+            {ops.heroAction}
+          </SiteAction>
         </div>
       </div>
       <div className="stage-stats">
-        <div>
-          <strong>500+</strong>
-          <span>Үйлчлүүлэгч</span>
-        </div>
-        <div>
-          <strong>4</strong>
-          <span>Мэргэжилтэн</span>
-        </div>
-        <div>
-          <strong>5★</strong>
-          <span>Үнэлгээ</span>
-        </div>
+        {ops.stats.map((stat) => (
+          <div key={`${stat.value}-${stat.label}`}>
+            <strong>{stat.value}</strong>
+            <span>{stat.label}</span>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
-export function StudioAbout({ studio }: { studio: StudioProfile }) {
+export function StudioAbout({ studio, ops }: { studio: StudioProfile; ops: SiteOperations }) {
   return (
     <section className="band" id="about">
       <div className="bar">
         <div className="studio-split">
           <div className="collage">
-            <img src="/studio/about-studio.jpg" alt="" />
-            <img src="/studio/about-brushes.jpg" alt="" />
-            <img src="/studio/about-portrait.jpg" alt="" />
+            {ops.aboutImages.map((image, index) => (
+              <img key={`${image}-${index}`} src={image} alt="" />
+            ))}
           </div>
           <div className="studio-copy">
             <p className="kicker">Бидний тухай</p>
             <h2>
-              Өнгө — таны хамгийн
+              {ops.aboutLead}
               <br />
-              <em>хүчирхэг хэрэгсэл</em>
+              <em>{ops.aboutEmphasis}</em>
             </h2>
-            <p>
-              Naruka Styling Studio нь Улаанбаатар хотын City Tower-т байрлах мэргэжлийн стайлинг студи юм. Бид олон улсын стандартын дагуу хувийн өнгө тодорхойлох үйлчилгээг Монгол хүний дүр төрхөнд тохируулан хэрэгжүүлдэг.
-            </p>
-            <p>
-              Дадлага туршлагатай 4 стилистаас бүрдсэн баг нь таны арьсны өнгө, нүдний болон үсний өнгийг нарийн судлан, насан туршид хэрэглэх өнгөний системийг тодорхойлно.
-            </p>
+            {ops.aboutBody.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
             <ul className="ticks">
-              <li>Мэргэжлийн алчуур (drape) ашиглана</li>
-              <li>Олон улсын аргачлал</li>
-              <li>Цаасан & дижитал гарын авлага</li>
-              <li>Makeup аудит боломжтой</li>
+              {ops.aboutTicks.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
             </ul>
           </div>
         </div>
@@ -148,47 +102,47 @@ export function StudioAbout({ studio }: { studio: StudioProfile }) {
   );
 }
 
-export function StudioServices({ studio, featured, children }: { studio: StudioProfile; featured?: ReactNode; children?: ReactNode }) {
+export function StudioServices({ studio, ops, featured, children }: { studio: StudioProfile; ops: SiteOperations; featured?: ReactNode; children?: ReactNode }) {
   return (
     <section className="band band-sand" id="services">
       <div className="bar">
         <div className="band-head">
-          <p className="kicker">Үйлчилгээ</p>
-          <h2>Таны гоо үзэсгэлэнд зориулсан</h2>
+          <p className="kicker">{ops.servicesKicker}</p>
+          <h2>{ops.servicesTitle}</h2>
         </div>
         <div className="spread">
           {featured}
-          {SERVICES.map((service) => (
+          {ops.services.map((service) => (
             <article key={service.title} className="panel panel-feature">
               <div className="panel-photo">
-                <img src={service.img} alt="" />
+                <img src={service.image} alt="" />
                 {service.tag ? <span className="tag">{service.tag} — Онлайн</span> : null}
               </div>
               <div className="panel-copy">
                 <p className="kicker">{service.subtitle}</p>
                 <h2>{service.title}</h2>
-                <p>{service.desc}</p>
+                <p>{service.description}</p>
                 <ul className="ticks">
                   {service.includes.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-                <a className="btn" href={service.href.startsWith("tel:") ? `tel:${studio.phone.replace(/\s/g, "")}` : service.href}>
+                <SiteAction href={service.href} phone={studio.phone} className="btn">
                   {service.action}
-                </a>
+                </SiteAction>
               </div>
             </article>
           ))}
         </div>
         <div className="callout">
           <div>
-            <p className="kicker">Шинэ — Онлайн</p>
-            <h2>Сэтгэлзүйн стайл тест</h2>
-            <p>6 асуултаар стайл архетипаа тодорхойл — үр дүнг и-мэйлээр авна</p>
+            <p className="kicker">{ops.onlineKicker}</p>
+            <h2>{ops.onlineTitle}</h2>
+            <p>{ops.onlineBody}</p>
           </div>
-          <Link className="btn btn-gold" href="/quiz">
-            Тест эхлүүлэх
-          </Link>
+          <SiteAction href={ops.onlineHref} phone={studio.phone} className="btn btn-gold">
+            {ops.onlineAction}
+          </SiteAction>
         </div>
         {children}
       </div>
@@ -196,24 +150,22 @@ export function StudioServices({ studio, featured, children }: { studio: StudioP
   );
 }
 
-export function StudioTraining({ studio }: { studio: StudioProfile }) {
+export function StudioTraining({ studio, ops }: { studio: StudioProfile; ops: SiteOperations }) {
   return (
     <section className="band band-wine" id="training">
       <div className="bar wine">
         <div className="wine-copy">
-          <p className="kicker">Мэргэжлийн анги</p>
+          <p className="kicker">{ops.trainingKicker}</p>
           <h2>
-            Өөрийн стайлинг
+            {ops.trainingTitle}
             <br />
-            <em>бизнесээ эхлүүл</em>
+            <em>{ops.trainingEmphasis}</em>
           </h2>
-          <p>
-            Онол, практикийг хослуулсан 2 долоо хоногийн мэргэжлийн сургалт. Хувийн өнгө тодорхойлох, makeup, стайлинг зөвлөгөөний бүх мэдлэгийг эзэмшин өөрийн үйлчилгээгээ нээх боломжтой.
-          </p>
+          <p>{ops.trainingBody}</p>
           <div className="notice">
-            <p>Элсэлт хаагдах гэж байна</p>
+            <p>{ops.trainingNoticeTitle}</p>
             <p>
-              Эхлэх огноо: <strong>9-р сарын 28</strong>. Элсэлт <strong>9-р сарын 25</strong>-нд хаагдана. Бүртгэлийн утас: <strong>{studio.phone}</strong>
+              Эхлэх огноо: <strong>{ops.trainingStart}</strong>. Элсэлт <strong>{ops.trainingClose}</strong>-нд хаагдана. Бүртгэлийн утас: <strong>{studio.phone}</strong>
             </p>
           </div>
           <a className="btn btn-gold" href={`tel:${studio.phone.replace(/\s/g, "")}`}>
@@ -222,26 +174,24 @@ export function StudioTraining({ studio }: { studio: StudioProfile }) {
         </div>
         <div>
           <ol className="steps">
-            {LESSONS.map((lesson) => (
-              <li key={lesson.n}>
-                <span>{lesson.n}</span>
+            {ops.lessons.map((lesson, index) => (
+              <li key={`${lesson.title}-${index}`}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
                 <div>
                   <strong>{lesson.title}</strong>
-                  <small>{lesson.desc}</small>
+                  <small>{lesson.description}</small>
                 </div>
               </li>
             ))}
           </ol>
           <div className="schedule">
             <p className="kicker">Хуваарь</p>
-            <p>
-              <span>Даваа – Баасан</span>
-              <strong>12:00 · 3–5 цаг</strong>
-            </p>
-            <p>
-              <span>2 долоо хоног нийт</span>
-              <strong>Шинэчлэгдсэн хөтөлбөр</strong>
-            </p>
+            {ops.schedule.map((row) => (
+              <p key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </p>
+            ))}
           </div>
         </div>
       </div>
@@ -249,21 +199,21 @@ export function StudioTraining({ studio }: { studio: StudioProfile }) {
   );
 }
 
-export function StudioGallerySection() {
+export function StudioGallerySection({ ops }: { ops: SiteOperations }) {
   return (
     <section className="band" id="gallery">
       <div className="bar">
         <div className="band-head">
-          <p className="kicker">Галерей</p>
-          <h2>Өнгөний ертөнц</h2>
+          <p className="kicker">{ops.galleryKicker}</p>
+          <h2>{ops.galleryTitle}</h2>
         </div>
-        <StudioGallery />
+        <StudioGallery items={ops.gallery} />
       </div>
     </section>
   );
 }
 
-export function StudioStories({ studio }: { studio: StudioProfile }) {
+export function StudioStories({ studio, ops }: { studio: StudioProfile; ops: SiteOperations }) {
   return (
     <section className="band band-sand" id="stories">
       <div className="bar">
@@ -286,7 +236,7 @@ export function StudioStories({ studio }: { studio: StudioProfile }) {
           ))}
         </div>
         <div className="link-row">
-          <a className="btn-quiet" href={FACEBOOK} target="_blank" rel="noopener noreferrer">
+          <a className="btn-quiet" href={ops.facebook} target="_blank" rel="noopener noreferrer">
             Facebook дээрх сэтгэгдэл
           </a>
         </div>
@@ -295,7 +245,7 @@ export function StudioStories({ studio }: { studio: StudioProfile }) {
   );
 }
 
-export function StudioContact({ studio }: { studio: StudioProfile }) {
+export function StudioContact({ studio, ops }: { studio: StudioProfile; ops: SiteOperations }) {
   return (
     <section className="band" id="contact">
       <div className="bar">
@@ -328,7 +278,7 @@ export function StudioContact({ studio }: { studio: StudioProfile }) {
               <a className="btn-quiet" href={`mailto:${studio.email}`}>
                 {studio.email}
               </a>
-              <a className="btn-quiet" href={FACEBOOK} target="_blank" rel="noopener noreferrer">
+              <a className="btn-quiet" href={ops.facebook} target="_blank" rel="noopener noreferrer">
                 Facebook
               </a>
             </div>
@@ -336,8 +286,8 @@ export function StudioContact({ studio }: { studio: StudioProfile }) {
         </div>
         <div className="contact-close">
           <div className="map-frame">
-            <iframe src={MAPS_EMBED} title="Naruka Studio байршил" loading="lazy" tabIndex={-1} />
-            <a className="map-hit" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
+            <iframe src={ops.mapsEmbed} title="Naruka Studio байршил" loading="lazy" tabIndex={-1} />
+            <a className="map-hit" href={ops.mapsUrl} target="_blank" rel="noopener noreferrer">
               <span>Google Maps дээр нээх</span>
             </a>
           </div>
@@ -370,30 +320,34 @@ export function StudioContact({ studio }: { studio: StudioProfile }) {
   );
 }
 
-export function StudioFooterBrand() {
+export function StudioFooterBrand({ name, tagline }: { name: string; tagline: string }) {
+  const lines = tagline.split("\n").filter(Boolean);
   return (
     <div>
-      <img className="foot-logo" src="/naruka-logo.png" alt="Naruka Styling Studio" />
+      <img className="foot-logo" src="/naruka-logo.png" alt={name} />
       <p>
-        ✨ Өөрийн өнгөөр тод гэрэлт ✨
-        <br />
-        Мэргэжлийн хувийн өнгө тодорхойлох үйлчилгээ. City Tower, Улаанбаатар.
+        {lines.map((line, index) => (
+          <span key={`${index}-${line}`}>
+            {index > 0 ? <br /> : null}
+            {line}
+          </span>
+        ))}
       </p>
     </div>
   );
 }
 
-export function StudioFooterContact({ studio }: { studio: StudioProfile }) {
+export function StudioFooterContact({ studio, ops }: { studio: StudioProfile; ops: SiteOperations }) {
   return (
     <div>
       <p className="foot-label">Холбоо</p>
       <nav className="foot-links">
         <a href={`tel:${studio.phone.replace(/\s/g, "")}`}>{studio.phone}</a>
         <a href={`mailto:${studio.email}`}>{studio.email}</a>
-        <a href={FACEBOOK} target="_blank" rel="noopener noreferrer">
+        <a href={ops.facebook} target="_blank" rel="noopener noreferrer">
           Facebook
         </a>
-        <a href={MAPS_URL} target="_blank" rel="noopener noreferrer">
+        <a href={ops.mapsUrl} target="_blank" rel="noopener noreferrer">
           {studio.address.split("\n")[0]}
         </a>
       </nav>

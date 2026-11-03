@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       if (!(file instanceof File)) throw new AppError("invalid_image", 400);
       if (role !== "face" && role !== "body") throw new AppError("invalid_image", 400);
       const bytes = Buffer.from(await file.arrayBuffer());
-      const upload = await saveStyleUpload(user, sessionId, role, bytes, file.type, consent);
+      const upload = await saveStyleUpload(user, sessionId, role, bytes, consent);
       return Response.json({ id: upload.id, role: upload.role });
     } catch (error) {
       return errorResponse(error);

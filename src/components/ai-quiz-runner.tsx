@@ -22,7 +22,7 @@ function checkoutError(code?: string) {
   if (code === "invalid_contact") return "Цахим шуудангийн хаягаа зөв оруулна уу.";
   if (code === "answers_incomplete") return "Бүх асуултад хариулна уу.";
   if (code === "consent_required") return "Зураг ашиглах зөвшөөрлөө батална уу.";
-  if (code === "invalid_image") return "Зургийн файл тохирохгүй байна.";
+  if (code === "invalid_image") return "Энэ файлыг зураг гэж уншиж чадсангүй. Өөр зураг сонгоно уу.";
   if (code === "qpay_invoice" || code === "qpay_callback_missing") return "QPay нэхэмжлэх үүсгэж чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
   return "Илгээж чадсангүй. Дахин оролдоно уу.";
 }
@@ -350,13 +350,12 @@ export function AiQuizRunner({
                 <input
                   id="quiz-photo"
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
                   onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
                   className="mt-2 block w-full text-sm text-charcoal"
                 />
               </label>
               <p className="mt-3 text-sm leading-relaxed text-muted">
-                Оруулсан зургийг насанд хүрсэн, зөвшөөрсөн зураг гэж бүртгэж, шинжилгээ болон хувцас, үс, будалтын туршилтад ашиглана. Эх зураг тусад нь хадгалагдана. Та устгаж болно.
+                Ямар ч өргөтгөлтэй зураг оруулж болно. Сервер JPEG болгон хөрвүүлнэ. Оруулсан зургийг насанд хүрсэн, зөвшөөрсөн зураг гэж бүртгэж, шинжилгээ болон хувцас, үс, будалтын туршилтад ашиглана. Эх зураг тусад нь хадгалагдана. Та устгаж болно.
               </p>
             </div>
           ) : null}

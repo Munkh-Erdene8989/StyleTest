@@ -4,9 +4,10 @@ import { AppError } from "@/domain/errors";
 import { parseQuizPrice, quizPriceError, storedQuizPrice } from "@/domain/money";
 import { iso } from "@/domain/time";
 import { questionAnswerPairs } from "@/domain/score";
+import { cleanOperations, operationsFrom } from "@/domain/site-operations";
 import { studioFrom } from "@/domain/studio-profile";
 import type { AiAnswer, AiQuizKind } from "@/domain/ai-quiz";
-import type { HelpContact, StudioProfile, User, VersionStatus } from "@/domain/types";
+import type { HelpContact, SiteOperations, StudioProfile, User, VersionStatus } from "@/domain/types";
 import { VERSIONS } from "@/domain/content";
 import { NEWS_POSTS } from "@/domain/news";
 import { canOperate, canReadSensitive, isAdminEmail, requestAdminPasswordReset, soleAdminEmail } from "./auth";
@@ -65,7 +66,10 @@ export async function adminOverview(user: User) {
   };
 }
 
-export async function updateSite(user: User, input: { appName?: string; helpContacts?: HelpContact[]; studio?: StudioProfile; quizPriceMnt?: unknown }) {
+export async function updateSite(
+  user: User,
+  input: { appName?: string; helpContacts?: HelpContact[]; studio?: StudioProfile; quizPriceMnt?: unknown; operations?: SiteOperations },
+) {
   assertOps(user);
   const store = getStore();
   const site = await store.getSiteConfig();
@@ -76,6 +80,7 @@ export async function updateSite(user: User, input: { appName?: string; helpCont
   }
   if (typeof input.appName === "string" && input.appName.trim()) site.appName = input.appName.trim().slice(0, 40);
   if (input.studio) site.studio = cleanStudio(input.studio);
+  if (input.operations) site.operations = cleanOperations(input.operations);
   if (Array.isArray(input.helpContacts)) {
     site.helpContacts = input.helpContacts
       .filter((item) => item.name?.trim() && item.phone?.trim() && item.source?.trim())
@@ -213,6 +218,7 @@ export async function adminDesk(user: User) {
     quizPriceMnt: storedQuizPrice(site.quizPriceMnt),
     funCopy: site.funCopy,
     studio: studioFrom(site.studio),
+    operations: operationsFrom(site.operations),
     admins: await adminEmails(),
     tests,
     news: library.news ?? NEWS_POSTS,

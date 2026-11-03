@@ -1,7 +1,8 @@
+import { operationsFrom } from "@/domain/site-operations";
+import { studioFrom } from "@/domain/studio-profile";
+import type { HelpContact, SiteOperations, StudioProfile } from "@/domain/types";
 import { updateSite } from "@/server/admin-service";
 import { readJson, withUser } from "@/server/http";
-import { studioFrom } from "@/domain/studio-profile";
-import type { HelpContact, StudioProfile } from "@/domain/types";
 
 export async function POST(req: Request) {
   return withUser(req, async (user) => {
@@ -11,12 +12,14 @@ export async function POST(req: Request) {
       helpContacts: Array.isArray(body.helpContacts) ? (body.helpContacts as HelpContact[]) : undefined,
       studio: body.studio && typeof body.studio === "object" ? (body.studio as StudioProfile) : undefined,
       quizPriceMnt: "quizPriceMnt" in body ? body.quizPriceMnt : undefined,
+      operations: body.operations && typeof body.operations === "object" ? (body.operations as SiteOperations) : undefined,
     });
     return Response.json({
       appName: site.appName,
       helpContacts: site.helpContacts,
       studio: studioFrom(site.studio),
       quizPriceMnt: site.quizPriceMnt,
+      operations: operationsFrom(site.operations),
     });
   });
 }

@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { quizByKind } from "@/content/quizzes/catalog";
 import type { AiQuizKind, AiQuizRecord } from "@/domain/ai-quiz";
 import { AppError } from "@/domain/errors";
-import { imageFormatOk } from "@/domain/images";
+import { normalizeUploadedImage } from "./normalize-image";
 import { currentQuizPrice } from "./quiz-price";
 import { paymentRequired, type ObservedPayment } from "@/domain/payment";
 import { iso } from "@/domain/time";
@@ -30,13 +30,10 @@ function reportLocked(quiz: AiQuizRecord, now = Date.now()) {
   return Number.isFinite(started) && now - started < REPORT_LOCK_MS;
 }
 
-export async function saveQuizPhoto(user: User, input: { role: string; bytes: Buffer; contentType: string; consent: boolean }) {
+export async function saveQuizPhoto(user: User, input: { role: string; bytes: Buffer; consent: boolean }) {
   if (!input.consent) throw new AppError("consent_required", 400);
   if (input.role !== "face" && input.role !== "body") throw new AppError("invalid_image", 400);
-  if (!["image/png", "image/jpeg", "image/webp"].includes(input.contentType) || !imageFormatOk(input.bytes, input.contentType)) {
-    throw new AppError("invalid_image", 400);
-  }
-  if (input.bytes.length > 8 * 1024 * 1024) throw new AppError("file_too_large", 400);
+  const image = await normalizeUploadedImage(input.bytes);
   await limit(user.id, "upload", 20);
   const upload: Upload = {
     id: randomUUID(),
@@ -44,13 +41,13 @@ export async function saveQuizPhoto(user: User, input: { role: string; bytes: Bu
     sessionId: "quiz",
     role: input.role,
     path: `private/${user.id}/quiz-photos/${randomUUID()}`,
-    contentType: input.contentType,
+    contentType: image.contentType,
     consentAt: iso(),
     linked: false,
     createdAt: iso(),
   };
   const store = getStore();
-  await store.putObject(upload.path, input.bytes, input.contentType);
+  await store.putObject(upload.path, image.bytes, image.contentType);
   await store.saveUpload(upload);
   return { id: upload.id, role: upload.role };
 }

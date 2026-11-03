@@ -20,6 +20,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase-admin": "^14.4.0",
+    "heic-convert": "^2.1.0",
     "heic2any": "^0.0.4",
     "lucide-react": "^1.48.0",
     "next": "15.5.28",
@@ -27,6 +28,7 @@
     "puppeteer-core": "^25.16.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "sharp": "^0.35.5",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.5"
   },

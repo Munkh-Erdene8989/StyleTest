@@ -319,12 +319,84 @@ export type StudioProfile = {
   reviews: StudioReview[];
 };
 
+export type SiteService = {
+  title: string;
+  subtitle: string;
+  description: string;
+  includes: string[];
+  image: string;
+  tag: string;
+  href: string;
+  action: string;
+};
+
+export type SiteLesson = {
+  title: string;
+  description: string;
+};
+
+export type SiteStat = {
+  value: string;
+  label: string;
+};
+
+export type SiteGalleryItem = {
+  image: string;
+  label: string;
+  tall: boolean;
+};
+
+export type SiteSchedule = {
+  label: string;
+  value: string;
+};
+
+export type SiteOperations = {
+  heroKicker: string;
+  heroTitle: string;
+  heroEmphasis: string;
+  heroLede: string;
+  heroAction: string;
+  heroHref: string;
+  stats: SiteStat[];
+  aboutImages: string[];
+  aboutLead: string;
+  aboutEmphasis: string;
+  aboutBody: string[];
+  aboutTicks: string[];
+  servicesKicker: string;
+  servicesTitle: string;
+  services: SiteService[];
+  onlineKicker: string;
+  onlineTitle: string;
+  onlineBody: string;
+  onlineAction: string;
+  onlineHref: string;
+  trainingKicker: string;
+  trainingTitle: string;
+  trainingEmphasis: string;
+  trainingBody: string;
+  trainingNoticeTitle: string;
+  trainingStart: string;
+  trainingClose: string;
+  lessons: SiteLesson[];
+  schedule: SiteSchedule[];
+  galleryKicker: string;
+  galleryTitle: string;
+  gallery: SiteGalleryItem[];
+  facebook: string;
+  mapsUrl: string;
+  mapsEmbed: string;
+  footerTagline: string;
+};
+
 export type SiteConfig = {
   appName: string;
   helpContacts: HelpContact[];
   funCopy: Record<string, { title: string; summary: string }>;
   studio?: StudioProfile;
   quizPriceMnt?: number;
+  operations?: SiteOperations;
 };
 
 export type VersionOverride = {

@@ -133,14 +133,14 @@ export function StyleWizard({
       ) : null}
       {step === 2 ? (
         <form onSubmit={finish} className="stack-form">
-          <p>Нүүр тод, гэрэл жигд, бүтэн бие хувцастай, хэт тайралтгүй зураг оруулна уу. PNG, JPEG, WEBP болон iPhone-ийн HEIC зураг авна. Оруулсан зургийг насанд хүрсэн, зөвшөөрсөн зураг гэж бүртгэнэ.</p>
+          <p>Нүүр тод, гэрэл жигд, бүтэн бие хувцастай, хэт тайралтгүй зураг оруулна уу. Ямар ч өргөтгөлтэй зураг авна. Сервер JPEG болгон хөрвүүлнэ. Оруулсан зургийг насанд хүрсэн, зөвшөөрсөн зураг гэж бүртгэнэ.</p>
           <label>
             Нүүрний зураг
-            <input className="field" name="face" type="file" accept={PHOTO_ACCEPT} required />
+            <input className="field" name="face" type="file" required />
           </label>
           <label>
             Бүтэн биеийн зураг
-            <input className="field" name="body" type="file" accept={PHOTO_ACCEPT} required />
+            <input className="field" name="body" type="file" required />
           </label>
           <div className="actions">
             <button type="button" className="btn-quiet" onClick={() => setStep(1)}>
@@ -168,7 +168,7 @@ async function errorCode(response: Response) {
 
 function messageFor(code: string) {
   if (code === "consent_required") return "Зургийн зөвшөөрлөө тэмдэглэнэ үү.";
-  if (code === "invalid_image") return "PNG, JPEG, WEBP эсвэл iPhone-ийн HEIC зураг оруулна уу.";
+  if (code === "invalid_image") return "Энэ файлыг зураг гэж уншиж чадсангүй. Өөр зураг сонгоно уу.";
   if (code === "file_too_large") return "Зураг хэт том байна. Бага хэмжээтэй зураг сонгоно уу.";
   if (code === "preference_required") return "Дуртай эсвэл өмсөж үзмээр жишээнээс нэгийг сонгоно уу.";
   if (code === "not_enough_directions") return "Сонголтоо өөрчилж дахин оролдоно уу.";
@@ -176,12 +176,10 @@ function messageFor(code: string) {
   return "Зураг, зөвшөөрөл, дуртай жишээгээ шалгаад дахин оролдоно уу.";
 }
 
-const PHOTO_ACCEPT = "image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif";
-
 async function prepareImage(file: File) {
-  const source = isHeic(file.type, file.name) ? await convertHeic(file) : file;
-  if (source.size <= 1_500_000 && source.type === "image/jpeg") return source;
   try {
+    const source = isHeic(file.type, file.name) ? await convertHeic(file) : file;
+    if (source.size <= 1_500_000 && source.type === "image/jpeg") return source;
     const bitmap = await createImageBitmap(source);
     const max = 1600;
     const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
@@ -193,11 +191,10 @@ async function prepareImage(file: File) {
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
-    if (!blob) return source;
+    if (!blob) return file;
     return new File([blob], "photo.jpg", { type: "image/jpeg" });
   } catch {
-    if (source.type === "image/jpeg" || source.type === "image/png" || source.type === "image/webp") return source;
-    throw new Error("invalid_image");
+    return file;
   }
 }
 

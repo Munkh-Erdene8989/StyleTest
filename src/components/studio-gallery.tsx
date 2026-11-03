@@ -2,23 +2,16 @@
 
 import { useState } from "react";
 
-const ITEMS = [
-  { img: "/studio/gallery-summer.jpg", label: "Зун улирлын палитр", tall: true },
-  { img: "/studio/gallery-autumn.jpg", label: "Warm Autumn", tall: false },
-  { img: "/studio/gallery-winter.jpg", label: "Cool Winter", tall: true },
-  { img: "/studio/gallery-spring.jpg", label: "Spring Bright", tall: false },
-  { img: "/studio/gallery-soft-summer.jpg", label: "Soft Summer", tall: true },
-  { img: "/studio/gallery-deep-autumn.jpg", label: "Deep Autumn", tall: false },
-];
+import type { SiteGalleryItem } from "@/domain/types";
 
-export function StudioGallery() {
+export function StudioGallery({ items }: { items: SiteGalleryItem[] }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <>
       <div className="gallery">
-        {ITEMS.map((item) => (
-          <button key={item.label} type="button" className={item.tall ? "gallery-tall" : undefined} onClick={() => setOpen(item.img)}>
-            <img src={item.img} alt="" />
+        {items.map((item) => (
+          <button key={`${item.label}-${item.image}`} type="button" className={item.tall ? "gallery-tall" : undefined} onClick={() => setOpen(item.image)}>
+            <img src={item.image} alt="" />
             <span>{item.label}</span>
           </button>
         ))}

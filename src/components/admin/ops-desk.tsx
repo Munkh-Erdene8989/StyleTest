@@ -4,6 +4,7 @@ import { formatDay } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeskTitle } from "./admin-frame";
+import { SiteOperationsForm } from "./site-operations";
 import { SiteSettings } from "./site-settings";
 import { useDesk } from "./desk-context";
 import { eventLabel, kindLabel, statusLabel } from "./labels";
@@ -135,8 +136,11 @@ export function SettingsDesk() {
   if (!desk) return null;
   return (
     <div>
-      <DeskTitle title="Тохиргоо" text="Том хавтан дээр зураг, хажууд холбоо барих ба админ." />
-      <SiteSettings />
+      <DeskTitle title="Тохиргоо" text="Нүүр, үйлчилгээ, сургалт, галерейг энд зассан өөрчлөлт сайт дээр шууд гарна." />
+      <SiteOperationsForm />
+      <div className="mt-8">
+        <SiteSettings />
+      </div>
     </div>
   );
 }

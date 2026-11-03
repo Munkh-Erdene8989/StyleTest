@@ -158,7 +158,7 @@ describe("product flow", () => {
     const adult = await adultUser();
     const session = await answerPersonality(adult.id);
     expect(imageFormatOk(PNG, "image/png")).toBe(true);
-    await saveStyleUpload(adult, (await styleReady(adult.id)).id, "face", PNG, "image/png", true).catch(() => undefined);
+    await saveStyleUpload(adult, (await styleReady(adult.id)).id, "face", PNG, true).catch(() => undefined);
     const store = getStore();
     await store.putObject("private/report.png", PNG, "image/png");
     const report = await store.getReport(`rep_${session.id}`);
@@ -300,8 +300,8 @@ async function styleReady(userId: string) {
     request: "өдөр тутмын",
     usePersonality: false,
   });
-  await saveStyleUpload(user, session.id, "face", PNG, "image/png", true);
-  await saveStyleUpload(user, session.id, "body", PNG, "image/png", true);
+  await saveStyleUpload(user, session.id, "face", PNG, true);
+  await saveStyleUpload(user, session.id, "body", PNG, true);
   await completeStyle(user, session.id);
   return session;
 }

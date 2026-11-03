@@ -5,7 +5,8 @@ import { BodyEdgeLink } from "@/components/body-edge-link";
 import { MobileDock } from "@/components/mobile-dock";
 import { SiteHeader } from "@/components/site-header";
 import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sections";
-import { BRAND_DESCRIPTION, BRAND_FACEBOOK, BRAND_KEYWORDS, BRAND_NAME } from "@/domain/brand";
+import { BRAND_DESCRIPTION, BRAND_KEYWORDS, resolveAppName } from "@/domain/brand";
+import { operationsFrom } from "@/domain/site-operations";
 import { studioFrom } from "@/domain/studio-profile";
 import { storedQuizPrice } from "@/domain/money";
 import { archetypeAvailable } from "@/server/ai-quiz-banks";
@@ -28,47 +29,54 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-display",
 });
 
-export const metadata: Metadata = {
-  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
-  title: {
-    default: BRAND_NAME,
-    template: `%s · ${BRAND_NAME}`,
-  },
-  description: BRAND_DESCRIPTION,
-  applicationName: BRAND_NAME,
-  keywords: BRAND_KEYWORDS,
-  authors: [{ name: BRAND_NAME }],
-  creator: BRAND_NAME,
-  openGraph: {
-    type: "website",
-    locale: "mn_MN",
-    siteName: BRAND_NAME,
-    title: BRAND_NAME,
-    description: BRAND_DESCRIPTION,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: BRAND_NAME,
-    description: BRAND_DESCRIPTION,
-  },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getStore().getSiteConfig();
+  const name = resolveAppName(site.appName);
+  const description = operationsFrom(site.operations).heroLede || BRAND_DESCRIPTION;
+  return {
+    ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
+    title: {
+      default: name,
+      template: `%s · ${name}`,
+    },
+    description,
+    applicationName: name,
+    keywords: BRAND_KEYWORDS,
+    authors: [{ name }],
+    creator: name,
+    openGraph: {
+      type: "website",
+      locale: "mn_MN",
+      siteName: name,
+      title: name,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: name,
+      description,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = await getStore().getSiteConfig();
+  const name = resolveAppName(site.appName);
   const studio = studioFrom(site.studio);
+  const ops = operationsFrom(site.operations);
   const user = await optionalUser();
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BeautySalon",
-    name: BRAND_NAME,
-    description: BRAND_DESCRIPTION,
+    name,
+    description: ops.heroLede || BRAND_DESCRIPTION,
     url: siteUrl,
     image: siteUrl ? `${siteUrl}/naruka-logo.png` : "/naruka-logo.png",
     logo: siteUrl ? `${siteUrl}/naruka-logo.png` : "/naruka-logo.png",
     telephone: studio.phone,
     email: studio.email,
-    sameAs: [BRAND_FACEBOOK],
+    sameAs: [ops.facebook],
     address: {
       "@type": "PostalAddress",
       streetAddress: studio.address.split("\n")[0],
@@ -84,16 +92,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${manrope.className} ${cormorant.variable}`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <AuthBootstrap />
-        <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} />
+        <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} name={name} />
         <div className="shell">{children}</div>
         <BodyEdgeLink />
         <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} price={storedQuizPrice(site.quizPriceMnt)} />
         <footer className="foot">
           <div className="bar foot-grid">
-            <StudioFooterBrand />
-            <StudioFooterContact studio={studio} />
+            <StudioFooterBrand name={name} tagline={ops.footerTagline} />
+            <StudioFooterContact studio={studio} ops={ops} />
           </div>
-          <p className="bar foot-copy">© {new Date().getFullYear()} Naruka Styling Studio. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>
+          <p className="bar foot-copy">© {new Date().getFullYear()} {name}. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>
         </footer>
       </body>
     </html>

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import { canStartTest } from "@/domain/age";
 import { STYLE_DIRECTIONS, STYLE_EXAMPLES } from "@/domain/content";
 import { AppError } from "@/domain/errors";
-import { imageFormatOk } from "@/domain/images";
+import { normalizeUploadedImage } from "./normalize-image";
 import { stableId } from "@/domain/jobs";
 import { PRICES } from "@/domain/money";
 import { bandFor, scoreAnswers } from "@/domain/score";
@@ -179,14 +179,10 @@ export async function saveStyleUpload(
   sessionId: string,
   role: "face" | "body",
   bytes: Buffer,
-  contentType: string,
   consent: boolean,
 ) {
   if (!consent) throw new AppError("consent_required", 400);
-  if (!["image/png", "image/jpeg", "image/webp"].includes(contentType) || !imageFormatOk(bytes, contentType)) {
-    throw new AppError("invalid_image", 400);
-  }
-  if (bytes.length > 8 * 1024 * 1024) throw new AppError("file_too_large", 400);
+  const image = await normalizeUploadedImage(bytes);
   await limit(user.id, "upload", 20);
   const session = await ownedSession(user, sessionId);
   if (session.kind !== "style" || !session.styleInput) throw new AppError("invalid_session", 400);
@@ -197,12 +193,12 @@ export async function saveStyleUpload(
     sessionId,
     role,
     path: `private/${user.id}/uploads/${randomUUID()}`,
-    contentType,
+    contentType: image.contentType,
     consentAt: iso(),
     linked: false,
     createdAt: iso(),
   };
-  await store.putObject(upload.path, bytes, contentType);
+  await store.putObject(upload.path, image.bytes, image.contentType);
   await store.saveUpload(upload);
   if (role === "face") session.styleInput.faceUploadId = upload.id;
   if (role === "body") session.styleInput.bodyUploadId = upload.id;
