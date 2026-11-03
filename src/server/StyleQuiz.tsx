@@ -336,7 +336,7 @@ export default function StyleQuiz({ onClose, price = STYLE_QUIZ_PRICE_MNT }: { o
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as { answers?: Answers; name?: string; email?: string; step?: number };
       if (saved.answers && typeof saved.answers === 'object') {
-        setAnswers({ age: ADULT_AGE, ...saved.answers, age: saved.answers.age ?? ADULT_AGE });
+        setAnswers({ ...saved.answers, age: saved.answers.age ?? ADULT_AGE });
       }
       if (typeof saved.name === 'string') setName(saved.name);
       if (typeof saved.email === 'string') setEmail(saved.email);
