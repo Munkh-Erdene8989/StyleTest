@@ -25,7 +25,7 @@ export type Settlement<T extends Payable> = {
 };
 
 type PayableHit = {
-  kind: "order" | "style" | "ai";
+  kind: "order" | "style" | "ai" | "tap";
   id: string;
   qpayInvoiceId: string;
 };
@@ -82,6 +82,10 @@ async function settleHit(hit: PayableHit, observed: ObservedPayment) {
     const { applyStyleQuizObservation } = await import("./style-quiz-service");
     return applyStyleQuizObservation(hit.id, observed);
   }
+  if (hit.kind === "tap") {
+    const { applyTapObservation } = await import("./tap-service");
+    return applyTapObservation(hit.id, observed);
+  }
   const { applyAiQuizObservation } = await import("./ai-quiz-service");
   return applyAiQuizObservation(hit.id, observed);
 }
@@ -95,6 +99,8 @@ async function locatePayable(invoiceId: string, sender: string): Promise<Payable
     if (style?.qpayInvoiceId) return { kind: "style", id: style.id, qpayInvoiceId: style.qpayInvoiceId };
     const ai = await store.findAiQuizByInvoice(invoiceId);
     if (ai?.qpayInvoiceId) return { kind: "ai", id: ai.id, qpayInvoiceId: ai.qpayInvoiceId };
+    const tap = await store.findTapByInvoice(invoiceId);
+    if (tap?.qpayInvoiceId) return { kind: "tap", id: tap.id, qpayInvoiceId: tap.qpayInvoiceId };
     return null;
   }
   if (!sender) return null;
@@ -102,9 +108,13 @@ async function locatePayable(invoiceId: string, sender: string): Promise<Payable
   if (order?.qpayInvoiceId) return { kind: "order", id: order.id, qpayInvoiceId: order.qpayInvoiceId };
   const style = await store.getStyleQuiz(sender);
   if (style?.qpayInvoiceId) return { kind: "style", id: style.id, qpayInvoiceId: style.qpayInvoiceId };
-  if (!sender.startsWith("aiq_")) return null;
-  const ai = await store.getAiQuiz(sender);
-  if (ai?.qpayInvoiceId) return { kind: "ai", id: ai.id, qpayInvoiceId: ai.qpayInvoiceId };
+  if (sender.startsWith("aiq_")) {
+    const ai = await store.getAiQuiz(sender);
+    if (ai?.qpayInvoiceId) return { kind: "ai", id: ai.id, qpayInvoiceId: ai.qpayInvoiceId };
+  }
+  if (!sender.startsWith("tap_")) return null;
+  const tap = await store.getTap(sender);
+  if (tap?.qpayInvoiceId) return { kind: "tap", id: tap.id, qpayInvoiceId: tap.qpayInvoiceId };
   return null;
 }
 

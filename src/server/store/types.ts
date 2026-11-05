@@ -1,6 +1,7 @@
 import type { AdminLibrary } from "@/domain/admin-content";
 import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
+import type { TapRecord } from "@/domain/tap";
 import type {
   AnalyticsEvent,
   AuditLog,
@@ -135,6 +136,13 @@ export interface AppStore {
   listStyleQuizzes(): Promise<StyleQuizRecord[]>;
   listStyleQuizzesByOwner(uid: string): Promise<StyleQuizRecord[]>;
   listStyleQuizzesByEmail(email: string): Promise<StyleQuizRecord[]>;
+
+  saveTap(tap: TapRecord): Promise<void>;
+  getTap(id: string): Promise<TapRecord | null>;
+  findTapByInvoice(invoiceId: string): Promise<TapRecord | null>;
+  updateTap(id: string, update: (current: TapRecord) => TapRecord): Promise<{ previous: TapRecord; next: TapRecord }>;
+  listTapsByOwner(uid: string): Promise<TapRecord[]>;
+  listTapsByEmail(email: string): Promise<TapRecord[]>;
 }
 
 export type EmailOtp = {

@@ -13,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch {
     newsPaths = NEWS_POSTS.map((post) => `/news/${post.slug}`);
   }
-  const paths = ["", "/quiz", "/tests", "/tests/face", "/tests/body", "/tests/archetype", "/news", "/privacy", "/terms", ...catalogPaths, ...newsPaths];
+  const paths = ["", "/quiz", "/tests", "/tests/face", "/tests/body", "/tests/archetype", "/tap", "/news", "/privacy", "/terms", ...catalogPaths, ...newsPaths];
   return paths.map((path) => ({
     url: `${base}${path || "/"}`,
     changeFrequency: path === "" ? "weekly" : "monthly",

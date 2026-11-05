@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { AI_QUIZ_CATALOG } from "@/content/quizzes/catalog";
+import { TAP_PRICE_MNT } from "@/domain/tap";
 import { formatMnt } from "@/lib/format";
 import { LoginForm } from "@/components/login-form";
+import { useOpenTap } from "@/components/tap-studio";
 
 type Sheet = "magic" | "profile" | null;
 
@@ -19,6 +21,7 @@ export function MobileDock({
   price: number;
 }) {
   const pathname = usePathname();
+  const openTap = useOpenTap();
   const router = useRouter();
   const sheetId = useId();
   const sheetRef = useRef<HTMLElement>(null);
@@ -91,6 +94,25 @@ export function MobileDock({
             </button>
           </header>
           <ul className="dock-tests">
+            <li>
+              {pathname === "/tap" || !openTap ? (
+                <Link href="/tap" onClick={() => setSheet(null)}>
+                  <strong>1 TAP</strong>
+                  <span>Нүүрний зураг, бичлэг · {formatMnt(TAP_PRICE_MNT)}₮</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSheet(null);
+                    openTap();
+                  }}
+                >
+                  <strong>1 TAP</strong>
+                  <span>Нүүрний зураг, бичлэг · {formatMnt(TAP_PRICE_MNT)}₮</span>
+                </button>
+              )}
+            </li>
             {AI_QUIZ_CATALOG.map((quiz) => {
               const waiting = quiz.kind === "archetype" && !archetypeReady;
               return (

@@ -3,6 +3,7 @@ import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
+import type { TapRecord } from "@/domain/tap";
 import type { AdminAccount, AdminCredential, AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
@@ -49,6 +50,7 @@ type Bag = {
   adminAccounts: Map<string, AdminAccount>;
   styleQuizzes: Map<string, StyleQuizRecord>;
   aiQuizzes: Map<string, AiQuizRecord>;
+  taps: Map<string, TapRecord>;
   site: SiteConfig | null;
   library: AdminLibrary | null;
   chain: Promise<unknown>;
@@ -79,6 +81,7 @@ function bag(): Bag {
     adminAccounts: new Map(),
     styleQuizzes: new Map(),
     aiQuizzes: new Map(),
+    taps: new Map(),
     site: null,
     library: null,
     chain: Promise.resolve(),
@@ -411,5 +414,31 @@ export class MemoryStore implements AppStore {
   async listStyleQuizzesByEmail(email: string) {
     const target = email.toLowerCase();
     return [...this.db.styleQuizzes.values()].filter((quiz) => quiz.email.toLowerCase() === target);
+  }
+
+  async saveTap(tap: TapRecord) {
+    this.db.taps.set(tap.id, tap);
+  }
+  async getTap(id: string) {
+    return this.db.taps.get(id) ?? null;
+  }
+  async findTapByInvoice(invoiceId: string) {
+    return [...this.db.taps.values()].find((tap) => tap.qpayInvoiceId === invoiceId) ?? null;
+  }
+  async updateTap(id: string, update: (current: TapRecord) => TapRecord) {
+    return this.lock(async () => {
+      const previous = this.db.taps.get(id);
+      if (!previous) throw new AppError("not_found", 404);
+      const next = update(structuredClone(previous));
+      this.db.taps.set(id, next);
+      return { previous, next };
+    });
+  }
+  async listTapsByOwner(uid: string) {
+    return [...this.db.taps.values()].filter((tap) => tap.ownerUid === uid);
+  }
+  async listTapsByEmail(email: string) {
+    const target = email.toLowerCase();
+    return [...this.db.taps.values()].filter((tap) => tap.email.toLowerCase() === target);
   }
 }

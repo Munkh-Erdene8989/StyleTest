@@ -12,6 +12,7 @@ import {
   yearMonth,
 } from "@/domain/profile";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
+import type { TapRecord } from "@/domain/tap";
 import type { BodyFigure, Gender, User } from "@/domain/types";
 import { bodyQuizBank } from "./ai-quiz-banks";
 import { getStore } from "./store";
@@ -44,6 +45,7 @@ export async function loadProfile(user: User): Promise<ProfileView> {
   const suggested = body ? figureFromBodyShape(body.id) : null;
   const reports = [
     ...quizzes.map(aiReport),
+    ...(await tapReports(user)),
     ...(await styleReports(user)),
     ...(await classicReports(user)),
   ].sort((a, b) => b.at.localeCompare(a.at));
@@ -148,6 +150,24 @@ function aiReport(quiz: AiQuizRecord): ProfileReportItem {
     at: when,
     pdf: quiz.paymentStatus === "paid",
   };
+}
+
+async function tapReports(user: User): Promise<ProfileReportItem[]> {
+  const store = getStore();
+  const owned = await store.listTapsByOwner(user.id);
+  const mailed = user.email ? await store.listTapsByEmail(user.email) : [];
+  const map = new Map<string, TapRecord>();
+  for (const tap of [...owned, ...mailed]) map.set(tap.id, tap);
+  return [...map.values()].map((tap) => {
+    const when = tap.paidAt ?? tap.createdAt;
+    return {
+      id: tap.id,
+      title: "1 TAP",
+      label: yearMonth(when)?.label ?? "",
+      at: when,
+      pdf: tap.paymentStatus === "paid" && tap.reportStatus === "sent",
+    };
+  });
 }
 
 async function styleReports(user: User): Promise<ProfileReportItem[]> {

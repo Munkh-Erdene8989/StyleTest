@@ -4,6 +4,7 @@ import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { BodyEdgeLink } from "@/components/body-edge-link";
 import { MobileDock } from "@/components/mobile-dock";
 import { SiteHeader } from "@/components/site-header";
+import { TapWindowRoot } from "@/components/tap-studio";
 import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sections";
 import { BRAND_DESCRIPTION, BRAND_KEYWORDS, resolveAppName } from "@/domain/brand";
 import { operationsFrom } from "@/domain/site-operations";
@@ -92,17 +93,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${manrope.className} ${cormorant.variable}`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <AuthBootstrap />
-        <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} name={name} />
-        <div className="shell">{children}</div>
-        <BodyEdgeLink />
-        <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} price={storedQuizPrice(site.quizPriceMnt)} />
-        <footer className="foot">
-          <div className="bar foot-grid">
-            <StudioFooterBrand name={name} tagline={ops.footerTagline} />
-            <StudioFooterContact studio={studio} ops={ops} />
-          </div>
-          <p className="bar foot-copy">© {new Date().getFullYear()} {name}. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>
-        </footer>
+        <TapWindowRoot email={user?.email ?? ""}>
+          <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} name={name} />
+          <div className="shell">{children}</div>
+          <BodyEdgeLink />
+          <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} price={storedQuizPrice(site.quizPriceMnt)} />
+          <footer className="foot">
+            <div className="bar foot-grid">
+              <StudioFooterBrand name={name} tagline={ops.footerTagline} />
+              <StudioFooterContact studio={studio} ops={ops} />
+            </div>
+            <p className="bar foot-copy">© {new Date().getFullYear()} {name}. Бүх эрх хуулиар хамгаалагдсан. Fashion Stylist · Улаанбаатар, Монгол</p>
+          </footer>
+        </TapWindowRoot>
       </body>
     </html>
   );

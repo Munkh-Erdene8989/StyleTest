@@ -135,7 +135,8 @@ body {
 .shell > main.news-index,
 .shell > main.spread-page,
 .shell > main.studio,
-.shell > main.body-page {
+.shell > main.body-page,
+.shell > main.tap-page {
   width: 100%;
 }
 
@@ -284,12 +285,19 @@ body {
 }
 
 .dock-tests a,
+.dock-tests button,
 .dock-tests div {
   display: grid;
   gap: 0.15rem;
+  width: 100%;
   padding: 0.95rem 0.15rem;
+  border: 0;
+  background: none;
   color: inherit;
+  font: inherit;
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .dock-tests strong {
@@ -306,7 +314,9 @@ body {
 }
 
 .dock-tests a:hover strong,
-.dock-tests a:focus-visible strong {
+.dock-tests a:focus-visible strong,
+.dock-tests button:hover strong,
+.dock-tests button:focus-visible strong {
   color: var(--bordeaux);
 }
 
@@ -481,7 +491,8 @@ body {
 }
 
 .top-clear .wordmark,
-.top-clear .nav a {
+.top-clear .nav a,
+.top-clear .nav button.nav-link {
   color: #fff;
 }
 
@@ -489,23 +500,35 @@ body {
   color: #fff;
 }
 
-.top-clear .nav a:hover {
+.top-clear .nav a:hover,
+.top-clear .nav button.nav-link:hover {
   color: #fff;
 }
 
 .nav a,
+.nav button.nav-link,
 .foot a {
   color: var(--soft);
   text-underline-offset: 0.18em;
 }
 
-.nav a {
+.nav a,
+.nav button.nav-link {
   font-size: 0.9rem;
   font-weight: 500;
   text-decoration: none;
 }
 
+.nav button.nav-link {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .nav a:hover,
+.nav button.nav-link:hover,
 .foot a:hover,
 .kicker a:hover {
   color: var(--bordeaux);
@@ -2395,7 +2418,9 @@ body:has(.admin-root) .body-edge {
   }
 
   .nav-open a,
-  .top-clear .nav-open a {
+  .nav-open button.nav-link,
+  .top-clear .nav-open a,
+  .top-clear .nav-open button.nav-link {
     color: var(--soft);
     padding: 0.55rem 0;
   }
@@ -2960,5 +2985,699 @@ body:has(.admin-root) .shell > main {
 
   .body-preview-grid {
     grid-template-columns: minmax(16rem, 1fr) 13.5rem;
+  }
+}
+
+.tap-page {
+  display: grid;
+  justify-items: center;
+}
+
+.tap-window {
+  position: relative;
+  width: min(48rem, 100%);
+  display: grid;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  background: var(--sheet);
+  box-shadow: 0 18px 50px rgb(30 26 24 / 8%);
+  scroll-margin-top: 6.25rem;
+}
+
+.tap-modal .tap-window {
+  width: min(48rem, 100%);
+  max-height: min(44rem, calc(100dvh - 2.4rem));
+  overflow: auto;
+  box-shadow: 0 28px 70px rgb(30 26 24 / 28%);
+}
+
+.tap-window-bar {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1.25rem 1.35rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tap-window h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 2.6vw, 2.15rem);
+  scroll-margin-top: 6.25rem;
+}
+
+.tap-window h1:focus {
+  outline: none;
+}
+
+.tap-steps {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tap-steps li {
+  position: relative;
+  min-width: 0;
+}
+
+.tap-steps li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0.7rem;
+  left: calc(50% + 0.85rem);
+  width: calc(100% - 1.7rem);
+  height: 1px;
+  background: var(--line);
+}
+
+.tap-steps button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.28rem;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.68rem;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.tap-steps button span {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--sheet);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.tap-steps button.is-done {
+  color: var(--ink);
+}
+
+.tap-steps button.is-done span,
+.tap-steps li:has(.is-done)::before {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.tap-steps button[aria-current="step"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tap-steps button[aria-current="step"] span {
+  border-color: var(--bordeaux);
+  background: var(--bordeaux);
+  color: #fff;
+}
+
+.tap-points {
+  display: grid;
+  gap: 0;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tap-points li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.tap-points strong {
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.tap-points span {
+  color: var(--soft);
+}
+
+.tap-shapes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.tap-shapes button {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  padding: 0.7rem 0.3rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--cream);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.tap-shapes button[aria-selected="true"] {
+  border-color: var(--bordeaux);
+  background: color-mix(in srgb, var(--bordeaux) 8%, var(--sheet));
+  color: var(--bordeaux);
+}
+
+.tap-shape {
+  width: 2.35rem;
+  height: 4rem;
+  fill: currentColor;
+}
+
+.tap-steps button:disabled {
+  cursor: default;
+}
+
+.tap-pay-grid {
+  display: grid;
+  grid-template-columns: 5.2rem 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.tap-thumb {
+  width: 5.2rem;
+  height: 6.8rem;
+  object-fit: cover;
+  object-position: center 18%;
+  border-radius: 0.75rem;
+  background: var(--cream);
+  color: transparent;
+  font-size: 0;
+}
+
+.tap-window-body {
+  min-width: 0;
+}
+
+.tap-step-copy {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.2rem 1.35rem 1.3rem;
+}
+
+.tap-step-copy > p {
+  margin: 0;
+  max-width: 38rem;
+}
+
+.tap-step-media {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.72fr) 1fr;
+}
+
+.tap-window .tap-phone {
+  width: min(12.4rem, 78%);
+}
+
+.tap-step-copy .tap-actions {
+  justify-content: flex-start;
+}
+
+.tap-window .tap-guide-stage {
+  min-height: 0;
+  height: 100%;
+  padding: 1.15rem 0.75rem;
+}
+
+.tap-file {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.tap-file.is-ready {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tap-summary {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.tap-summary div {
+  display: grid;
+  gap: 0.15rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tap-summary dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.tap-summary dd {
+  margin: 0;
+}
+
+.tap-retake {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.9rem 1.35rem;
+  background: color-mix(in srgb, var(--bordeaux) 8%, var(--sheet));
+  border-bottom: 1px solid var(--line);
+}
+
+.tap-retake p,
+.tap-retake ul {
+  margin: 0;
+}
+
+.tap-window-nav {
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 1.35rem 1.15rem;
+  border-top: 1px solid var(--line);
+  background: var(--sheet);
+}
+
+@media (max-width: 899px) {
+  .tap-window-nav {
+    position: sticky;
+    bottom: 4.6rem;
+  }
+
+  .tap-modal .tap-window-nav {
+    bottom: 0;
+  }
+}
+
+.tap-window .btn,
+.tap-window .btn-quiet {
+  width: auto;
+}
+
+.tap-window .tap-error {
+  margin: 0 1.35rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--bordeaux) 9%, var(--sheet));
+}
+
+.tap-phone.is-live img,
+.tap-phone video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  animation: none;
+}
+
+.tap-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.tap-card {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  background: var(--sheet);
+  padding: 1.1rem 1.15rem 1.2rem;
+}
+
+.tap-card h2 {
+  margin: 0;
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+
+.tap-card-head,
+.tap-actions,
+.tap-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tap-preview {
+  display: grid;
+  place-items: center;
+  min-height: 14rem;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: var(--cream-dark);
+  color: var(--muted);
+}
+
+.tap-preview img,
+.tap-preview video {
+  width: 100%;
+  height: 16rem;
+  object-fit: cover;
+}
+
+.tap-form,
+.tap-status,
+.tap-pay {
+  max-width: 40rem;
+}
+
+.tap-consent {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+
+.tap-qr {
+  width: 14rem;
+  background: #fff;
+  padding: 0.5rem;
+}
+
+.tap-error {
+  color: var(--bordeaux);
+  font-weight: 600;
+}
+
+.tap-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background: rgb(30 26 24 / 62%);
+  backdrop-filter: blur(6px);
+}
+
+.tap-dialog {
+  position: relative;
+  width: min(46rem, 100%);
+  max-height: min(40rem, calc(100dvh - 2.4rem));
+  overflow: auto;
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.86fr) 1.14fr;
+  border-radius: 1.2rem;
+  background: var(--cream);
+  box-shadow: 0 28px 70px rgb(30 26 24 / 28%);
+}
+
+.tap-guide-close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 2;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--sheet);
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tap-guide-stage {
+  display: grid;
+  place-items: center;
+  min-height: 28rem;
+  background: #e7e1d8;
+  padding: 1.6rem 1rem;
+}
+
+.tap-phone {
+  position: relative;
+  width: min(15.5rem, 78%);
+  aspect-ratio: 0.66;
+  border-radius: 2.05rem;
+  padding: 0.72rem 0.5rem 0.62rem;
+  background: linear-gradient(180deg, #3a342f 0%, #1c1917 18%, #141211 100%);
+  box-shadow:
+    0 22px 46px rgb(30 26 24 / 24%),
+    inset 0 0 0 1px rgb(255 255 255 / 16%);
+}
+
+.tap-phone-screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1.45rem;
+  background: #cfc8be;
+}
+
+.tap-phone img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  animation: tap-face-breathe 2.8s ease-in-out infinite;
+}
+
+.tap-phone.is-video img {
+  animation: tap-face-turn 3.4s ease-in-out infinite;
+}
+
+.tap-phone-notch {
+  position: absolute;
+  z-index: 5;
+  top: 0.22rem;
+  left: 50%;
+  width: 3.5rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: #0c0b0a;
+  transform: translateX(-50%);
+}
+
+.tap-phone-oval {
+  position: absolute;
+  z-index: 3;
+  top: 18%;
+  left: 50%;
+  width: 68%;
+  height: 58%;
+  border: 1.5px solid rgb(255 248 240 / 88%);
+  border-radius: 48% 48% 44% 44%;
+  box-shadow: 0 0 0 999px rgb(30 26 24 / 28%);
+  transform: translateX(-50%);
+}
+
+.tap-corner {
+  position: absolute;
+  z-index: 4;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-color: var(--gold);
+  border-style: solid;
+}
+
+.tap-corner.tl { top: 16%; left: 12%; border-width: 2px 0 0 2px; border-radius: 0.45rem 0 0; }
+.tap-corner.tr { top: 16%; right: 12%; border-width: 2px 2px 0 0; border-radius: 0 0.45rem 0 0; }
+.tap-corner.bl { bottom: 18%; left: 12%; border-width: 0 0 2px 2px; border-radius: 0 0 0 0.45rem; }
+.tap-corner.br { bottom: 18%; right: 12%; border-width: 0 2px 2px 0; border-radius: 0 0 0.45rem; }
+
+.tap-scan {
+  position: absolute;
+  z-index: 4;
+  left: 14%;
+  right: 14%;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgb(232 196 122 / 0) 10%, #e8c47a 28%, #fff6df 50%, #e8c47a 72%, transparent);
+  box-shadow: 0 0 10px 2px rgb(232 196 122 / 75%);
+  animation: tap-scan 2.4s ease-in-out infinite;
+}
+
+.tap-phone-dot {
+  position: absolute;
+  z-index: 4;
+  bottom: 1.7rem;
+  left: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #f4efe8;
+  box-shadow: 0 0 0 5px rgb(244 239 232 / 28%);
+  transform: translateX(-50%);
+}
+
+.tap-phone small {
+  position: absolute;
+  z-index: 4;
+  right: 0.6rem;
+  bottom: 0.45rem;
+  left: 0.6rem;
+  color: #fff;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  white-space: pre-line;
+  text-align: center;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 55%);
+}
+
+.tap-turn {
+  position: absolute;
+  z-index: 4;
+  top: 44%;
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border: 1px solid rgb(255 248 240 / 75%);
+  border-radius: 50%;
+  background: rgb(28 24 22 / 38%);
+  color: #fff8ee;
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 1.45rem;
+  line-height: 1;
+  animation: tap-arrow 1.3s ease-in-out infinite;
+}
+
+.tap-turn.left { left: 0.4rem; }
+.tap-turn.right { right: 0.4rem; animation-delay: 0.2s; }
+
+.tap-guide-copy {
+  display: grid;
+  align-content: center;
+  gap: 0.75rem;
+  padding: 2.4rem 1.6rem 1.5rem;
+}
+
+.tap-guide-copy h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
+
+.tap-guide-copy > p:not(.kicker) {
+  margin: 0;
+  color: var(--soft);
+}
+
+.tap-guide-copy ol {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.tap-guide-copy li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tap-guide-copy li span {
+  flex: none;
+  padding-top: 0.12rem;
+  color: var(--bordeaux);
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 1.15rem;
+}
+
+@keyframes tap-face-breathe {
+  50% { transform: scale(1.04); }
+}
+
+@keyframes tap-face-turn {
+  0%, 100% { transform: scale(1.08) translateX(-6%); }
+  50% { transform: scale(1.08) translateX(6%); }
+}
+
+@keyframes tap-scan {
+  0%, 100% { top: 22%; opacity: 0.45; }
+  50% { top: 68%; opacity: 1; }
+}
+
+@keyframes tap-arrow {
+  50% { opacity: 0.35; }
+}
+
+@media (max-width: 720px) {
+  .tap-step-media {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .tap-shapes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tap-steps button {
+    font-size: 0;
+  }
+
+  .tap-steps button span {
+    font-size: 0.72rem;
+  }
+
+  .tap-window-nav {
+    padding-bottom: 1rem;
+  }
+
+  .tap-dialog {
+    grid-template-columns: 1fr;
+    max-height: calc(100dvh - 2.4rem);
+  }
+
+  .tap-guide-stage {
+    min-height: 0;
+    padding: 0.85rem 0.4rem 0.55rem;
+  }
+
+  .tap-phone {
+    width: 10.75rem;
+  }
+
+  .tap-guide-copy {
+    gap: 0.4rem;
+    padding: 0.95rem 1.15rem 1rem;
+  }
+
+  .tap-guide-copy h2 {
+    font-size: 1.65rem;
+  }
+
+  .tap-guide-copy li {
+    padding: 0.48rem 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tap-phone img,
+  .tap-scan,
+  .tap-turn {
+    animation: none;
+  }
+}
+
+@media (min-width: 800px) {
+  .tap-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

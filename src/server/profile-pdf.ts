@@ -4,10 +4,12 @@ import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type { Report, User } from "@/domain/types";
 import { downloadAiQuizPdf } from "./ai-quiz-service";
 import { printHtmlToPdf } from "./face-report-pdf";
+import { downloadTapPdf } from "./tap-service";
 import { getStore } from "./store";
 
 export async function profileReportPdf(user: User, id: string) {
   if (id.startsWith("aiq_")) return aiFile(user, id);
+  if (id.startsWith("tap_")) return tapFile(user, id);
   if (id.startsWith("quiz_")) return styleFile(user, id);
   if (id.startsWith("rep_")) return classicFile(user, id);
   throw new AppError("not_found", 404);
@@ -19,6 +21,14 @@ async function aiFile(user: User, id: string) {
   const when = yearMonth(quiz.paidAt ?? quiz.createdAt);
   const bytes = await downloadAiQuizPdf(user, id);
   return { bytes, filename: stamped("naruka-report", when) };
+}
+
+async function tapFile(user: User, id: string) {
+  const tap = await getStore().getTap(id);
+  if (!tap) throw new AppError("not_found", 404);
+  const when = yearMonth(tap.paidAt ?? tap.createdAt);
+  const bytes = await downloadTapPdf(user, id);
+  return { bytes, filename: stamped("naruka-1-tap", when) };
 }
 
 async function styleFile(user: User, id: string) {

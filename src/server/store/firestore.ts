@@ -6,6 +6,7 @@ import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
 import type { AiQuizRecord } from "@/domain/ai-quiz";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
+import type { TapRecord } from "@/domain/tap";
 import type { AdminAccount, AdminCredential, AppStore, EmailOtp } from "./types";
 import type {
   AnalyticsEvent,
@@ -426,5 +427,35 @@ export class FirestoreStore implements AppStore {
   async listStyleQuizzesByEmail(email: string) {
     const snap = await this.database().collection("styleQuizzes").where("email", "==", email.toLowerCase()).get();
     return snap.docs.map((doc) => doc.data() as StyleQuizRecord);
+  }
+
+  async saveTap(tap: TapRecord) {
+    await this.put("taps", tap.id, tap);
+  }
+  async getTap(id: string) {
+    return this.read<TapRecord>("taps", id);
+  }
+  async findTapByInvoice(invoiceId: string) {
+    const snap = await this.database().collection("taps").where("qpayInvoiceId", "==", invoiceId).limit(1).get();
+    return (snap.docs[0]?.data() as TapRecord | undefined) ?? null;
+  }
+  async updateTap(id: string, update: (current: TapRecord) => TapRecord) {
+    const ref = this.database().collection("taps").doc(id);
+    return this.database().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new AppError("not_found", 404);
+      const previous = snap.data() as TapRecord;
+      const next = update(previous);
+      tx.set(ref, clean(next));
+      return { previous, next };
+    });
+  }
+  async listTapsByOwner(uid: string) {
+    const snap = await this.database().collection("taps").where("ownerUid", "==", uid).get();
+    return snap.docs.map((doc) => doc.data() as TapRecord);
+  }
+  async listTapsByEmail(email: string) {
+    const snap = await this.database().collection("taps").where("email", "==", email.toLowerCase()).get();
+    return snap.docs.map((doc) => doc.data() as TapRecord);
   }
 }

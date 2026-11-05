@@ -6,7 +6,7 @@ const globalStore = globalThis as unknown as { __styleaiStore?: AppStore };
 
 export function getStore(): AppStore {
   const current = globalStore.__styleaiStore;
-  if (current && "listStyleQuizzesByOwner" in current && "listAiQuizzesByOwner" in current) return current;
+  if (current && "listStyleQuizzesByOwner" in current && "listAiQuizzesByOwner" in current && "listTapsByOwner" in current) return current;
   const driver = process.env.DATA_DRIVER;
   const hasAdmin = Boolean(process.env.FIREBASE_ADMIN_PROJECT_ID && process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
   if (driver === "firestore" || (driver !== "memory" && hasAdmin)) {

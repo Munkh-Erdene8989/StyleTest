@@ -8,8 +8,8 @@ const MAX_EDGE = 2048;
 
 const DECODE = { failOn: "none" as const, animated: false, limitInputPixels: 24_000_000, pages: 1 };
 
-export async function normalizeUploadedImage(bytes: Buffer) {
-  if (bytes.length > MAX_BYTES) throw new AppError("file_too_large", 400);
+export async function normalizeUploadedImage(bytes: Buffer, maxBytes = MAX_BYTES) {
+  if (bytes.length > maxBytes) throw new AppError("file_too_large", 400);
   if (looksLikeMarkup(bytes)) throw new AppError("invalid_image", 400);
   try {
     const prepared = isHeif(bytes) ? await heifToJpeg(bytes) : bytes;
