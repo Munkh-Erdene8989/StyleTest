@@ -39,7 +39,7 @@ export type AnalysisResult = {
   headline: string
   summary: string
   traits: string[]
-  palette: { name: string hex: string }[]
+  palette: { name: string; hex: string }[]
   silhouettes: string[]
   fabrics: string[]
   details: string[]
@@ -259,7 +259,7 @@ const MOCK_RESULTS: Record<Archetype, AnalysisResult> = {
 const ARCHETYPES: Archetype[] = ["Gamine", "Romantic", "Natural", "Dramatic"]
 const OCCASIONS = ["Өдөр тутам", "Ажил", "Арга хэмжээ", "Аялал"]
 const PRIORITIES = ["Тав тух", "Минимал", "Өнгөлөг", "Тренд"]
-const BODY_SHAPES: { value: BodyShape label: string hint: string }[] = [
+const BODY_SHAPES: { value: BodyShape; label: string; hint: string }[] = [
   { value: "hourglass", label: "Элсэн цаг", hint: "Мөр, ташаа тэнцүү" },
   { value: "pear", label: "Лийр", hint: "Ташаа илүү өргөн" },
   { value: "apple", label: "Алим", hint: "Төв хэсэг зөөлөн" },

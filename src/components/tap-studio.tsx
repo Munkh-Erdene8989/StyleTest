@@ -143,8 +143,9 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
 
   useEffect(() => {
     if (!onClose) return;
+    const close = onClose;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") close();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
