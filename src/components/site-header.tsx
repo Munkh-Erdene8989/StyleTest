@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useOpenTap } from "@/components/tap-studio";
+
 export function SiteHeader({
   loggedIn,
   email,
@@ -14,7 +14,6 @@ export function SiteHeader({
   name: string;
 }) {
   const pathname = usePathname();
-  const openTap = useOpenTap();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("home");
@@ -58,7 +57,6 @@ export function SiteHeader({
     { href: here("services"), label: "Үйлчилгээ", section: "services" },
     { href: here("training"), label: "Сургалт", section: "training" },
     { href: "/news", label: "Мэдээ", section: "" },
-    { href: "/tap", label: "1 TAP", section: "" },
   ];
 
   return (
@@ -70,13 +68,6 @@ export function SiteHeader({
         <nav className={`nav${open ? " nav-open" : ""}`}>
           {links.map((link) => {
             const current = link.section ? pathname === "/" && active === link.section : pathname === link.href;
-            if (link.href === "/tap" && pathname !== "/tap" && openTap) {
-              return (
-                <button key={link.label} type="button" className="nav-link" onClick={() => { setOpen(false); openTap(); }}>
-                  {link.label}
-                </button>
-              );
-            }
             return (
               <Link key={link.label} href={link.href} className={current ? "nav-current" : undefined} onClick={() => setOpen(false)}>
                 {link.label}

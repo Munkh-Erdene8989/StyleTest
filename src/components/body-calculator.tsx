@@ -87,80 +87,225 @@ function getBodyType({ bust, waist, hip }: Measurements) {
   return "Тэгш өнцөгт";
 }
 
-function scaleWidth(value: number, min: number, max: number, from: number, to: number) {
-  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  return from + ratio * (to - from);
+const FIGURE = {
+  cx: 108,
+  bustY: 158,
+  waistY: 208,
+  highHipY: 244,
+  hipY: 276,
+  kneeY: 348,
+  ankleY: 418,
+};
+
+function halfOf(cm: number) {
+  return cm * 0.5;
 }
 
 function BodyPreview({ measurements }: { measurements: Measurements }) {
-  const bustWidth = scaleWidth(measurements.bust, 70, 130, 45, 76);
-  const waistWidth = scaleWidth(measurements.waist, 50, 110, 29, 65);
-  const highHipWidth = scaleWidth(measurements.highHip, 65, 125, 42, 73);
-  const hipWidth = scaleWidth(measurements.hip, 75, 140, 48, 79);
-  const left = (width: number) => 130 - width;
-  const right = (width: number) => 130 + width;
+  const { cx, bustY, waistY, highHipY, hipY, kneeY, ankleY } = FIGURE;
+  const bust = halfOf(measurements.bust);
+  const waist = halfOf(measurements.waist);
+  const highHip = halfOf(measurements.highHip);
+  const hip = halfOf(measurements.hip);
+  const shoulder = bust * 0.86;
+  const under = waist + (bust - waist) * 0.42;
+  const ankle = hip * 0.88;
+  const x = (dir: number, width: number) => cx + dir * width;
 
-  const bodyPath = [
-    "M 117 54",
-    "C 106 59, 100 68, 99 82",
-    `C ${left(bustWidth) - 15} 88, ${left(bustWidth) - 9} 104, ${left(bustWidth)} 120`,
-    `C ${left(bustWidth) + 1} 137, ${left(waistWidth) - 5} 153, ${left(waistWidth)} 174`,
-    `C ${left(waistWidth) + 1} 188, ${left(highHipWidth) - 3} 198, ${left(highHipWidth)} 210`,
-    `C ${left(hipWidth) - 4} 225, ${left(hipWidth)} 243, ${left(hipWidth) + 8} 259`,
-    `C ${left(hipWidth) + 18} 281, 101 296, 103 320`,
-    "L 109 405",
-    "C 110 421, 121 423, 126 407",
-    "L 130 338",
-    "L 134 407",
-    "C 139 423, 150 421, 151 405",
-    "L 157 320",
-    `C 159 296, ${right(hipWidth) - 18} 281, ${right(hipWidth) - 8} 259`,
-    `C ${right(hipWidth)} 243, ${right(hipWidth) + 4} 225, ${right(highHipWidth)} 210`,
-    `C ${right(highHipWidth) + 3} 198, ${right(waistWidth) - 1} 188, ${right(waistWidth)} 174`,
-    `C ${right(waistWidth) + 5} 153, ${right(bustWidth) - 1} 137, ${right(bustWidth)} 120`,
-    `C ${right(bustWidth) + 9} 104, ${right(bustWidth) + 15} 88, 161 82`,
-    "C 160 68, 154 59, 143 54",
-    "C 141 66, 119 66, 117 54 Z",
+  const shirt = [
+    `M ${x(-1, 8)} 102`,
+    `C ${x(-1, 18)} 108, ${x(-1, shoulder * 0.72)} 112, ${x(-1, shoulder)} 124`,
+    `C ${x(-1, bust)} 136, ${x(-1, bust)} 146, ${x(-1, bust)} ${bustY}`,
+    `C ${x(-1, bust)} ${bustY + 14}, ${x(-1, under)} 184, ${x(-1, under)} 194`,
+    `C ${x(-1, waist)} ${waistY - 12}, ${x(-1, waist)} ${waistY - 2}, ${x(-1, waist)} ${waistY}`,
+    `Q ${x(-1, waist * 0.4)} ${waistY + 4}, ${cx} ${waistY + 5}`,
+    `Q ${x(1, waist * 0.4)} ${waistY + 4}, ${x(1, waist)} ${waistY}`,
+    `C ${x(1, waist)} ${waistY - 2}, ${x(1, waist)} ${waistY - 12}, ${x(1, under)} 194`,
+    `C ${x(1, under)} 184, ${x(1, bust)} ${bustY + 14}, ${x(1, bust)} ${bustY}`,
+    `C ${x(1, bust)} 146, ${x(1, bust)} 136, ${x(1, shoulder)} 124`,
+    `C ${x(1, shoulder * 0.72)} 112, ${x(1, 18)} 108, ${x(1, 8)} 102`,
+    `Q ${cx} 116, ${x(-1, 8)} 102 Z`,
   ].join(" ");
 
+  const sleeve = (dir: number) =>
+    [
+      `M ${x(dir, shoulder - 1)} 122`,
+      `C ${x(dir, bust)} 128, ${x(dir, bust)} 142, ${x(dir, bust)} ${bustY}`,
+      `Q ${x(dir, bust - 5)} ${bustY + 7}, ${x(dir, bust - 9)} ${bustY + 1}`,
+      `C ${x(dir, shoulder - 7)} 140, ${x(dir, shoulder - 3)} 128, ${x(dir, shoulder - 1)} 122 Z`,
+    ].join(" ");
+
+  const arm = (dir: number) =>
+    [
+      `M ${x(dir, bust)} ${bustY + 2}`,
+      `C ${x(dir, bust - 1)} ${waistY - 10}, ${x(dir, bust - 3)} ${waistY + 16}, ${x(dir, bust - 5)} ${highHipY + 8}`,
+      `Q ${x(dir, bust - 9)} ${highHipY + 22}, ${x(dir, bust - 14)} ${highHipY + 10}`,
+      `C ${x(dir, bust - 11)} ${waistY + 18}, ${x(dir, bust - 9)} ${bustY + 24}, ${x(dir, bust - 8)} ${bustY + 2} Z`,
+    ].join(" ");
+
+  const leg = (dir: number) =>
+    [
+      `M ${x(dir, waist)} ${waistY}`,
+      `C ${x(dir, highHip)} ${highHipY - 16}, ${x(dir, highHip)} ${highHipY}, ${x(dir, highHip)} ${highHipY + 2}`,
+      `C ${x(dir, hip)} ${hipY - 12}, ${x(dir, hip)} ${hipY}, ${x(dir, hip)} ${hipY + 8}`,
+      `C ${x(dir, ankle)} ${kneeY}, ${x(dir, ankle)} ${ankleY - 24}, ${x(dir, ankle)} ${ankleY}`,
+      `L ${x(dir, 10)} ${ankleY}`,
+      `C ${x(dir, 9)} ${kneeY}, ${x(dir, 7)} ${hipY + 10}, ${x(dir, 4)} ${hipY - 6}`,
+      `C ${x(dir, 2.2)} ${highHipY}, ${x(dir, 1.2)} ${waistY + 12}, ${x(dir, 0.8)} ${waistY} Z`,
+    ].join(" ");
+
+  const shoe = (dir: number) => {
+    const outer = x(dir, ankle - 1);
+    const inner = x(dir, 9);
+    const toe = outer + dir * 11;
+    return [
+      `M ${inner} ${ankleY - 1}`,
+      `L ${outer} ${ankleY - 1}`,
+      `C ${outer + dir * 3} ${ankleY + 7}, ${toe} ${ankleY + 12}, ${toe} ${ankleY + 14}`,
+      `L ${inner - dir} ${ankleY + 14}`,
+      `C ${inner} ${ankleY + 8}, ${inner} ${ankleY + 2}, ${inner} ${ankleY - 1} Z`,
+    ].join(" ");
+  };
+
   const guides = [
-    { key: "bust", y: 120, width: bustWidth, value: measurements.bust },
-    { key: "waist", y: 174, width: waistWidth, value: measurements.waist },
-    { key: "highHip", y: 210, width: highHipWidth, value: measurements.highHip },
-    { key: "hip", y: 246, width: hipWidth, value: measurements.hip },
+    { key: "bust", y: bustY, width: bust, value: measurements.bust },
+    { key: "waist", y: waistY, width: waist, value: measurements.waist },
+    { key: "highHip", y: highHipY, width: highHip, value: measurements.highHip },
+    { key: "hip", y: hipY, width: hip, value: measurements.hip },
   ];
 
   return (
-    <svg viewBox="0 0 350 450" className="body-figure" role="img" aria-label="Таны оруулсан хэмжээсээр өөрчлөгдөх биеийн дүрс">
+    <svg viewBox="0 0 300 468" className="body-figure" role="img" aria-label="Таны оруулсан хэмжээсээр өөрчлөгдөх биеийн дүрс">
       <defs>
-        <linearGradient id="bodyGradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#f6ecec" />
-          <stop offset="100%" stopColor="#c4956a" />
+        <linearGradient id="bodycalc-skin" gradientUnits="userSpaceOnUse" x1="78" y1="16" x2="150" y2="140">
+          <stop offset="0%" stopColor="#f8d2c0" />
+          <stop offset="48%" stopColor="#f0b89a" />
+          <stop offset="100%" stopColor="#e0a384" />
         </linearGradient>
-        <filter id="bodyShadow" x="-30%" y="-20%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#1e1a18" floodOpacity=".12" />
-        </filter>
+        <linearGradient id="bodycalc-shirt" gradientUnits="userSpaceOnUse" x1="48" y1="100" x2="178" y2="220">
+          <stop offset="0%" stopColor="#f7ecdf" />
+          <stop offset="42%" stopColor="#ead9c6" />
+          <stop offset="100%" stopColor="#d2bba4" />
+        </linearGradient>
+        <linearGradient id="bodycalc-pant" gradientUnits="userSpaceOnUse" x1="36" y1="220" x2="186" y2="470">
+          <stop offset="0%" stopColor="#e4d0b8" />
+          <stop offset="38%" stopColor="#c9b093" />
+          <stop offset="100%" stopColor="#ad9478" />
+        </linearGradient>
+        <linearGradient id="bodycalc-band" gradientUnits="userSpaceOnUse" x1="60" y1={waistY} x2="160" y2={waistY + 16}>
+          <stop offset="0%" stopColor="#cbb59a" />
+          <stop offset="100%" stopColor="#a88b72" />
+        </linearGradient>
+        <radialGradient id="bodycalc-floor" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#1e1a18" stopOpacity="0.14" />
+          <stop offset="100%" stopColor="#1e1a18" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
-      <ellipse cx="130" cy="426" rx="64" ry="10" fill="#1e1a18" opacity=".06" />
-      <circle cx="130" cy="30" r="24" fill="url(#bodyGradient)" />
-      <path d={bodyPath} fill="url(#bodyGradient)" filter="url(#bodyShadow)" className="body-shape" />
+      <ellipse cx={cx} cy="448" rx={Math.max(hip, bust) * 0.9} ry="7" fill="url(#bodycalc-floor)" />
 
-      {guides.map((guide, index) => (
+      <path d={leg(-1)} className="body-shape" fill="url(#bodycalc-pant)" />
+      <path d={leg(1)} className="body-shape" fill="url(#bodycalc-pant)" />
+      <path
+        d={`M ${cx} ${waistY + 14} C ${cx - 1.5} ${hipY}, ${cx - 1} ${kneeY}, ${cx} ${ankleY - 8}`}
+        className="body-shape"
+        fill="none"
+        stroke="#a89078"
+        strokeOpacity="0.45"
+        strokeWidth="1.1"
+      />
+
+      <path d={arm(-1)} className="body-shape" fill="url(#bodycalc-skin)" />
+      <path d={arm(1)} className="body-shape" fill="url(#bodycalc-skin)" />
+      <ellipse className="body-shape" cx={x(-1, bust - 8)} cy={highHipY + 14} rx="5.2" ry="6.4" fill="url(#bodycalc-skin)" />
+      <ellipse className="body-shape" cx={x(1, bust - 8)} cy={highHipY + 14} rx="5.2" ry="6.4" fill="url(#bodycalc-skin)" />
+      <path d={shirt} className="body-shape" fill="url(#bodycalc-shirt)" />
+      <path d={sleeve(-1)} className="body-shape" fill="url(#bodycalc-shirt)" />
+      <path d={sleeve(1)} className="body-shape" fill="url(#bodycalc-shirt)" />
+
+      <path
+        d={`M ${x(-1, waist)} ${waistY} L ${x(-1, waist * 0.985)} ${waistY + 12} Q ${cx} ${waistY + 15} ${x(1, waist * 0.985)} ${waistY + 12} L ${x(1, waist)} ${waistY} Q ${cx} ${waistY + 3} ${x(-1, waist)} ${waistY} Z`}
+        className="body-shape"
+        fill="url(#bodycalc-band)"
+      />
+      <path
+        d={`M ${cx} ${waistY + 12} V ${hipY + 6}`}
+        className="body-shape"
+        fill="none"
+        stroke="#a89078"
+        strokeOpacity="0.55"
+        strokeWidth="0.8"
+      />
+
+      <path
+        d={`M ${cx - 7.2} 84 C ${cx - 8.2} 96, ${cx - 8.6} 106, ${cx - 8.2} 114 Q ${cx} 119 ${cx + 8.2} 114 C ${cx + 8.6} 106, ${cx + 8.2} 96, ${cx + 7.2} 84 Q ${cx} 89 ${cx - 7.2} 84 Z`}
+        fill="url(#bodycalc-skin)"
+      />
+      <g transform="translate(0 8)">
+      <path d={`M ${cx + 3} 78 C ${cx + 8} 90, ${cx + 8} 104, ${cx + 6} 112 L ${cx + 7} 112 C ${cx + 8} 100, ${cx + 7.4} 88, ${cx + 5.5} 78 Z`} fill="#e0a384" opacity="0.35" />
+      <path
+        d={`M ${cx} 16 C ${cx + 15} 16, ${cx + 21.5} 32, ${cx + 20.5} 48 C ${cx + 19.5} 63, ${cx + 11} 75, ${cx + 1.5} 78 C ${cx - 8} 75, ${cx - 19.5} 63, ${cx - 20.5} 48 C ${cx - 21.5} 32, ${cx - 15} 16, ${cx} 16 Z`}
+        fill="url(#bodycalc-skin)"
+      />
+      <path d={`M ${cx + 6} 34 C ${cx + 16} 42, ${cx + 18} 60, ${cx + 12} 74 C ${cx + 16} 62, ${cx + 14} 46, ${cx + 6} 34 Z`} fill="#e0a384" opacity="0.28" />
+      <ellipse cx={cx - 19.5} cy="51" rx="3.2" ry="5.2" fill="#efc0a4" />
+      <ellipse cx={cx + 19.5} cy="51" rx="3.2" ry="5.2" fill="#e3ad90" />
+      <path
+        d={`M ${cx - 18.5} 46 C ${cx - 22} 28, ${cx - 8} 14, ${cx + 1} 15 C ${cx + 12} 14, ${cx + 22} 28, ${cx + 18.5} 48 C ${cx + 13} 38, ${cx + 4} 34, ${cx - 0.5} 35 C ${cx - 7} 34, ${cx - 14} 40, ${cx - 18.5} 46 Z`}
+        fill="#322824"
+      />
+      <ellipse cx={cx + 0.5} cy="17" rx="9.2" ry="6.4" fill="#322824" />
+      <ellipse cx={cx - 1.5} cy="14.8" rx="4.4" ry="2.1" fill="#6a564e" opacity="0.4" />
+      <ellipse cx={cx - 6.5} cy="62" rx="4.2" ry="2.3" fill="#e7a48e" opacity="0.28" />
+      <ellipse cx={cx + 6.5} cy="62" rx="4.2" ry="2.3" fill="#e7a48e" opacity="0.22" />
+      <path d={`M ${cx - 11.4} 45.2 Q ${cx - 6.6} 43.1 ${cx - 2.8} 45.4`} fill="none" stroke="#4a3c38" strokeWidth="0.95" strokeLinecap="round" />
+      <path d={`M ${cx + 2.8} 45.4 Q ${cx + 6.6} 43.1 ${cx + 11.4} 45.2`} fill="none" stroke="#4a3c38" strokeWidth="0.95" strokeLinecap="round" />
+      <path d={`M ${cx - 10.6} 50.8 Q ${cx - 6.6} 48.8 ${cx - 2.8} 50.8 Q ${cx - 6.6} 53.3 ${cx - 10.6} 50.8 Z`} fill="#fffdfb" />
+      <path d={`M ${cx + 2.8} 50.8 Q ${cx + 6.6} 48.8 ${cx + 10.6} 50.8 Q ${cx + 6.6} 53.3 ${cx + 2.8} 50.8 Z`} fill="#fffdfb" />
+      <path d={`M ${cx - 10.2} 50.6 Q ${cx - 6.6} 49.4 ${cx - 3.2} 50.6`} fill="none" stroke="#2b2422" strokeWidth="0.7" strokeLinecap="round" />
+      <path d={`M ${cx + 3.2} 50.6 Q ${cx + 6.6} 49.4 ${cx + 10.2} 50.6`} fill="none" stroke="#2b2422" strokeWidth="0.7" strokeLinecap="round" />
+      <circle cx={cx - 6.7} cy="51.1" r="1.2" fill="#2b2422" />
+      <circle cx={cx + 6.5} cy="51.1" r="1.2" fill="#2b2422" />
+      <circle cx={cx - 7.1} cy="50.7" r="0.35" fill="#fff" />
+      <circle cx={cx + 6.1} cy="50.7" r="0.35" fill="#fff" />
+      <path d={`M ${cx + 0.3} 54 C ${cx + 1.3} 59.5, ${cx + 0.5} 63.6, ${cx - 0.8} 64.6`} fill="none" stroke="#c9927c" strokeWidth="0.85" strokeLinecap="round" />
+      <path d={`M ${cx - 4.6} 69.2 Q ${cx - 2} 70.2 ${cx} 69.8 Q ${cx + 2} 70.2 ${cx + 4.6} 69.2 Q ${cx + 2.2} 72.6 ${cx} 72.8 Q ${cx - 2.2} 72.6 ${cx - 4.6} 69.2 Z`} fill="#c9847e" />
+      </g>
+
+      <path
+        d={`M ${x(-1, bust)} ${bustY - 1} Q ${x(-1, bust - 7)} ${bustY + 5} ${x(-1, bust - 13)} ${bustY + 1}`}
+        className="body-shape"
+        fill="none"
+        stroke="#b7a08c"
+        strokeWidth="0.8"
+      />
+      <path
+        d={`M ${x(1, bust - 13)} ${bustY + 1} Q ${x(1, bust - 7)} ${bustY + 5} ${x(1, bust)} ${bustY - 1}`}
+        className="body-shape"
+        fill="none"
+        stroke="#b7a08c"
+        strokeWidth="0.8"
+      />
+      <path d={`M ${x(-1, 7)} 100 Q ${cx} 112 ${x(1, 7)} 100`} fill="none" stroke="#cbb39f" strokeWidth="1.3" />
+
+      <path d={shoe(-1)} className="body-shape" fill="#eadccf" />
+      <path d={shoe(1)} className="body-shape" fill="#ddc9b6" />
+
+      {guides.map((guide) => (
         <g key={guide.key} className="measure-guide">
           <line
-            x1={left(guide.width) - 5}
-            x2={right(guide.width) + 5}
+            x1={x(-1, guide.width)}
+            x2={x(1, guide.width)}
             y1={guide.y}
             y2={guide.y}
-            stroke={index === 1 ? "#7a2340" : "#c4956a"}
-            strokeWidth="1.4"
-            strokeDasharray="3 4"
+            stroke="#7a2340"
+            strokeWidth="1.15"
+            strokeDasharray="2 3.2"
           />
-          <circle cx={left(guide.width)} cy={guide.y} r="3.2" fill="#fffdfb" stroke="#7a2340" />
-          <circle cx={right(guide.width)} cy={guide.y} r="3.2" fill="#fffdfb" stroke="#7a2340" />
-          <path d={`M ${right(guide.width) + 8} ${guide.y} H 248`} stroke="#e8ddd5" />
-          <text x="258" y={guide.y + 4} fill="#3a3330" fontSize="11" fontWeight="650">
+          <circle cx={x(-1, guide.width)} cy={guide.y} r="4.3" fill="#faf7f2" stroke="#7a2340" strokeWidth="1.35" />
+          <circle cx={x(1, guide.width)} cy={guide.y} r="4.3" fill="#faf7f2" stroke="#7a2340" strokeWidth="1.35" />
+          <path d={`M ${x(1, guide.width) + 7} ${guide.y} H 196`} stroke="#e5dbd4" strokeWidth="1" />
+          <text className="body-measure-label" x="202" y={guide.y + 4}>
             {guide.value} см
           </text>
         </g>

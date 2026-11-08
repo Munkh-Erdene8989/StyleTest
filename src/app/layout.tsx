@@ -9,8 +9,6 @@ import { StudioFooterBrand, StudioFooterContact } from "@/components/studio-sect
 import { BRAND_DESCRIPTION, BRAND_KEYWORDS, resolveAppName } from "@/domain/brand";
 import { operationsFrom } from "@/domain/site-operations";
 import { studioFrom } from "@/domain/studio-profile";
-import { storedQuizPrice } from "@/domain/money";
-import { archetypeAvailable } from "@/server/ai-quiz-banks";
 import { optionalUser } from "@/server/auth";
 import { getStore } from "@/server/store";
 import "./globals.css";
@@ -97,7 +95,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <SiteHeader loggedIn={Boolean(user?.email)} email={user?.email ?? ""} name={name} />
           <div className="shell">{children}</div>
           <BodyEdgeLink />
-          <MobileDock loggedIn={Boolean(user?.email)} archetypeReady={archetypeAvailable()} price={storedQuizPrice(site.quizPriceMnt)} />
+          <MobileDock loggedIn={Boolean(user?.email)} />
           <footer className="foot">
             <div className="bar foot-grid">
               <StudioFooterBrand name={name} tagline={ops.footerTagline} />

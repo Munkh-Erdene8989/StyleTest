@@ -100,6 +100,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
   const [photoUrl, setPhotoUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoBroken, setVideoBroken] = useState(false);
+  const [videoSeconds, setVideoSeconds] = useState<number | null>(null);
   const [email, setEmail] = useState(initialEmail);
   const [body, setBody] = useState<TapBodyShape | "">("");
   const [consent, setConsent] = useState(false);
@@ -189,6 +190,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
       setError("Бичлэг 15 секундээс богино байна.");
       return;
     }
+    setVideoSeconds(duration);
     setVideo(file);
   }
 
@@ -335,13 +337,6 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
   const shown: Step = settled ? (tap?.paymentStatus === "paid" ? "report" : "pay") : step;
   const shownIndex = STEPS.findIndex((item) => item.id === shown);
   const title = shown === "report" && tap?.reportStatus === "failed" && !tap.retake ? "Дахин бэлтгэх" : STEP_TITLE[shown];
-  const nextLabel: Record<Exclude<Step, "pay" | "report">, string> = {
-    intro: "Зураг авах",
-    photo: "Бичлэг хийх",
-    video: "Биеийн хэлбэр",
-    body: "Имэйл оруулах",
-    email: "Төлбөр рүү",
-  };
 
   return (
     <form
@@ -431,36 +426,42 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
 
           {step === "photo" ? (
             <div className="tap-step-media">
-              <PhoneGuide mode="photo" src={photoUrl || "/studio/tap-face-guide.jpg"} live={Boolean(photoUrl)} />
+              <PhoneGuide mode="photo" src={photoUrl || "/studio/tap-face-guide.jpg"} live={Boolean(photoUrl)} chip={photoUrl ? "Таны зураг" : "Жишээ"} note={photoUrl ? "Энэ зургаар тайлан гарна." : "Нүүрээ хүрээний төвд тавина."}>
+                <button type="button" className="btn" onClick={() => photoCamera.current?.click()}>
+                  {photo ? "Дахин авах" : "Камераар авах"}
+                </button>
+                <button type="button" className="btn-quiet" onClick={() => photoFile.current?.click()}>
+                  {photo ? "Өөр зураг" : "Файлаас"}
+                </button>
+              </PhoneGuide>
               <div className="tap-step-copy">
-                <p>Утсаа нүүрнээс 40–60 см, нүдний түвшинд барь. Нүүрээ зууван хүрээний төвд тавиад хөдөлгөөнгүй, камер руу эгц хар.</p>
-                <p className={photo ? "tap-file is-ready" : "tap-file"}>{photo ? `Сонгогдсон · ${photo.name}` : "Зураг сонгоогүй"}</p>
-                <div className="tap-actions">
-                  <button type="button" className="btn" onClick={() => photoCamera.current?.click()}>
-                    Камер
-                  </button>
-                  <button type="button" className="btn-quiet" onClick={() => photoFile.current?.click()}>
-                    Файл
-                  </button>
-                </div>
+                <ol className="tap-capture">
+                  <li><span>1</span>Утсаа 40–60 см, нүдний түвшинд барина.</li>
+                  <li><span>2</span>Нүүрээ зууван хүрээний төвд тавина.</li>
+                  <li><span>3</span>Малгай, нүдний шилгүй, камер руу эгц харна.</li>
+                </ol>
+                <p className={photo ? "tap-file is-ready" : "tap-file"} aria-live="polite">{photo ? `Сонгогдсон · ${photo.name}` : "Зураг сонгоогүй"}</p>
               </div>
             </div>
           ) : null}
 
           {step === "video" ? (
             <div className="tap-step-media">
-              <PhoneGuide mode="video" src="/studio/tap-face-guide.jpg" videoSrc={videoUrl && !videoBroken ? videoUrl : "/studio/tap-face-turn.mp4"} onVideoError={videoUrl ? () => setVideoBroken(true) : undefined} />
+              <PhoneGuide mode="video" src="/studio/tap-face-guide.jpg" videoSrc={videoUrl && !videoBroken ? videoUrl : "/studio/tap-face-turn.mp4"} own={Boolean(videoUrl && !videoBroken)} onVideoError={videoUrl ? () => setVideoBroken(true) : undefined} chip={videoUrl && !videoBroken ? "Таны бичлэг" : "Жишээ"} note={videoUrl && !videoBroken ? "Таны эргэлт." : "Төв, дараа нь зүүн, баруун."}>
+                <button type="button" className="btn" onClick={() => videoCamera.current?.click()}>
+                  {video ? "Дахин бичих" : "Камераар бичих"}
+                </button>
+                <button type="button" className="btn-quiet" onClick={() => videoFile.current?.click()}>
+                  {video ? "Өөр бичлэг" : "Файлаас"}
+                </button>
+              </PhoneGuide>
               <div className="tap-step-copy">
-                <p>Нүүрээ хүрээнээс гаргалгүй эхлээд төв рүү хар. Дараа нь толгойгоо зүүн, баруун тийш аажуухан эргүүл. 5–8 секунд хангалттай. 15 секундээс урт бичлэгийг авахгүй.</p>
-                <p className={video ? "tap-file is-ready" : "tap-file"}>{video ? `Сонгогдсон · ${video.name}` : "Бичлэг сонгоогүй"}</p>
-                <div className="tap-actions">
-                  <button type="button" className="btn" onClick={() => videoCamera.current?.click()}>
-                    Камер
-                  </button>
-                  <button type="button" className="btn-quiet" onClick={() => videoFile.current?.click()}>
-                    Файл
-                  </button>
-                </div>
+                <ol className="tap-capture">
+                  <li><span>1</span>Нүүрээ хүрээнд байлгаад төв рүү харна.</li>
+                  <li><span>2</span>Толгойгоо зүүн, баруун тийш аажуухан эргүүлнэ.</li>
+                  <li><span>3</span>5–8 секунд. 15 секундээс урт бичлэгийг авахгүй.</li>
+                </ol>
+                <p className={video ? "tap-file is-ready" : "tap-file"} aria-live="polite">{video ? `Сонгогдсон · ${videoSeconds ? `${Math.max(1, Math.round(videoSeconds))} сек · ` : ""}${video.name}` : "Бичлэг сонгоогүй"}</p>
               </div>
             </div>
           ) : null}
@@ -541,7 +542,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
             </button>
           ) : (
             <button className="btn" type="submit">
-              {nextLabel[step === "report" ? "email" : step]}
+              Дараах
             </button>
           )}
         </footer>
@@ -643,27 +644,36 @@ function PhoneGuide({
   src,
   live = false,
   videoSrc = "",
+  own = false,
+  chip,
+  note,
   onVideoError,
+  children,
 }: {
   mode: "photo" | "video";
   src: string;
   live?: boolean;
   videoSrc?: string;
+  own?: boolean;
+  chip: string;
+  note: string;
   onVideoError?: () => void;
+  children?: ReactNode;
 }) {
   return (
     <div className="tap-guide-stage">
       <div className={`tap-phone is-${mode}${live || videoSrc ? " is-live" : ""}`}>
         <span className="tap-phone-notch" />
         <div className="tap-phone-screen">
-          {videoSrc ? <video src={videoSrc} muted playsInline autoPlay loop onError={onVideoError} /> : <img src={src} alt="" />}
+          {videoSrc ? <video src={videoSrc} poster={src} muted playsInline autoPlay loop onError={onVideoError} /> : <img src={src} alt="" />}
+          <span className="tap-phone-chip">{chip}</span>
           <span className="tap-phone-oval" />
           <span className="tap-corner tl" />
           <span className="tap-corner tr" />
           <span className="tap-corner bl" />
           <span className="tap-corner br" />
-          {live || videoSrc ? null : <span className="tap-scan" />}
-          {mode === "video" && !videoSrc ? (
+          {mode === "photo" && !live ? <span className="tap-scan" /> : null}
+          {mode === "video" && !own ? (
             <>
               <span className="tap-turn left" aria-hidden="true">
                 ‹
@@ -673,10 +683,10 @@ function PhoneGuide({
               </span>
             </>
           ) : null}
-          <span className="tap-phone-dot" />
-          <small>{mode === "photo" ? "НҮҮРЭЭ ХҮРЭЭНД\nБАЙРЛУУЛНА УУ" : "ТОЛГОЙГОО ЗӨӨЛӨН\nЭРГҮҮЛНЭ ҮҮ"}</small>
+          {children ? <div className="tap-phone-actions">{children}</div> : <span className="tap-phone-dot" />}
         </div>
       </div>
+      <p className="tap-sample">{note}</p>
     </div>
   );
 }

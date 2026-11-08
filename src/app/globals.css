@@ -377,25 +377,29 @@ body {
 }
 
 .dock-bar .dock-feature {
+  position: relative;
+  z-index: 1;
   align-self: end;
   justify-self: center;
-  width: 5.35rem;
-  min-height: 4.15rem;
-  margin: -1.35rem 0 0.08rem;
-  padding: 0.48rem 0.4rem 0.34rem;
-  border-radius: 999px;
+  place-content: center;
+  width: 4.7rem;
+  height: 4.7rem;
+  min-height: 4.7rem;
+  aspect-ratio: 1;
+  margin: -1.85rem 0 0;
+  padding: 0.42rem 0.3rem 0.36rem;
+  border-radius: 50%;
   background: var(--bordeaux);
   color: #fffdfb;
   box-shadow:
-    0 0 0 3px var(--cream),
-    0 0 0 4px color-mix(in srgb, var(--gold) 70%, var(--bordeaux)),
-    0 10px 18px rgb(92 26 48 / 24%);
-  animation: dock-feature-glow 3.4s ease-in-out infinite;
+    0 0 0 0.62rem var(--cream),
+    0 14px 18px rgb(92 26 48 / 16%);
+  animation: dock-feature-float 3.2s ease-in-out infinite;
 }
 
 .dock-feature span {
   font-family: var(--font-display), "Cormorant Garamond", serif;
-  font-size: 0.98rem;
+  font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
@@ -439,19 +443,13 @@ body {
   }
 }
 
-@keyframes dock-feature-glow {
+@keyframes dock-feature-float {
   0%,
   100% {
-    box-shadow:
-      0 0 0 3px var(--cream),
-      0 0 0 4px color-mix(in srgb, var(--gold) 52%, var(--bordeaux)),
-      0 8px 16px rgb(92 26 48 / 20%);
+    transform: translateY(0);
   }
   50% {
-    box-shadow:
-      0 0 0 3px var(--cream),
-      0 0 0 5px color-mix(in srgb, var(--gold) 88%, white),
-      0 12px 22px rgb(92 26 48 / 30%);
+    transform: translateY(-0.38rem);
   }
 }
 
@@ -2799,10 +2797,17 @@ body:has(.admin-root) .shell > main {
 
 .body-figure {
   display: block;
-  width: min(100%, 22rem);
+  width: min(100%, 21rem);
   height: auto;
   margin: 0 auto;
   overflow: visible;
+}
+
+.body-measure-label {
+  fill: #3a3330;
+  font-family: var(--font-sans), Manrope, sans-serif;
+  font-size: 12.5px;
+  font-weight: 650;
 }
 
 .body-result {
@@ -2965,8 +2970,18 @@ body:has(.admin-root) .shell > main {
 
 .body-shape,
 .measure-guide line,
-.measure-guide circle {
-  transition: all 280ms cubic-bezier(0.22, 1, 0.36, 1);
+.measure-guide circle,
+.measure-guide path {
+  transition: d 280ms cubic-bezier(0.22, 1, 0.36, 1), x1 280ms cubic-bezier(0.22, 1, 0.36, 1), x2 280ms cubic-bezier(0.22, 1, 0.36, 1), cx 280ms cubic-bezier(0.22, 1, 0.36, 1), cy 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body-shape,
+  .measure-guide line,
+  .measure-guide circle,
+  .measure-guide path {
+    transition: none;
+  }
 }
 
 @media (min-width: 900px) {
@@ -3205,7 +3220,31 @@ body:has(.admin-root) .shell > main {
 }
 
 .tap-window .tap-phone {
-  width: min(12.4rem, 78%);
+  width: min(17.5rem, 100%);
+}
+
+.tap-phone-actions {
+  position: absolute;
+  z-index: 6;
+  right: 0.45rem;
+  bottom: 0.7rem;
+  left: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.tap-phone-actions .btn,
+.tap-phone-actions .btn-quiet {
+  min-height: 2.15rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  box-shadow: 0 8px 18px rgb(30 26 24 / 28%);
+}
+
+.tap-phone-actions .btn-quiet {
+  background: rgb(255 253 251 / 94%);
 }
 
 .tap-step-copy .tap-actions {
@@ -3213,15 +3252,70 @@ body:has(.admin-root) .shell > main {
 }
 
 .tap-window .tap-guide-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 0;
   height: 100%;
-  padding: 1.15rem 0.75rem;
+  padding: 1.15rem 0.75rem 1rem;
+}
+
+.tap-capture {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.tap-capture li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.72rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.94rem;
+  line-height: 1.4;
+}
+
+.tap-capture span {
+  flex: none;
+  width: 1.2rem;
+  color: var(--bordeaux);
+  font-family: var(--font-display), "Cormorant Garamond", serif;
+  font-size: 1.2rem;
+  line-height: 1.1;
+}
+
+.tap-sample {
+  margin: 0.7rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.tap-phone-chip {
+  position: absolute;
+  z-index: 5;
+  top: 0.65rem;
+  left: 0.65rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(20 18 17 / 68%);
+  color: #fff8ee;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .tap-file {
   margin: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tap-file.is-ready {
@@ -3622,6 +3716,22 @@ body:has(.admin-root) .shell > main {
   .tap-step-media {
     grid-template-columns: 1fr;
     min-height: 0;
+  }
+
+  .tap-window .tap-phone {
+    width: min(16.5rem, 92%);
+  }
+
+  .tap-window .tap-guide-stage {
+    padding: 0.7rem 0.5rem 0.15rem;
+  }
+
+  .tap-step-media .tap-step-copy {
+    padding: 0.35rem 1rem 0.85rem;
+  }
+
+  .tap-capture li {
+    padding: 0.5rem 0;
   }
 
   .tap-shapes {

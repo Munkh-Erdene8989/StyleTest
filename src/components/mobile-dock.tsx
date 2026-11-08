@@ -1,25 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { AI_QUIZ_CATALOG } from "@/content/quizzes/catalog";
-import { TAP_PRICE_MNT } from "@/domain/tap";
-import { formatMnt } from "@/lib/format";
 import { LoginForm } from "@/components/login-form";
 import { useOpenTap } from "@/components/tap-studio";
 
-type Sheet = "magic" | "profile" | null;
+type Sheet = "profile" | null;
 
-export function MobileDock({
-  loggedIn,
-  archetypeReady,
-  price,
-}: {
-  loggedIn: boolean;
-  archetypeReady: boolean;
-  price: number;
-}) {
+export function MobileDock({ loggedIn }: { loggedIn: boolean }) {
   const pathname = usePathname();
   const openTap = useOpenTap();
   const router = useRouter();
@@ -55,8 +43,10 @@ export function MobileDock({
     router.push("/");
   }
 
-  function openMagic() {
-    setSheet((current) => (current === "magic" ? null : "magic"));
+  function openStylish() {
+    setSheet(null);
+    if (pathname === "/tap" || !openTap) return;
+    openTap();
   }
 
   function openProfile() {
@@ -69,72 +59,13 @@ export function MobileDock({
   }
 
   const homeOn = pathname === "/" && sheet === null;
-  const magicOn = sheet === "magic" || (sheet === null && pathname.startsWith("/tests"));
+  const stylishOn = pathname.startsWith("/tap");
   const profileOn = sheet === "profile" || (sheet === null && (pathname.startsWith("/account") || pathname === "/login"));
 
   return (
     <div className="mobile-dock">
       {sheet ? (
         <button type="button" className="dock-backdrop" aria-label="Хаах" onClick={() => setSheet(null)} />
-      ) : null}
-      {sheet === "magic" ? (
-        <section
-          ref={sheetRef}
-          id={sheetId}
-          className="dock-sheet"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Тестүүд"
-          tabIndex={-1}
-        >
-          <header className="dock-sheet-head">
-            <h2>Тестүүд</h2>
-            <button type="button" onClick={() => setSheet(null)}>
-              Хаах
-            </button>
-          </header>
-          <ul className="dock-tests">
-            <li>
-              {pathname === "/tap" || !openTap ? (
-                <Link href="/tap" onClick={() => setSheet(null)}>
-                  <strong>1 TAP</strong>
-                  <span>Нүүрний зураг, бичлэг · {formatMnt(TAP_PRICE_MNT)}₮</span>
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSheet(null);
-                    openTap();
-                  }}
-                >
-                  <strong>1 TAP</strong>
-                  <span>Нүүрний зураг, бичлэг · {formatMnt(TAP_PRICE_MNT)}₮</span>
-                </button>
-              )}
-            </li>
-            {AI_QUIZ_CATALOG.map((quiz) => {
-              const waiting = quiz.kind === "archetype" && !archetypeReady;
-              return (
-                <li key={quiz.slug}>
-                  {waiting ? (
-                    <div>
-                      <strong>{quiz.title}</strong>
-                      <span>Асуултын файл хүлээгдэж байна.</span>
-                    </div>
-                  ) : (
-                    <Link href={`/tests/${quiz.slug}`} onClick={() => setSheet(null)}>
-                      <strong>{quiz.title}</strong>
-                      <span>
-                        {quiz.minutes} минут · {formatMnt(price)}₮
-                      </span>
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
       ) : null}
       {sheet === "profile" ? (
         <section
@@ -162,10 +93,9 @@ export function MobileDock({
         </button>
         <button
           type="button"
-          className={magicOn ? "dock-feature dock-on" : "dock-feature"}
-          aria-expanded={sheet === "magic"}
-          aria-controls={sheet === "magic" ? sheetId : undefined}
-          onClick={openMagic}
+          className={stylishOn ? "dock-feature dock-on" : "dock-feature"}
+          aria-current={stylishOn ? "page" : undefined}
+          onClick={openStylish}
         >
           <MagicMark />
           <span>Stylish</span>
