@@ -101,7 +101,22 @@ function halfOf(cm: number) {
   return cm * 0.5;
 }
 
-function BodyPreview({ measurements }: { measurements: Measurements }) {
+function BodyPreview({
+  measurements,
+  onChange,
+}: {
+  measurements: Measurements;
+  onChange: (key: MeasurementKey, value: number) => void;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const drag = useRef<{
+    key: MeasurementKey;
+    originX: number;
+    originCm: number;
+    sign: number;
+    track: boolean;
+  } | null>(null);
+  const [active, setActive] = useState<MeasurementKey | null>(null);
   const { cx, bustY, waistY, highHipY, hipY, kneeY, ankleY } = FIGURE;
   const bust = halfOf(measurements.bust);
   const waist = halfOf(measurements.waist);
@@ -167,15 +182,72 @@ function BodyPreview({ measurements }: { measurements: Measurements }) {
     ].join(" ");
   };
 
-  const guides = [
-    { key: "bust", y: bustY, width: bust, value: measurements.bust },
-    { key: "waist", y: waistY, width: waist, value: measurements.waist },
-    { key: "highHip", y: highHipY, width: highHip, value: measurements.highHip },
-    { key: "hip", y: hipY, width: hip, value: measurements.hip },
-  ];
+  const guideY: Record<MeasurementKey, number> = {
+    bust: bustY,
+    waist: waistY,
+    highHip: highHipY,
+    hip: hipY,
+  };
+  const guideWidth: Record<MeasurementKey, number> = { bust, waist, highHip, hip };
+
+  function pointerX(clientX: number) {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = 0;
+    const matrix = svg.getScreenCTM();
+    if (!matrix) return null;
+    return point.matrixTransform(matrix.inverse()).x;
+  }
+
+  function beginDrag(event: React.PointerEvent<SVGGElement>, key: MeasurementKey) {
+    const x = pointerX(event.clientX);
+    if (x == null) return;
+    event.preventDefault();
+    if (event.currentTarget.setPointerCapture) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture is unavailable for this event.
+      }
+    }
+    const half = Math.abs(x - cx);
+    drag.current = {
+      key,
+      originX: x,
+      originCm: measurements[key],
+      sign: x < cx ? -1 : 1,
+      track: Math.abs(half - measurements[key] * 0.5) < 22,
+    };
+    setActive(key);
+  }
+
+  function moveDrag(event: React.PointerEvent<SVGGElement>) {
+    const session = drag.current;
+    if (!session) return;
+    const x = pointerX(event.clientX);
+    if (x == null) return;
+    const next = session.track ? Math.abs(x - cx) * 2 : session.originCm + session.sign * (x - session.originX) * 2;
+    onChange(session.key, Math.round(next));
+  }
+
+  function endDrag(event: React.PointerEvent<SVGGElement>) {
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    drag.current = null;
+    setActive(null);
+  }
 
   return (
-    <svg viewBox="0 0 300 468" className="body-figure" role="img" aria-label="Таны оруулсан хэмжээсээр өөрчлөгдөх биеийн дүрс">
+    <svg
+      ref={svgRef}
+      viewBox="0 0 300 468"
+      className={active ? "body-figure is-dragging" : "body-figure"}
+      role="img"
+      aria-label="Таны оруулсан хэмжээсээр өөрчлөгдөх биеийн дүрс. Тэмдэглэгээг чирж хэмжээг өөрчилнө."
+    >
       <defs>
         <linearGradient id="bodycalc-skin" gradientUnits="userSpaceOnUse" x1="78" y1="16" x2="150" y2="140">
           <stop offset="0%" stopColor="#f8d2c0" />
@@ -291,25 +363,59 @@ function BodyPreview({ measurements }: { measurements: Measurements }) {
       <path d={shoe(-1)} className="body-shape" fill="#eadccf" />
       <path d={shoe(1)} className="body-shape" fill="#ddc9b6" />
 
-      {guides.map((guide) => (
-        <g key={guide.key} className="measure-guide">
-          <line
-            x1={x(-1, guide.width)}
-            x2={x(1, guide.width)}
-            y1={guide.y}
-            y2={guide.y}
-            stroke="#7a2340"
-            strokeWidth="1.15"
-            strokeDasharray="2 3.2"
-          />
-          <circle cx={x(-1, guide.width)} cy={guide.y} r="4.3" fill="#faf7f2" stroke="#7a2340" strokeWidth="1.35" />
-          <circle cx={x(1, guide.width)} cy={guide.y} r="4.3" fill="#faf7f2" stroke="#7a2340" strokeWidth="1.35" />
-          <path d={`M ${x(1, guide.width) + 7} ${guide.y} H 196`} stroke="#e5dbd4" strokeWidth="1" />
-          <text className="body-measure-label" x="202" y={guide.y + 4}>
-            {guide.value} см
-          </text>
-        </g>
-      ))}
+      {controls.map((control) => {
+        const width = guideWidth[control.key];
+        const y = guideY[control.key];
+        const value = measurements[control.key];
+        return (
+          <g
+            key={control.key}
+            className={active === control.key ? "measure-guide is-active" : "measure-guide"}
+            role="slider"
+            tabIndex={0}
+            aria-label={`${control.label}. Бариад чирж өөрчилнө`}
+            aria-valuemin={control.min}
+            aria-valuemax={control.max}
+            aria-valuenow={value}
+            aria-valuetext={`${value} сантиметр`}
+            onPointerDown={(event) => beginDrag(event, control.key)}
+            onPointerMove={moveDrag}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onKeyDown={(event) => {
+              const step = event.shiftKey ? 5 : 1;
+              if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+                event.preventDefault();
+                onChange(control.key, value + step);
+              }
+              if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+                event.preventDefault();
+                onChange(control.key, value - step);
+              }
+            }}
+          >
+            <line className="measure-hit measure-hit-line" x1={x(-1, width)} x2={x(1, width)} y1={y} y2={y} />
+            <circle className="measure-hit" cx={x(-1, width)} cy={y} r="14" />
+            <circle className="measure-hit" cx={x(1, width)} cy={y} r="14" />
+            <rect className="measure-hit" x="196" y={y - 12} width="86" height="24" />
+            <line
+              x1={x(-1, width)}
+              x2={x(1, width)}
+              y1={y}
+              y2={y}
+              stroke="#7a2340"
+              strokeWidth="1.15"
+              strokeDasharray="2 3.2"
+            />
+            <circle className="measure-dot" cx={x(-1, width)} cy={y} r="5" fill="#faf7f2" stroke="#7a2340" strokeWidth="1.5" />
+            <circle className="measure-dot" cx={x(1, width)} cy={y} r="5" fill="#faf7f2" stroke="#7a2340" strokeWidth="1.5" />
+            <path d={`M ${x(1, width) + 8} ${y} H 196`} stroke="#e5dbd4" strokeWidth="1" />
+            <text className="body-measure-label" x="202" y={y + 4}>
+              {value} см
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -430,7 +536,10 @@ export function BodyCalculator() {
         </div>
 
         <div className="body-preview-grid">
-          <BodyPreview measurements={measurements} />
+          <div className="body-figure-wrap">
+            <BodyPreview measurements={measurements} onChange={updateMeasurement} />
+            <p className="body-drag-hint">Тэмдэглэгээг бариад чирнэ үү.</p>
+          </div>
           <div className="body-result">
             <p className="kicker">Таны биеийн төрөл</p>
             <h3>{bodyType}</h3>

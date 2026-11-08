@@ -2808,6 +2808,62 @@ body:has(.admin-root) .shell > main {
   font-family: var(--font-sans), Manrope, sans-serif;
   font-size: 12.5px;
   font-weight: 650;
+  pointer-events: none;
+}
+
+.body-figure-wrap {
+  min-width: 0;
+}
+
+.body-drag-hint {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.measure-guide {
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.measure-hit {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+}
+
+.measure-hit-line {
+  stroke-width: 16;
+}
+
+.measure-dot {
+  pointer-events: none;
+}
+
+.measure-guide.is-active .measure-dot {
+  fill: #7a2340;
+}
+
+.measure-guide.is-active .body-measure-label {
+  fill: #7a2340;
+}
+
+.measure-guide:focus-visible .measure-dot {
+  stroke-width: 2.4;
+}
+
+.body-figure.is-dragging,
+.body-figure.is-dragging .measure-guide {
+  cursor: ew-resize;
+}
+
+.body-figure.is-dragging .body-shape,
+.body-figure.is-dragging .measure-guide line,
+.body-figure.is-dragging .measure-guide circle,
+.body-figure.is-dragging .measure-guide path {
+  transition: none;
 }
 
 .body-result {
