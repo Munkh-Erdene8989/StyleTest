@@ -56,7 +56,7 @@ describe("openai providers", () => {
       const headers = init?.headers as Record<string, string>;
       expect(headers.authorization).toBe("Bearer test-key");
       const body = JSON.parse(String(init?.body));
-      expect(body.model).toBe("gpt-6-luna");
+      expect(body.model).toBe("gpt-6.1-terra");
       expect(body.response_format).toEqual({ type: "json_object" });
       return jsonResponse({
         choices: [{ message: { content: JSON.stringify(payload) } }],
@@ -70,7 +70,7 @@ describe("openai providers", () => {
       answers: [{ question: "асуулт", answer: "хариу" }],
     });
     expect(result.draft.source).toBe("model");
-    expect(result.model).toBe("gpt-6-luna");
+    expect(result.model).toBe("gpt-6.1-terra");
     expect(result.costUsd).toBe(10);
     delete process.env.OPENAI_INPUT_USD_PER_MTOK;
     delete process.env.OPENAI_OUTPUT_USD_PER_MTOK;
@@ -98,13 +98,13 @@ describe("openai providers", () => {
       expect(headers.authorization).toBe("Bearer test-key");
       if (String(url).endsWith("/images/generations")) {
         const body = JSON.parse(String(init?.body));
-        expect(body.model).toBe("gpt-image-2.5-sunburst");
+        expect(body.model).toBe("gpt-image-2.6-flare");
         expect(body.output_format).toBe("png");
       }
       if (String(url).endsWith("/images/edits")) {
         expect(init?.body).toBeInstanceOf(FormData);
         const form = init?.body as FormData;
-        expect(form.get("model")).toBe("gpt-image-2.5-sunburst");
+        expect(form.get("model")).toBe("gpt-image-2.6-flare");
         expect(form.getAll("image[]")).toHaveLength(1);
         expect(String(form.get("prompt"))).toContain("Do not slim the waist");
       }

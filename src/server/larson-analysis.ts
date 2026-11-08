@@ -1,4 +1,5 @@
 import { checkLarsonVerdict, tapBodyLabel, type LarsonReading, type TapRetake } from "@/domain/tap";
+import { restoreTapImages } from "./larson-images";
 import { responsesJson } from "./model-transport";
 
 const INSTRUCTIONS = `You are a personal styling assistant using a clearly labeled Larson-inspired four-family facial style framework. You are not performing medical diagnosis, identity recognition, personality assessment, beauty ranking, or definitive full-body Larson typing.
@@ -47,9 +48,20 @@ const BOX = {
   required: ["x", "y", "w", "h"],
 };
 
+export async function readLarson(images: Buffer[], bodyShape?: string | null) {
+  const first = await analyzeLarson(images, bodyShape);
+  if (!first || first.status === "ready") return { verdict: first, images };
+  const restored = await restoreTapImages(images);
+  if (!restored) return { verdict: first, images };
+  const second = await analyzeLarson(restored, bodyShape);
+  if (!second) return { verdict: first, images };
+  if (second.status === "retake") return { verdict: second, images };
+  return { verdict: second, images: restored };
+}
+
 export async function analyzeLarson(images: Buffer[], bodyShape?: string | null): Promise<{ status: "ready"; reading: LarsonReading } | { status: "retake"; retake: TapRetake } | null> {
   if (!process.env.OPENAI_API_KEY || images.length !== 4) return null;
-  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
+  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6.1-terra";
   const reportedShape = tapBodyLabel(bodyShape ?? "") || "unknown";
   const user = [
     {
@@ -109,8 +121,11 @@ export async function analyzeLarson(images: Buffer[], bodyShape?: string | null)
         required: ["status", "retakeTarget", "instructions", "type", "traits", "summary", "crops"],
       },
     });
-    return checkLarsonVerdict(json);
-  } catch {
+    const verdict = checkLarsonVerdict(json);
+    if (!verdict) console.error("larson_schema_rejected");
+    return verdict;
+  } catch (error) {
+    console.error("larson_analyze_failed", error instanceof Error ? error.message.slice(0, 180) : "unknown");
     return null;
   }
 }

@@ -90,7 +90,7 @@ export async function analyzeReferencePhoto(args: {
   role: PhotoRole;
 }): Promise<PhotoAnalysis | null> {
   if (!process.env.OPENAI_API_KEY) return null;
-  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
+  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6.1-terra";
   try {
     const json = await responsesJson({
       model,

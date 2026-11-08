@@ -41,6 +41,7 @@ describe("face report pdf", () => {
     expect(html.match(/class="hero"/g)).toHaveLength(3);
     expect(html.match(/class="step"/g)).toHaveLength(25);
     expect(html.match(/class="logo"/g)).toHaveLength(25);
+    expect(html).toContain("data:image/png;base64,");
     expect(html).not.toContain("AI стиль туршилт");
     expect(html).not.toContain("Жишээ зураг · маникен");
     expect(html).toContain("Анхны зураг");

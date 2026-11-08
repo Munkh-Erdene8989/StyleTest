@@ -3,7 +3,7 @@ import { yearMonth } from "@/domain/profile";
 import type { StyleQuizRecord } from "@/domain/style-quiz";
 import type { Report, User } from "@/domain/types";
 import { downloadAiQuizPdf } from "./ai-quiz-service";
-import { printHtmlToPdf } from "./face-report-pdf";
+import { REPORT_LOGO, printHtmlToPdf } from "./face-report-pdf";
 import { downloadTapPdf } from "./tap-service";
 import { getStore } from "./store";
 
@@ -98,11 +98,13 @@ function summaryHtml(input: { title: string; when: string; body: string; paragra
   return `<!doctype html><html lang="mn"><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600&family=Noto+Serif:wght@600&display=swap">
 <style>
-  body { margin: 18mm; color: #1e1a18; font-family: "Noto Sans", sans-serif; font-size: 12pt; line-height: 1.55; }
+  body { margin: 32mm 18mm 18mm; color: #1e1a18; font-family: "Noto Sans", sans-serif; font-size: 12pt; line-height: 1.55; }
+  .logo { position: fixed; top: 8mm; left: 18mm; height: 16mm; width: auto; }
   h1 { margin: 0 0 0.6rem; font-family: "Noto Serif", serif; font-weight: 600; font-size: 22pt; }
   .when { margin: 0 0 1rem; color: #8a7f79; }
   .note { margin-top: 1.4rem; color: #3a3330; font-size: 10pt; }
 </style></head><body>
+<img class="logo" alt="Naruka Styling Studio" src="${REPORT_LOGO}">
 <p class="when">${esc(input.when)}</p>
 <h1>${esc(input.title)}</h1>
 <p>${esc(input.body)}</p>

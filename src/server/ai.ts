@@ -6,11 +6,11 @@ import { EDITORIAL_RULES } from "./report-prompts";
 import { chatJson, renderImage } from "./model-transport";
 
 function textModel() {
-  return process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
+  return process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6.1-terra";
 }
 
 function imageModel() {
-  return process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+  return process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.6-flare";
 }
 
 const personalitySchema = z.object({

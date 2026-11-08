@@ -4,7 +4,7 @@ import type { LarsonReading } from "@/domain/tap";
 import { AppError } from "@/domain/errors";
 import { blankUser } from "./auth";
 import { sendEmail } from "./email";
-import { analyzeLarson } from "./larson-analysis";
+import { readLarson } from "./larson-analysis";
 import { renderTapPdf } from "./larson-report-pdf";
 import { loadProfile } from "./profile-service";
 import { createInvoice } from "./qpay";
@@ -30,7 +30,9 @@ const { reading } = vi.hoisted(() => {
 });
 
 vi.mock("./email", () => ({ sendEmail: vi.fn(async () => ({ skipped: true })) }));
-vi.mock("./larson-analysis", () => ({ analyzeLarson: vi.fn(async () => ({ status: "ready", reading })) }));
+vi.mock("./larson-analysis", () => ({
+  readLarson: vi.fn(async (images: Buffer[]) => ({ verdict: { status: "ready", reading }, images })),
+}));
 vi.mock("./larson-report-pdf", () => ({ renderTapPdf: vi.fn(async () => Buffer.from("%PDF-1.4")) }));
 vi.mock("./qpay", () => ({
   createInvoice: vi.fn(async () => ({ invoiceId: "inv_tap", qrImage: undefined, urls: [] })),
@@ -38,7 +40,7 @@ vi.mock("./qpay", () => ({
   simulatePayAllowed: () => true,
 }));
 vi.mock("./video-frames", () => ({
-  extractVideoFrames: vi.fn(async () => [PNG, PNG, PNG]),
+  extractVideoFrames: vi.fn(async () => ({ frames: [PNG, PNG, PNG], mp4: Buffer.alloc(32, 1) })),
 }));
 
 describe("1 TAP checkout", () => {
@@ -49,7 +51,7 @@ describe("1 TAP checkout", () => {
     await getStore().saveUser(user);
     vi.mocked(sendEmail).mockClear();
     vi.mocked(createInvoice).mockClear();
-    vi.mocked(analyzeLarson).mockClear();
+    vi.mocked(readLarson).mockClear();
     vi.mocked(renderTapPdf).mockClear();
   });
 

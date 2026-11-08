@@ -1,4 +1,4 @@
-import type { LarsonType } from "@/domain/tap";
+import type { LarsonType, TapBodyShape } from "@/domain/tap";
 
 const JAW: Record<LarsonType, string> = {
   Dramatic: "M70 78 C78 150 122 150 130 78",
@@ -35,13 +35,115 @@ export function portrait(type: LarsonType, index: number) {
   </svg>`;
 }
 
-export function silhouette(type: LarsonType, index: number) {
-  const tall = type === "Dramatic" || index === 3;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120">
-    <rect width="80" height="120" fill="none"/>
-    <path d="M40 8 a6 6 0 1 0 0.1 0" fill="none" stroke="#1e1a18" stroke-width="1.2"/>
-    <path d="${tall ? "M28 22 H52 L58 108 H22 Z" : "M30 24 H50 L46 70 H34 Z M26 70 H54 L50 108 H30 Z"}" fill="none" stroke="#1e1a18" stroke-width="1.2"/>
-  </svg>`;
+type LineKind = "column" | "trousers" | "layer" | "jacket" | "dress";
+
+type LineSpec = {
+  kind: LineKind;
+  shoulder: number;
+  waist: number;
+  hip: number;
+  hem: number;
+  curve: number;
+};
+
+const LINE_SPECS: Record<string, LineSpec> = {
+  "Шулуун": { kind: "column", shoulder: 16, waist: 15, hip: 16, hem: 92, curve: 0 },
+  "Геометр": { kind: "jacket", shoulder: 21, waist: 18, hip: 18, hem: 58, curve: 0 },
+  "Архитектур": { kind: "jacket", shoulder: 23, waist: 16, hip: 16, hem: 84, curve: 0 },
+  "Урт силуэт": { kind: "column", shoulder: 13, waist: 12, hip: 13, hem: 104, curve: 0 },
+  "Сул": { kind: "dress", shoulder: 18, waist: 21, hip: 23, hem: 94, curve: 7 },
+  "Өргөн шулуун": { kind: "trousers", shoulder: 18, waist: 17, hip: 23, hem: 100, curve: 0 },
+  "Давхарга": { kind: "layer", shoulder: 20, waist: 18, hip: 21, hem: 98, curve: 2 },
+  "Дунд урт": { kind: "dress", shoulder: 16, waist: 15, hip: 20, hem: 78, curve: 5 },
+  "Муруй": { kind: "dress", shoulder: 16, waist: 12, hip: 22, hem: 94, curve: 11 },
+  "Бүсэлхийтэй": { kind: "dress", shoulder: 16, waist: 10, hip: 21, hem: 96, curve: 9 },
+  "Урсгал": { kind: "dress", shoulder: 15, waist: 14, hip: 25, hem: 102, curve: 12 },
+  "Богино": { kind: "jacket", shoulder: 16, waist: 14, hip: 15, hem: 42, curve: 0 },
+  "Тасалсан": { kind: "jacket", shoulder: 15, waist: 14, hip: 16, hem: 36, curve: 0 },
+  "Жижиг": { kind: "jacket", shoulder: 12, waist: 11, hip: 12, hem: 40, curve: 2 },
+};
+
+function lineSpec(label: string, body?: TapBodyShape | null, type?: LarsonType): LineSpec {
+  const base = { ...(LINE_SPECS[label] ?? LINE_SPECS["Шулуун"]) };
+  if (type === "Gamine" && label === "Шулуун") base.hem = 52;
+  if (body === "hourglass") base.waist = Math.max(8, base.waist - 4);
+  else if (body === "pear") {
+    base.hip += 5;
+    base.shoulder = Math.max(11, base.shoulder - 2);
+  } else if (body === "apple") base.waist += 4;
+  else if (body === "rectangle") base.waist = Math.round((base.shoulder + base.hip) / 2);
+  else if (body === "inverted_triangle") {
+    base.shoulder += 4;
+    base.hip = Math.max(11, base.hip - 3);
+  }
+  return base;
+}
+
+function outline(spec: LineSpec) {
+  const top = 22;
+  const hemY = Math.min(116, top + spec.hem);
+  const waistY = top + (hemY - top) * 0.4;
+  const hipY = top + (hemY - top) * 0.62;
+  const bend = spec.curve;
+  const left = (at: number) => 40 - at;
+  const right = (at: number) => 40 + at;
+  return [
+    `M ${left(spec.shoulder)} ${top}`,
+    `Q ${left(spec.waist) - bend} ${waistY} ${left(spec.waist)} ${waistY}`,
+    `Q ${left(spec.hip) - bend} ${hipY} ${left(spec.hip)} ${hipY}`,
+    `L ${left(spec.hip)} ${hemY}`,
+    `L ${right(spec.hip)} ${hemY}`,
+    `L ${right(spec.hip)} ${hipY}`,
+    `Q ${right(spec.hip) + bend} ${hipY} ${right(spec.waist)} ${waistY}`,
+    `Q ${right(spec.waist) + bend} ${waistY} ${right(spec.shoulder)} ${top}`,
+    "Z",
+  ].join(" ");
+}
+
+function trousers(spec: LineSpec) {
+  const top = 22;
+  const hipY = 58;
+  const hemY = Math.min(116, top + spec.hem);
+  const hip = spec.hip;
+  return [
+    `M ${40 - spec.shoulder} ${top}`,
+    `L ${40 - spec.waist} ${hipY - 10}`,
+    `L ${40 - hip} ${hipY}`,
+    `L ${40 - hip + 1} ${hemY}`,
+    `L ${37} ${hemY}`,
+    `L ${37} ${hipY + 8}`,
+    `L ${43} ${hipY + 8}`,
+    `L ${43} ${hemY}`,
+    `L ${40 + hip - 1} ${hemY}`,
+    `L ${40 + hip} ${hipY}`,
+    `L ${40 + spec.waist} ${hipY - 10}`,
+    `L ${40 + spec.shoulder} ${top}`,
+    "Z",
+  ].join(" ");
+}
+
+function layer(spec: LineSpec) {
+  const inner = outline({ ...spec, shoulder: spec.shoulder - 5, waist: spec.waist - 4, hip: spec.hip - 5, hem: spec.hem - 14, curve: 0 });
+  const top = 22;
+  const hemY = Math.min(116, top + spec.hem);
+  const outer = [
+    `M ${40 - spec.shoulder - 3} ${top} L ${40 - spec.hip - 2} ${hemY}`,
+    `M ${40 + spec.shoulder + 3} ${top} L ${40 + spec.hip + 2} ${hemY}`,
+    `M ${40 - spec.shoulder - 3} ${top} L ${40 - 8} ${top + 16}`,
+    `M ${40 + spec.shoulder + 3} ${top} L ${40 + 8} ${top + 16}`,
+  ].join(" ");
+  return `${inner} ${outer}`;
+}
+
+function garment(spec: LineSpec) {
+  if (spec.kind === "trousers") return trousers(spec);
+  if (spec.kind === "layer") return layer(spec);
+  return outline(spec);
+}
+
+export function silhouette(label: string, body?: TapBodyShape | null, type?: LarsonType) {
+  const spec = lineSpec(label, body, type);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 124"><circle cx="40" cy="12" r="5.5" fill="none" stroke="#1e1a18" stroke-width="1.3"/><path d="M40 17.5 V22" fill="none" stroke="#1e1a18" stroke-width="1.2"/><path d="${garment(spec)}" fill="none" stroke="#1e1a18" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 
 export function outfit(type: LarsonType, index: number) {

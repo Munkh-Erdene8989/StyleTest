@@ -21,7 +21,7 @@ const CHROME_CANDIDATES = [
   "/usr/bin/chromium-browser",
 ].filter((item): item is string => Boolean(item));
 const CHROMIUM_VERSION = "153.0.0";
-const LOGO_SRC = `data:image/jpeg;base64,${readFileSync(path.join(process.cwd(), "public/naruka-report-logo.jpg")).toString("base64")}`;
+export const REPORT_LOGO = `data:image/png;base64,${readFileSync(path.join(process.cwd(), "public/naruka-logo.png")).toString("base64")}`;
 
 export const FACE_MANIFEST = MANIFESTS.face_beauty;
 
@@ -250,7 +250,7 @@ function wardrobeOf(analysis: PhotoAnalysis | null): ClothingWardrobe | null {
 }
 
 async function renderCompliantReference(args: { prompt: string; photo: Buffer; mime: string; size: string }) {
-  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.6-flare";
   const image = await renderImage({
     model,
     prompt: args.prompt,
@@ -285,7 +285,7 @@ export function renderQuizReportHtml(draft: FaceDraft, kind: AiQuizKind) {
       : "";
     const notice = item.page === 1 && draft.notice ? `<p class="notice">${esc(draft.notice)}</p>` : "";
     return `<section class="report-page frame-${item.kind}">
-      <header class="mast"><img class="logo" alt="Naruka Styling Studio" src="${LOGO_SRC}"><h1>${esc(item.title)}</h1></header>
+      <header class="mast"><img class="logo" alt="Naruka Styling Studio" src="${REPORT_LOGO}"><h1>${esc(item.title)}</h1></header>
       ${figure}
       ${notice}
       ${copyHtml(copy)}
@@ -516,7 +516,7 @@ async function alignCallouts(kind: AiQuizKind, pages: FacePageCopy[], images: Re
 }
 
 async function locateCallouts(src: string, pages: { page_number: number; notes: FaceNote[]; edit_en: string }[], again: boolean) {
-  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
+  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6.1-terra";
   const json = await responsesJson({
     model,
     timeoutMs: 90_000,
@@ -617,7 +617,7 @@ async function pool<T>(items: T[], limit: number, run: (item: T) => Promise<void
 }
 
 async function exampleImage(prompt: string, reference?: Buffer, size = "1024x1024", mime = "image/jpeg") {
-  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.6-flare";
   const image = await renderImage({
     model,
     prompt,
@@ -633,7 +633,7 @@ async function exampleImage(prompt: string, reference?: Buffer, size = "1024x102
 }
 
 async function completeJson(kind: AiQuizKind, user: string) {
-  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6-luna";
+  const model = process.env.OPENAI_REPORT_MODEL || process.env.OPENAI_TEXT_MODEL || "gpt-6.1-terra";
   const developer = `${developerPrompt(kind)}\n\nСЕРВЕРИЙН ШИЙДВЭР: хуудасны бүтэц түгжээтэй. pages хоосон бүү буцаа. PAGE_MANIFEST-ийн хуудас бүрийг стилист хүнд шууд хандаж, ойлгомжтой монголоор бөглө. Ангиллын код бүү буцаа.`;
   return responsesJson({
     model,

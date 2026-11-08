@@ -49,6 +49,8 @@ const STEP_TITLE: Record<Step, string> = {
 
 const PHOTO_MAX = 20 * 1024 * 1024;
 const VIDEO_MAX = 100 * 1024 * 1024;
+const VIDEO_MAX_SECONDS = 15;
+const VIDEO_ACCEPT = "video/mp4,.mp4,video/*,.mov,.m4v,.webm,.mkv,.avi,.3gp,.mpeg,.mpg";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const TapWindowContext = createContext<(() => void) | null>(null);
@@ -91,6 +93,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
   const photoFile = useRef<HTMLInputElement>(null);
   const videoCamera = useRef<HTMLInputElement>(null);
   const videoFile = useRef<HTMLInputElement>(null);
+  const videoPick = useRef(0);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [video, setVideo] = useState<File | null>(null);
@@ -165,11 +168,25 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
     setPhoto(file);
   }
 
-  function takeVideo(file: File | null) {
+  function takeVideoFile(input: HTMLInputElement) {
+    const file = input.files?.[0] ?? null;
+    input.value = "";
+    void takeVideo(file);
+  }
+
+  async function takeVideo(file: File | null) {
     setError("");
     if (!file) return;
+    const pick = videoPick.current + 1;
+    videoPick.current = pick;
     if (file.size > VIDEO_MAX) {
       setError("Бичлэг 100MB-аас бага байна.");
+      return;
+    }
+    const duration = await readVideoDuration(file).catch(() => null);
+    if (videoPick.current !== pick) return;
+    if (duration !== null && duration > VIDEO_MAX_SECONDS) {
+      setError("Бичлэг 15 секундээс богино байна.");
       return;
     }
     setVideo(file);
@@ -342,8 +359,8 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
     >
       <input ref={photoCamera} type="file" accept="image/*" capture="user" hidden onChange={(event) => takePhoto(event.target.files?.[0] ?? null)} />
       <input ref={photoFile} type="file" hidden onChange={(event) => takePhoto(event.target.files?.[0] ?? null)} />
-      <input ref={videoCamera} type="file" accept="video/*" capture="user" hidden onChange={(event) => takeVideo(event.target.files?.[0] ?? null)} />
-      <input ref={videoFile} type="file" hidden onChange={(event) => takeVideo(event.target.files?.[0] ?? null)} />
+      <input ref={videoCamera} type="file" accept={VIDEO_ACCEPT} capture="user" hidden onChange={(event) => takeVideoFile(event.currentTarget)} />
+      <input ref={videoFile} type="file" accept={VIDEO_ACCEPT} hidden onChange={(event) => takeVideoFile(event.currentTarget)} />
 
       <header className="tap-window-bar">
         {onClose ? (
@@ -402,7 +419,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
                 </li>
                 <li>
                   <strong>Бичлэг</strong>
-                  <span>5–8 секунд. Эхлээд төв, дараа нь зүүн, баруун тийш.</span>
+                  <span>5–8 секунд, хамгийн урт нь 15 секунд. Эхлээд төв, дараа нь зүүн, баруун тийш.</span>
                 </li>
                 <li>
                   <strong>Тайлан</strong>
@@ -434,7 +451,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
             <div className="tap-step-media">
               <PhoneGuide mode="video" src="/studio/tap-face-guide.jpg" videoSrc={videoUrl && !videoBroken ? videoUrl : "/studio/tap-face-turn.mp4"} onVideoError={videoUrl ? () => setVideoBroken(true) : undefined} />
               <div className="tap-step-copy">
-                <p>Нүүрээ хүрээнээс гаргалгүй эхлээд төв рүү хар. Дараа нь толгойгоо зүүн, баруун тийш аажуухан эргүүл. 5–8 секунд хангалттай.</p>
+                <p>Нүүрээ хүрээнээс гаргалгүй эхлээд төв рүү хар. Дараа нь толгойгоо зүүн, баруун тийш аажуухан эргүүл. 5–8 секунд хангалттай. 15 секундээс урт бичлэгийг авахгүй.</p>
                 <p className={video ? "tap-file is-ready" : "tap-file"}>{video ? `Сонгогдсон · ${video.name}` : "Бичлэг сонгоогүй"}</p>
                 <div className="tap-actions">
                   <button type="button" className="btn" onClick={() => videoCamera.current?.click()}>
@@ -664,6 +681,30 @@ function PhoneGuide({
   );
 }
 
+function readVideoDuration(file: File) {
+  return new Promise<number>((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const el = document.createElement("video");
+    let settled = false;
+    const finish = (failed: boolean) => {
+      if (settled) return;
+      settled = true;
+      const duration = el.duration;
+      URL.revokeObjectURL(url);
+      el.onloadedmetadata = null;
+      el.onerror = null;
+      el.removeAttribute("src");
+      el.load();
+      if (failed || !Number.isFinite(duration) || duration <= 0) reject(new Error("unread"));
+      else resolve(duration);
+    };
+    el.preload = "metadata";
+    el.onloadedmetadata = () => finish(false);
+    el.onerror = () => finish(true);
+    el.src = url;
+  });
+}
+
 async function refresh(id: string, setTap: (tap: TapView) => void) {
   const response = await fetch(`/api/tap/${id}`);
   if (!response.ok) return;
@@ -676,6 +717,7 @@ function mediaError(code?: string) {
   if (code === "consent_required") return "Зураг ашиглах зөвшөөрлөө батална уу.";
   if (code === "file_too_large") return "Файл хэт том байна. Зураг 20MB, бичлэг 100MB хүртэл.";
   if (code === "invalid_image") return "Энэ файлыг зураг болгож уншиж чадсангүй.";
+  if (code === "video_too_long") return "Бичлэг 15 секундээс богино байна.";
   if (code === "invalid_video" || code === "video_convert_failed") return "Энэ бичлэгийг хөрвүүлж чадсангүй. Өөр файл сонгоно уу.";
   if (code === "qpay_invoice" || code === "qpay_unconfigured" || code === "qpay_callback_missing") return "QPay нэхэмжлэх үүсгэж чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
   return "Илгээж чадсангүй. Дахин оролдоно уу.";

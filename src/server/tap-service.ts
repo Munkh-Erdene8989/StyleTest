@@ -7,7 +7,7 @@ import { iso } from "@/domain/time";
 import type { Upload, User } from "@/domain/types";
 import { assumeAdult, attachEmail } from "./auth";
 import { sendEmail } from "./email";
-import { analyzeLarson } from "./larson-analysis";
+import { readLarson } from "./larson-analysis";
 import { renderTapPdf } from "./larson-report-pdf";
 import { limit } from "./limit";
 import { checkInvoice, createInvoice, simulatePayAllowed } from "./qpay";
@@ -22,13 +22,13 @@ export async function saveTapMedia(user: User, input: { photo: Buffer; video: Bu
   if (!input.consent) throw new AppError("consent_required", 400);
   await limit(user.id, "tap_upload", 12);
   const photo = await prepareTapPhoto(input.photo);
-  const frames = await prepareTapVideo(input.video);
+  const prepared = await prepareTapVideo(input.video);
   const store = getStore();
-  const videoPath = `private/${user.id}/tap-video/${randomUUID()}`;
-  await store.putObject(videoPath, input.video, "application/octet-stream");
+  const videoPath = `private/${user.id}/tap-video/${randomUUID()}.mp4`;
+  await store.putObject(videoPath, prepared.mp4, "video/mp4");
   const photoUpload = await storeFace(user, photo.bytes);
   const frameUploads = [];
-  for (const frame of frames) frameUploads.push(await storeFace(user, frame.bytes));
+  for (const frame of prepared.frames) frameUploads.push(await storeFace(user, frame.bytes));
   return { photoId: photoUpload.id, frameIds: frameUploads.map((item) => item.id), videoPath };
 }
 
@@ -161,7 +161,8 @@ export async function fulfillTap(id: string) {
   if (reportLocked(previous)) return;
   try {
     const images = await tapImages(current);
-    const verdict = await analyzeLarson(images, current.bodyShape);
+    const resolved = await readLarson(images, current.bodyShape);
+    const verdict = resolved.verdict;
     if (!verdict) throw new Error("larson_unread");
     if (verdict.status === "retake") {
       await store.updateTap(id, (tap) => ({ ...tap, reportStatus: "failed", retake: verdict.retake, reading: null }));
@@ -172,7 +173,7 @@ export async function fulfillTap(id: string) {
       });
       return;
     }
-    const pdf = await renderTapPdf(images[0], verdict.reading, current.bodyShape);
+    const pdf = await renderTapPdf(resolved.images[0], verdict.reading, current.bodyShape);
     await store.putObject(pdfKey(current), pdf, "application/pdf");
     await sendEmail({
       to: current.email,
