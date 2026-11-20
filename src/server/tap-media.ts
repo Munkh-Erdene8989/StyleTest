@@ -1,4 +1,5 @@
 import { AppError } from "@/domain/errors";
+import { extractCloudConvertVideo } from "./cloudconvert-video";
 import { normalizeUploadedImage } from "./normalize-image";
 import { extractVideoFrames } from "./video-frames";
 
@@ -10,7 +11,12 @@ export async function prepareTapPhoto(bytes: Buffer) {
   return normalizeUploadedImage(bytes, TAP_PHOTO_MAX_BYTES);
 }
 
-export async function prepareTapVideo(bytes: Buffer, extract: (bytes: Buffer) => Promise<ExtractedTapVideo> = extractVideoFrames) {
+async function extractTapVideo(bytes: Buffer) {
+  if (process.env.CLOUDCONVERT_API_KEY) return extractCloudConvertVideo(bytes);
+  return extractVideoFrames(bytes);
+}
+
+export async function prepareTapVideo(bytes: Buffer, extract: (bytes: Buffer) => Promise<ExtractedTapVideo> = extractTapVideo) {
   const extracted = await extract(bytes);
   if (extracted.frames.length !== 3 || extracted.mp4.length < 32) throw new AppError("video_convert_failed", 400);
   try {
