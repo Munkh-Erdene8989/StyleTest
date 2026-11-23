@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { getFirestore, type DocumentData, type Firestore } from "firebase-admin/firestore";
 import { adminApp } from "../firebase-admin";
+import { readStoredObject, removeStoredObject, saveStoredObject } from "../firebase-storage";
 import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
@@ -26,8 +27,6 @@ import type {
   User,
   VersionOverride,
 } from "@/domain/types";
-
-const OBJECT_CHUNK = 480_000;
 
 function clean<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -266,38 +265,25 @@ export class FirestoreStore implements AppStore {
   }
 
   async putObject(path: string, bytes: Buffer, contentType: string) {
-    const ref = this.objectRef(path);
-    const parts = Math.max(1, Math.ceil(bytes.length / OBJECT_CHUNK));
-    await ref.set({ path, contentType, parts, bytes: bytes.length });
-    for (let index = 0; index < parts; index += 1) {
-      const slice = bytes.subarray(index * OBJECT_CHUNK, (index + 1) * OBJECT_CHUNK);
-      await ref.collection("parts").doc(String(index)).set({ data: slice.toString("base64") });
-    }
-    const existing = await ref.collection("parts").get();
-    for (const doc of existing.docs) {
-      if (Number(doc.id) >= parts) await doc.ref.delete();
-    }
+    await saveStoredObject(path, bytes, contentType);
+    await this.deleteLegacyObject(path);
   }
   async getObject(path: string) {
-    const ref = this.objectRef(path);
-    const snap = await ref.get();
-    if (!snap.exists) return null;
-    const meta = snap.data() as { contentType?: string; parts?: number };
-    const parts = meta.parts ?? 0;
-    const chunks: Buffer[] = [];
-    for (let index = 0; index < parts; index += 1) {
-      const part = await ref.collection("parts").doc(String(index)).get();
-      const data = part.data()?.data;
-      if (!part.exists || typeof data !== "string") return null;
-      chunks.push(Buffer.from(data, "base64"));
+    try {
+      const stored = await readStoredObject(path);
+      if (stored) return stored;
+    } catch (error) {
+      if (!(error instanceof AppError) || error.code !== "firebase_unconfigured") throw error;
     }
-    return { bytes: Buffer.concat(chunks), contentType: meta.contentType || "application/octet-stream" };
+    return this.readLegacyObject(path);
   }
   async deleteObject(path: string) {
-    const ref = this.objectRef(path);
-    const parts = await ref.collection("parts").get();
-    for (const doc of parts.docs) await doc.ref.delete();
-    await ref.delete();
+    try {
+      await removeStoredObject(path);
+    } catch (error) {
+      if (!(error instanceof AppError) || error.code !== "firebase_unconfigured") throw error;
+    }
+    await this.deleteLegacyObject(path);
   }
   async createReadUrl(path: string) {
     const token = randomBytes(24).toString("hex");
@@ -313,6 +299,29 @@ export class FirestoreStore implements AppStore {
   private objectRef(path: string) {
     const id = createHash("sha256").update(path).digest("hex");
     return this.database().collection("objects").doc(id);
+  }
+
+  private async readLegacyObject(path: string) {
+    const ref = this.objectRef(path);
+    const snap = await ref.get();
+    if (!snap.exists) return null;
+    const meta = snap.data() as { contentType?: string; parts?: number };
+    const parts = meta.parts ?? 0;
+    const chunks: Buffer[] = [];
+    for (let index = 0; index < parts; index += 1) {
+      const part = await ref.collection("parts").doc(String(index)).get();
+      const data = part.data()?.data;
+      if (!part.exists || typeof data !== "string") return null;
+      chunks.push(Buffer.from(data, "base64"));
+    }
+    return { bytes: Buffer.concat(chunks), contentType: meta.contentType || "application/octet-stream" };
+  }
+
+  private async deleteLegacyObject(path: string) {
+    const ref = this.objectRef(path);
+    const parts = await ref.collection("parts").get();
+    for (const doc of parts.docs) await doc.ref.delete();
+    await ref.delete();
   }
 
   async bumpRate(key: string, limit: number, windowMs: number, now: number) {

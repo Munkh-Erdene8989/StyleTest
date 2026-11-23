@@ -17,7 +17,10 @@ async function extractTapVideo(bytes: Buffer) {
 }
 
 export async function prepareTapVideo(bytes: Buffer, extract: (bytes: Buffer) => Promise<ExtractedTapVideo> = extractTapVideo) {
-  const extracted = await extract(bytes);
+  return acceptTapVideo(await extract(bytes));
+}
+
+export async function acceptTapVideo(extracted: ExtractedTapVideo) {
   if (extracted.frames.length !== 3 || extracted.mp4.length < 32) throw new AppError("video_convert_failed", 400);
   try {
     const frames = await Promise.all(extracted.frames.map((frame) => normalizeUploadedImage(frame)));

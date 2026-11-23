@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { isHeic } from "@/domain/images";
 import { TAP_BODY_SHAPES, TAP_PRICE_MNT, tapBodyLabel, type TapBodyShape } from "@/domain/tap";
 import { formatMnt } from "@/lib/format";
 
@@ -107,6 +108,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
   const [step, setStep] = useState<Step>("intro");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [pendingLabel, setPendingLabel] = useState("Хөрвүүлж байна…");
   const [tap, setTap] = useState<TapView | null>(null);
 
   useEffect(() => {
@@ -187,7 +189,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
     const duration = await readVideoDuration(file).catch(() => null);
     if (videoPick.current !== pick) return;
     if (duration !== null && duration > VIDEO_MAX_SECONDS) {
-      setError("Бичлэг 15 секундээс богино байна.");
+      setError("Бичлэг 15 секундээс урт байна.");
       return;
     }
     setVideoSeconds(duration);
@@ -253,35 +255,50 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
       return;
     }
     setPending(true);
+    setPendingLabel("Илгээж байна…");
     setError("");
-    const form = new FormData();
-    form.set("photo", photo);
-    form.set("video", video);
-    form.set("consent", "true");
-    const media = await fetch(tap?.paymentStatus === "paid" ? `/api/tap/${tap.id}/replace` : "/api/tap/media", { method: "POST", body: form });
-    const mediaBody = await media.json().catch(() => ({}));
-    if (!media.ok) {
+    try {
+      const opened = await fetch("/api/tap/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seconds: videoSeconds }),
+      });
+      const openedBody = await opened.json().catch(() => ({}));
+      if (!opened.ok || !openedBody.jobId || !openedBody.url) throw new TapUploadError(String(openedBody.error || "video_convert_failed"));
+      await uploadToCloudConvert(String(openedBody.url || ""), openedBody.parameters, video);
+      setPendingLabel("Хөрвүүлж байна…");
+      const readyPhoto = await prepareTapPhotoFile(photo);
+      const form = new FormData();
+      form.set("photo", readyPhoto);
+      form.set("jobId", String(openedBody.jobId || ""));
+      form.set("consent", "true");
+      const media = await fetch(tap?.paymentStatus === "paid" ? `/api/tap/${tap.id}/replace` : "/api/tap/media", { method: "POST", body: form });
+      const mediaBody = await media.json().catch(() => ({}));
+      if (!media.ok) {
+        setError(mediaError(media.status === 413 ? "payload_too_large" : mediaBody.error));
+        return;
+      }
+      if (tap?.paymentStatus === "paid") {
+        setTap(mediaBody);
+        return;
+      }
+      const checkout = await fetch("/api/tap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, bodyShape: body, photoId: mediaBody.photoId, frameIds: mediaBody.frameIds, videoPath: mediaBody.videoPath }),
+      });
+      const checkoutBody = await checkout.json().catch(() => ({}));
+      if (!checkout.ok) {
+        setError(mediaError(checkoutBody.error));
+        return;
+      }
+      setTap(checkoutBody);
+    } catch (error) {
+      const code = error instanceof TapUploadError ? error.code : "";
+      setError(mediaError(code));
+    } finally {
       setPending(false);
-      setError(mediaError(mediaBody.error));
-      return;
     }
-    if (tap?.paymentStatus === "paid") {
-      setTap(mediaBody);
-      setPending(false);
-      return;
-    }
-    const checkout = await fetch("/api/tap", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, bodyShape: body, photoId: mediaBody.photoId, frameIds: mediaBody.frameIds, videoPath: mediaBody.videoPath }),
-    });
-    const checkoutBody = await checkout.json().catch(() => ({}));
-    setPending(false);
-    if (!checkout.ok) {
-      setError(mediaError(checkoutBody.error));
-      return;
-    }
-    setTap(checkoutBody);
   }
 
   async function confirm() {
@@ -538,7 +555,7 @@ export function TapWizard({ email: initialEmail = "", onClose }: { email?: strin
           )}
           {step === "pay" ? (
             <button className="btn" type="submit" disabled={pending}>
-              {pending ? "Хөрвүүлж байна…" : tap?.paymentStatus === "paid" ? "Дахин илгээх" : `Төлөх · ${formatMnt(TAP_PRICE_MNT)}₮`}
+              {pending ? pendingLabel : tap?.paymentStatus === "paid" ? "Дахин илгээх" : `Төлөх · ${formatMnt(TAP_PRICE_MNT)}₮`}
             </button>
           ) : (
             <button className="btn" type="submit">
@@ -721,14 +738,63 @@ async function refresh(id: string, setTap: (tap: TapView) => void) {
   setTap(await response.json());
 }
 
+class TapUploadError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
+
+async function uploadToCloudConvert(url: string, parameters: unknown, file: File) {
+  if (!url.startsWith("https://") || !parameters || typeof parameters !== "object") throw new TapUploadError("video_convert_failed");
+  const form = new FormData();
+  for (const [name, value] of Object.entries(parameters)) form.append(name, String(value));
+  form.append("file", file, "source.bin");
+  const response = await fetch(url, { method: "POST", body: form });
+  if (!response.ok) throw new TapUploadError("video_convert_failed");
+}
+
+async function prepareTapPhotoFile(file: File) {
+  try {
+    const source = isHeic(file.type, file.name) ? await convertHeic(file) : file;
+    if (source.size <= 3_500_000 && source.type === "image/jpeg") return source;
+    const bitmap = await createImageBitmap(source);
+    const max = 1600;
+    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new TapUploadError("invalid_image");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+    if (!blob || blob.size > 3_500_000) throw new TapUploadError("file_too_large");
+    return new File([blob], "photo.jpg", { type: "image/jpeg" });
+  } catch (error) {
+    if (error instanceof TapUploadError) throw error;
+    throw new TapUploadError("invalid_image");
+  }
+}
+
+async function convertHeic(file: File) {
+  const heic2any = (await import("heic2any")).default;
+  const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.82 });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  if (!blob) throw new TapUploadError("invalid_image");
+  return new File([blob], "photo.jpg", { type: "image/jpeg" });
+}
+
 function mediaError(code?: string) {
   if (code === "invalid_contact") return "Цахим шуудангийн хаягаа зөв оруулна уу.";
   if (code === "invalid_body") return "Биеийн хэлбэрээ сонгоно уу.";
   if (code === "consent_required") return "Зураг ашиглах зөвшөөрлөө батална уу.";
-  if (code === "file_too_large") return "Файл хэт том байна. Зураг 20MB, бичлэг 100MB хүртэл.";
+  if (code === "file_too_large" || code === "payload_too_large") return "Файл хэт том байна. Зураг 20MB, бичлэг 100MB хүртэл.";
   if (code === "invalid_image") return "Энэ файлыг зураг болгож уншиж чадсангүй.";
-  if (code === "video_too_long") return "Бичлэг 15 секундээс богино байна.";
+  if (code === "video_too_long") return "Бичлэг 15 секундээс урт байна.";
   if (code === "invalid_video" || code === "video_convert_failed") return "Энэ бичлэгийг хөрвүүлж чадсангүй. Өөр файл сонгоно уу.";
+  if (code === "incomplete_upload" || code === "invalid_upload") return "Файл бүрэн илгээгдсэнгүй. Дахин оролдоно уу.";
+  if (code === "rate_limited") return "Богино хугацаанд хэт олон илгээсэн байна. Түр хүлээгээд дахин оролдоно уу.";
+  if (code === "firebase_unconfigured") return "Файл хадгалагдсангүй. Дахин оролдоно уу.";
   if (code === "qpay_invoice" || code === "qpay_unconfigured" || code === "qpay_callback_missing") return "QPay нэхэмжлэх үүсгэж чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
   return "Илгээж чадсангүй. Дахин оролдоно уу.";
 }

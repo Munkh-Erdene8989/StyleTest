@@ -57,9 +57,35 @@ async function probeDuration(bytes: Buffer, key: string) {
   return duration;
 }
 
+export async function createCloudConvertUpload(duration: number | null) {
+  const key = requireKey();
+  if (duration !== null && (!Number.isFinite(duration) || duration <= 0)) fail("invalid_video", "bad_duration");
+  if (duration !== null && videoTooLong(duration)) throw new AppError("video_too_long", 400);
+  const phase = duration === null ? "probe" : "encode";
+  const job = jobFrom(await request(key, "/jobs", { method: "POST", body: JSON.stringify({ tasks: phase === "probe" ? probeTasks() : encodeTasks(duration) }) }));
+  const form = uploadForm(job);
+  return { jobId: job.id, url: form.url, parameters: form.parameters, phase };
+}
+
+export async function finishCloudConvertUpload(jobId: string, phase: "encode" | "probe") {
+  const key = requireKey();
+  if (!/^[A-Za-z0-9_-]{4,80}$/.test(jobId)) fail("invalid_video", "bad_job");
+  const job = await waitJob(jobId, key);
+  if (phase === "encode") return outputsFrom(job);
+  const duration = parseFfmpegDuration(taskText(job));
+  if (job.status === "error" || duration === null) fail("invalid_video", taskText(job) || "unreadable");
+  if (videoTooLong(duration)) throw new AppError("video_too_long", 400);
+  const created = jobFrom(await request(key, "/jobs", { method: "POST", body: JSON.stringify({ tasks: encodeTasks(duration, sourceFile(job)) }) }));
+  return outputsFrom(await waitJob(created.id, key));
+}
+
 async function encodeVideo(bytes: Buffer, duration: number, key: string) {
-  const job = await runJob(bytes, key, {
-    "import-video": { operation: "import/upload" },
+  return outputsFrom(await runJob(bytes, key, encodeTasks(duration)));
+}
+
+function encodeTasks(duration: number, sourceUrl?: string) {
+  return {
+    "import-video": sourceUrl ? { operation: "import/url", url: sourceUrl, filename: "source.bin" } : { operation: "import/upload" },
     "encode-video": {
       operation: "command",
       input: "import-video",
@@ -70,7 +96,47 @@ async function encodeVideo(bytes: Buffer, duration: number, key: string) {
       arguments: compressedVideoArguments(duration),
     },
     "export-video": { operation: "export/url", input: "encode-video" },
-  });
+  };
+}
+
+function probeTasks() {
+  return {
+    "import-video": { operation: "import/upload" },
+    "probe-video": {
+      operation: "command",
+      input: "import-video",
+      engine: "ffmpeg",
+      command: "ffmpeg",
+      capture_output: true,
+      timeout: 60,
+      arguments: "-hide_banner -i /input/import-video/source.bin -map 0:v:0 -frames:v 1 -q:v 8 /output/probe.jpg",
+    },
+    "export-source": { operation: "export/url", input: "import-video" },
+  };
+}
+
+function requireKey() {
+  const key = process.env.CLOUDCONVERT_API_KEY ?? "";
+  if (!key) fail("video_convert_failed", "cloudconvert_key_missing");
+  return key;
+}
+
+function uploadForm(job: CloudJob) {
+  const target = job.tasks.find((task) => task.result?.form?.url)?.result?.form;
+  if (!target?.url?.startsWith("https://")) fail("video_convert_failed", "upload_form_missing");
+  const parameters: Record<string, string> = {};
+  for (const [name, value] of Object.entries(target.parameters ?? {})) parameters[name] = String(value);
+  return { url: target.url, parameters };
+}
+
+function sourceFile(job: CloudJob) {
+  const files = job.tasks.find((task) => task.operation === "export/url")?.result?.files ?? [];
+  const file = files.find((item) => item.filename === "source.bin") ?? files[0];
+  if (!file?.url?.startsWith("https://")) fail("video_convert_failed", "source_missing");
+  return file.url;
+}
+
+async function outputsFrom(job: CloudJob) {
   if (job.status !== "finished") fail("video_convert_failed", taskText(job) || "encode_failed");
   const files = job.tasks.find((task) => task.operation === "export/url")?.result?.files ?? [];
   const mp4 = await downloadNamed(files, "face.mp4");

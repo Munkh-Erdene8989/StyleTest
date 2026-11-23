@@ -13,16 +13,24 @@ import { limit } from "./limit";
 import { checkInvoice, createInvoice, simulatePayAllowed } from "./qpay";
 import { settlePayment } from "./settlement";
 import { getStore } from "./store";
-import { prepareTapPhoto, prepareTapVideo } from "./tap-media";
+import { createCloudConvertUpload, finishCloudConvertUpload } from "./cloudconvert-video";
+import { acceptTapVideo, prepareTapPhoto, prepareTapVideo } from "./tap-media";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REPORT_LOCK_MS = 15 * 60 * 1000;
 
-export async function saveTapMedia(user: User, input: { photo: Buffer; video: Buffer; consent: boolean }) {
+export async function openTapVideo(user: User, seconds: number | null) {
+  await limit(user.id, "tap_video_open", 12);
+  const upload = await createCloudConvertUpload(seconds);
+  await getStore().putObject(cloudJobKey(user.id, upload.jobId), Buffer.from(JSON.stringify({ phase: upload.phase })), "application/json");
+  return { jobId: upload.jobId, url: upload.url, parameters: upload.parameters };
+}
+
+export async function saveTapMedia(user: User, input: { photo: Buffer; video?: Buffer; jobId?: string; consent: boolean }) {
   if (!input.consent) throw new AppError("consent_required", 400);
   await limit(user.id, "tap_upload", 12);
   const photo = await prepareTapPhoto(input.photo);
-  const prepared = await prepareTapVideo(input.video);
+  const prepared = input.jobId ? await preparedCloudVideo(user, input.jobId) : await prepareTapVideo(videoBytes(input.video));
   const store = getStore();
   const videoPath = `private/${user.id}/tap-video/${randomUUID()}.mp4`;
   await store.putObject(videoPath, prepared.mp4, "video/mp4");
@@ -118,7 +126,7 @@ export async function retryTap(user: User, id: string) {
   return publicTap({ ...tap, reportStatus: "pending", retake: null });
 }
 
-export async function replaceTapMedia(user: User, id: string, input: { photo: Buffer; video: Buffer; consent: boolean }) {
+export async function replaceTapMedia(user: User, id: string, input: { photo: Buffer; video?: Buffer; jobId?: string; consent: boolean }) {
   const tap = await loadOwned(user, id);
   if (tap.paymentStatus !== "paid") throw new AppError("unpaid", 402);
   const owner = (await getStore().getUser(tap.ownerUid)) ?? user;
@@ -227,6 +235,37 @@ async function uploadBytes(id: string, ownerUid: string) {
   if (!upload || upload.ownerUid !== ownerUid || upload.deletedAt) return null;
   const object = await getStore().getObject(upload.path);
   return object?.bytes.length ? object.bytes : null;
+}
+
+async function preparedCloudVideo(user: User, jobId: string) {
+  const key = cloudJobKey(user.id, jobId);
+  const marker = await getStore().getObject(key);
+  const phase = markerPhase(marker?.bytes);
+  const prepared = await acceptTapVideo(await finishCloudConvertUpload(jobId, phase));
+  await getStore().deleteObject(key);
+  return prepared;
+}
+
+function markerPhase(bytes: Buffer | undefined) {
+  if (!bytes?.length) throw new AppError("invalid_video", 400);
+  try {
+    const parsed = JSON.parse(bytes.toString("utf8")) as { phase?: string };
+    if (parsed.phase === "encode" || parsed.phase === "probe") return parsed.phase;
+  } catch {
+    throw new AppError("invalid_video", 400);
+  }
+  throw new AppError("invalid_video", 400);
+}
+
+function videoBytes(bytes: Buffer | undefined) {
+  if (!bytes?.length) throw new AppError("invalid_video", 400);
+  return bytes;
+}
+
+function cloudJobKey(userId: string, jobId: string) {
+  if (!userId || userId.includes("/") || userId.includes("..")) throw new AppError("invalid_video", 400);
+  if (!/^[A-Za-z0-9_-]{4,80}$/.test(jobId)) throw new AppError("invalid_video", 400);
+  return `private/${userId}/tap-cloudconvert/${jobId}`;
 }
 
 async function storeFace(user: User, bytes: Buffer) {

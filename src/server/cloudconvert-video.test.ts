@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/domain/errors";
-import { compressedVideoArguments, extractCloudConvertVideo } from "./cloudconvert-video";
+import { compressedVideoArguments, createCloudConvertUpload, extractCloudConvertVideo, finishCloudConvertUpload } from "./cloudconvert-video";
 
 const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9, ...Buffer.alloc(40, 7)]);
 const mp4 = Buffer.concat([Buffer.alloc(4), Buffer.from("ftyp"), Buffer.alloc(40, 3)]);
@@ -83,6 +83,89 @@ describe("extractCloudConvertVideo", () => {
   });
 });
 
+describe("direct CloudConvert upload", () => {
+  it("returns an upload form and does not send the video through our server", async () => {
+    process.env.CLOUDCONVERT_API_KEY = "test-key";
+    const bodies: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      if (url === "https://api.cloudconvert.com/v2/jobs" && init?.method === "POST") {
+        bodies.push(String(init.body));
+        return json(waitingJob("job-1", "https://upload.test/direct"));
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+    const upload = await createCloudConvertUpload(4);
+    expect(upload).toMatchObject({ jobId: "job-1", url: "https://upload.test/direct", parameters: { signature: "sig" }, phase: "encode" });
+    expect(bodies[0]).toContain("-ss 0.800");
+    expect(bodies[0]).not.toContain("export-source");
+  });
+
+  it("asks CloudConvert to measure a clip when the browser has no duration", async () => {
+    process.env.CLOUDCONVERT_API_KEY = "test-key";
+    let body = "";
+    vi.stubGlobal("fetch", async (_url: string, init?: RequestInit) => {
+      body = String(init?.body);
+      return json(waitingJob("probe-9", "https://upload.test/probe"));
+    });
+    const upload = await createCloudConvertUpload(null);
+    expect(upload.phase).toBe("probe");
+    expect(body).toContain("export-source");
+    expect(body).not.toContain("encode-video");
+  });
+
+  it("rejects a known duration over 15 seconds before creating a job", async () => {
+    process.env.CLOUDCONVERT_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(createCloudConvertUpload(20)).rejects.toMatchObject({ code: "video_too_long" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("downloads the compressed outputs after the browser upload", async () => {
+    process.env.CLOUDCONVERT_API_KEY = "test-key";
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.endsWith("/jobs/encode-1")) return json(finishedEncode());
+      if (url === "https://files.test/face.mp4") return new Response(mp4);
+      if (url.startsWith("https://files.test/frame-")) return new Response(jpeg);
+      throw new Error(`unexpected ${url}`);
+    });
+    const extracted = await finishCloudConvertUpload("encode-1", "encode");
+    expect(extracted.frames).toHaveLength(3);
+    expect(extracted.mp4.subarray(4, 8).toString("latin1")).toBe("ftyp");
+  });
+
+  it("encodes from CloudConvert's own file after measuring the duration", async () => {
+    process.env.CLOUDCONVERT_API_KEY = "test-key";
+    const bodies: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      if (url === "https://api.cloudconvert.com/v2/jobs" && init?.method === "POST") {
+        bodies.push(String(init.body));
+        return json({ id: "encode-2", status: "processing", tasks: [] });
+      }
+      if (url.endsWith("/jobs/probe-1")) return json(finishedProbe("00:00:04.00", "https://files.test/source.bin"));
+      if (url.endsWith("/jobs/encode-2")) return json(finishedEncode());
+      if (url === "https://files.test/face.mp4") return new Response(mp4);
+      if (url.startsWith("https://files.test/frame-")) return new Response(jpeg);
+      throw new Error(`unexpected ${url}`);
+    });
+    const extracted = await finishCloudConvertUpload("probe-1", "probe");
+    expect(bodies[0]).toContain("https://files.test/source.bin");
+    expect(bodies[0]).toContain("-ss 0.800");
+    expect(extracted.frames).toHaveLength(3);
+  });
+
+  it("stops a measured clip that is longer than 15 seconds", async () => {
+    process.env.CLOUDCONVERT_API_KEY = "test-key";
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/jobs/probe-1")) return json(finishedProbe("00:00:20.00", "https://files.test/source.bin"));
+      throw new Error(`unexpected ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(finishCloudConvertUpload("probe-1", "probe")).rejects.toMatchObject({ code: "video_too_long" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 function waitingJob(id: string, uploadUrl: string) {
   return {
     id,
@@ -91,11 +174,14 @@ function waitingJob(id: string, uploadUrl: string) {
   };
 }
 
-function finishedProbe(duration: string) {
+function finishedProbe(duration: string, source?: string) {
   return {
     id: "probe-1",
     status: "finished",
-    tasks: [{ operation: "command", result: { output: `Duration: ${duration}, start: 0.000000` } }],
+    tasks: [
+      { operation: "command", result: { output: `Duration: ${duration}, start: 0.000000` } },
+      ...(source ? [{ operation: "export/url", result: { files: [{ filename: "source.bin", url: source }] } }] : []),
+    ],
   };
 }
 
