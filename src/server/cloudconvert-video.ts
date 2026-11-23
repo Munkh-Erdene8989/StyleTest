@@ -62,7 +62,8 @@ export async function createCloudConvertUpload(duration: number | null) {
   if (duration !== null && (!Number.isFinite(duration) || duration <= 0)) fail("invalid_video", "bad_duration");
   if (duration !== null && videoTooLong(duration)) throw new AppError("video_too_long", 400);
   const phase = duration === null ? "probe" : "encode";
-  const job = jobFrom(await request(key, "/jobs", { method: "POST", body: JSON.stringify({ tasks: phase === "probe" ? probeTasks() : encodeTasks(duration) }) }));
+  const tasks = duration === null ? probeTasks() : encodeTasks(duration);
+  const job = jobFrom(await request(key, "/jobs", { method: "POST", body: JSON.stringify({ tasks }) }));
   const form = uploadForm(job);
   return { jobId: job.id, url: form.url, parameters: form.parameters, phase };
 }
