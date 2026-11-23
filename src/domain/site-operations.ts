@@ -6,7 +6,7 @@ export const DEFAULT_OPERATIONS: SiteOperations = {
   heroEmphasis: "тод гэрэлт",
   heroLede: "Мэргэжлийн өнгө тодорхойлох үйлчилгээ. Таны өвөрмөц гоо үзэсгэлэнг нээж, хэзээч өөрчлөгдөхгүй өнгөний палитрыг бүтээнэ.",
   heroAction: "Яг одоо тодорхойлох",
-  heroHref: "/tests",
+  heroHref: "/tap",
   stats: [
     { value: "500+", label: "Үйлчлүүлэгч" },
     { value: "4", label: "Мэргэжилтэн" },

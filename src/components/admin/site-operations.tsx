@@ -71,7 +71,7 @@ export function SiteOperationsForm() {
           </div>
           <div>
             <Label htmlFor="hero-href">Холбоос</Label>
-            <Input id="hero-href" value={ops.heroHref} placeholder="/tests эсвэл tel" onChange={(event) => patch({ heroHref: event.target.value })} />
+            <Input id="hero-href" value={ops.heroHref} placeholder="/tap эсвэл tel" onChange={(event) => patch({ heroHref: event.target.value })} />
           </div>
         </div>
         <StatList stats={ops.stats} onChange={(stats) => patch({ stats })} />
