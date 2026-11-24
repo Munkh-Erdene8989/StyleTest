@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { getFirestore, type DocumentData, type Firestore } from "firebase-admin/firestore";
 import { adminApp } from "../firebase-admin";
-import { readStoredObject, removeStoredObject, saveStoredObject } from "../firebase-storage";
+import { readStoredObject, removeStoredObject, saveStoredObject, storageUnavailable } from "../firebase-storage";
 import type { AdminLibrary } from "@/domain/admin-content";
 import { resolveAppName } from "@/domain/brand";
 import { AppError } from "@/domain/errors";
@@ -27,6 +27,8 @@ import type {
   User,
   VersionOverride,
 } from "@/domain/types";
+
+const OBJECT_CHUNK = 480_000;
 
 function clean<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -265,15 +267,22 @@ export class FirestoreStore implements AppStore {
   }
 
   async putObject(path: string, bytes: Buffer, contentType: string) {
-    await saveStoredObject(path, bytes, contentType);
-    await this.deleteLegacyObject(path);
+    try {
+      await saveStoredObject(path, bytes, contentType);
+      await this.deleteLegacyObject(path);
+      return;
+    } catch (error) {
+      if (!storageUnavailable(error)) throw error;
+      console.error("storage_unavailable", error instanceof Error ? error.message.slice(0, 180) : "unknown");
+    }
+    await this.writeLegacyObject(path, bytes, contentType);
   }
   async getObject(path: string) {
     try {
       const stored = await readStoredObject(path);
       if (stored) return stored;
     } catch (error) {
-      if (!(error instanceof AppError) || error.code !== "firebase_unconfigured") throw error;
+      if (!storageUnavailable(error)) throw error;
     }
     return this.readLegacyObject(path);
   }
@@ -281,7 +290,7 @@ export class FirestoreStore implements AppStore {
     try {
       await removeStoredObject(path);
     } catch (error) {
-      if (!(error instanceof AppError) || error.code !== "firebase_unconfigured") throw error;
+      if (!storageUnavailable(error)) throw error;
     }
     await this.deleteLegacyObject(path);
   }
@@ -299,6 +308,20 @@ export class FirestoreStore implements AppStore {
   private objectRef(path: string) {
     const id = createHash("sha256").update(path).digest("hex");
     return this.database().collection("objects").doc(id);
+  }
+
+  private async writeLegacyObject(path: string, bytes: Buffer, contentType: string) {
+    const ref = this.objectRef(path);
+    const parts = Math.max(1, Math.ceil(bytes.length / OBJECT_CHUNK));
+    await ref.set({ path, contentType, parts, bytes: bytes.length });
+    for (let index = 0; index < parts; index += 1) {
+      const slice = bytes.subarray(index * OBJECT_CHUNK, (index + 1) * OBJECT_CHUNK);
+      await ref.collection("parts").doc(String(index)).set({ data: slice.toString("base64") });
+    }
+    const existing = await ref.collection("parts").get();
+    for (const doc of existing.docs) {
+      if (Number(doc.id) >= parts) await doc.ref.delete();
+    }
   }
 
   private async readLegacyObject(path: string) {

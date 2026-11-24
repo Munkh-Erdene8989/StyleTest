@@ -39,7 +39,14 @@ function bucket() {
   return getStorage(app).bucket(name);
 }
 
+export function storageUnavailable(error: unknown) {
+  if (error instanceof AppError && error.code === "firebase_unconfigured") return true;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /bucket does not exist|billing account .* disabled/i.test(message);
+}
+
 function isMissing(error: unknown) {
+  if (storageUnavailable(error)) return false;
   if (!error || typeof error !== "object" || !("code" in error)) return false;
   return error.code === 404 || error.code === "404";
 }
