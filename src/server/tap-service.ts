@@ -13,7 +13,7 @@ import { limit } from "./limit";
 import { checkInvoice, createInvoice, simulatePayAllowed } from "./qpay";
 import { settlePayment } from "./settlement";
 import { getStore } from "./store";
-import { createCloudConvertUpload, finishCloudConvertUpload } from "./cloudconvert-video";
+import { cancelCloudConvertJob, createCloudConvertUpload, finishCloudConvertUpload } from "./cloudconvert-video";
 import { acceptTapVideo, prepareTapPhoto, prepareTapVideo } from "./tap-media";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,8 +21,10 @@ const REPORT_LOCK_MS = 15 * 60 * 1000;
 
 export async function openTapVideo(user: User, seconds: number | null) {
   await limit(user.id, "tap_video_open", 12);
+  await discardPreviousVideoJob(user);
   const upload = await createCloudConvertUpload(seconds);
   await getStore().putObject(cloudJobKey(user.id, upload.jobId), Buffer.from(JSON.stringify({ phase: upload.phase })), "application/json");
+  await getStore().putObject(currentJobKey(user.id), Buffer.from(JSON.stringify({ jobId: upload.jobId })), "application/json");
   return { jobId: upload.jobId, url: upload.url, parameters: upload.parameters };
 }
 
@@ -243,7 +245,33 @@ async function preparedCloudVideo(user: User, jobId: string) {
   const phase = markerPhase(marker?.bytes);
   const prepared = await acceptTapVideo(await finishCloudConvertUpload(jobId, phase));
   await getStore().deleteObject(key);
+  const current = await getStore().getObject(currentJobKey(user.id));
+  if (readJobId(current?.bytes) === jobId) await getStore().deleteObject(currentJobKey(user.id));
   return prepared;
+}
+
+async function discardPreviousVideoJob(user: User) {
+  const current = await getStore().getObject(currentJobKey(user.id));
+  const jobId = readJobId(current?.bytes);
+  if (!jobId) return;
+  await cancelCloudConvertJob(jobId);
+  await getStore().deleteObject(cloudJobKey(user.id, jobId));
+  await getStore().deleteObject(currentJobKey(user.id));
+}
+
+function readJobId(bytes: Buffer | undefined) {
+  if (!bytes?.length) return "";
+  try {
+    const parsed = JSON.parse(bytes.toString("utf8")) as { jobId?: string };
+    return parsed.jobId && /^[A-Za-z0-9_-]{4,80}$/.test(parsed.jobId) ? parsed.jobId : "";
+  } catch {
+    return "";
+  }
+}
+
+function currentJobKey(userId: string) {
+  if (!userId || userId.includes("/") || userId.includes("..")) throw new AppError("invalid_video", 400);
+  return `private/${userId}/tap-cloudconvert-current`;
 }
 
 function markerPhase(bytes: Buffer | undefined) {

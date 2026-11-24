@@ -57,15 +57,49 @@ async function probeDuration(bytes: Buffer, key: string) {
   return duration;
 }
 
+const STALE_JOB_MS = 3 * 60 * 1000;
+
 export async function createCloudConvertUpload(duration: number | null) {
   const key = requireKey();
   if (duration !== null && (!Number.isFinite(duration) || duration <= 0)) fail("invalid_video", "bad_duration");
   if (duration !== null && videoTooLong(duration)) throw new AppError("video_too_long", 400);
+  try {
+    return await openUpload(key, duration);
+  } catch (error) {
+    if (!(error instanceof AppError) || error.code !== "cloudconvert_busy") throw error;
+    await releaseWaitingJobs(key);
+    return openUpload(key, duration);
+  }
+}
+
+export async function cancelCloudConvertJob(jobId: string) {
+  if (!/^[A-Za-z0-9_-]{4,80}$/.test(jobId)) return;
+  const key = process.env.CLOUDCONVERT_API_KEY ?? "";
+  if (!key) return;
+  await fetch(`${API}/jobs/${jobId}`, { method: "DELETE", headers: { Authorization: `Bearer ${key}` } }).catch(() => undefined);
+}
+
+async function openUpload(key: string, duration: number | null) {
   const phase = duration === null ? "probe" : "encode";
   const tasks = duration === null ? probeTasks() : encodeTasks(duration);
   const job = jobFrom(await request(key, "/jobs", { method: "POST", body: JSON.stringify({ tasks }) }));
   const form = uploadForm(job);
   return { jobId: job.id, url: form.url, parameters: form.parameters, phase };
+}
+
+async function releaseWaitingJobs(key: string) {
+  const response = await fetch(`${API}/jobs?filter[status]=waiting&per_page=100`, {
+    headers: { Authorization: `Bearer ${key}` },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) return;
+  const payload = (await response.json().catch(() => null)) as { data?: { id?: string; created_at?: string }[] } | null;
+  const cutoff = Date.now() - STALE_JOB_MS;
+  const stale = (payload?.data ?? []).filter((job) => {
+    const created = job.created_at ? Date.parse(job.created_at) : 0;
+    return Boolean(job.id) && (!created || created < cutoff);
+  });
+  await Promise.all(stale.map((job) => fetch(`${API}/jobs/${job.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${key}` } }).catch(() => undefined)));
 }
 
 export async function finishCloudConvertUpload(jobId: string, phase: "encode" | "probe") {
@@ -195,6 +229,7 @@ async function request(key: string, path: string, init?: RequestInit) {
     signal: AbortSignal.timeout(30_000),
   });
   const text = await response.text();
+  if (response.status === 402 && text.includes("PARALLEL_JOB_LIMIT")) throw new AppError("cloudconvert_busy", 429);
   if (!response.ok) fail("video_convert_failed", `cloudconvert_http_${response.status} ${text}`);
   try {
     return JSON.parse(text) as { data?: CloudJob };

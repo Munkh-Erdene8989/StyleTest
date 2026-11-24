@@ -791,6 +791,7 @@ function mediaError(code?: string) {
   if (code === "file_too_large" || code === "payload_too_large") return "Файл хэт том байна. Зураг 20MB, бичлэг 100MB хүртэл.";
   if (code === "invalid_image") return "Энэ файлыг зураг болгож уншиж чадсангүй.";
   if (code === "video_too_long") return "Бичлэг 15 секундээс урт байна.";
+  if (code === "cloudconvert_busy") return "Хөрвүүлэгч завгүй байна. Түр хүлээгээд дахин оролдоно уу.";
   if (code === "invalid_video" || code === "video_convert_failed") return "Энэ бичлэгийг хөрвүүлж чадсангүй. Өөр файл сонгоно уу.";
   if (code === "incomplete_upload" || code === "invalid_upload") return "Файл бүрэн илгээгдсэнгүй. Дахин оролдоно уу.";
   if (code === "rate_limited") return "Богино хугацаанд хэт олон илгээсэн байна. Түр хүлээгээд дахин оролдоно уу.";

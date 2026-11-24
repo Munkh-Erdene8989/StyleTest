@@ -113,6 +113,24 @@ describe("direct CloudConvert upload", () => {
     expect(body).not.toContain("encode-video");
   });
 
+  it("drops stale waiting jobs and opens a new upload when CloudConvert is full", async () => {
+    process.env.CLOUDCONVERT_API_KEY = "test-key";
+    let posts = 0;
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/jobs") && init?.method === "POST") {
+        posts += 1;
+        if (posts === 1) return new Response(JSON.stringify({ message: "You have started too many jobs at once", code: "PARALLEL_JOB_LIMIT_EXCEEDED" }), { status: 402 });
+        return json(waitingJob("job-new", "https://upload.test/direct"));
+      }
+      if (url.includes("filter")) return json([{ id: "stuck-job", status: "waiting", created_at: "2020-01-01T00:00:00.000Z" }]);
+      if (url.endsWith("/jobs/stuck-job") && init?.method === "DELETE") return new Response(null, { status: 204 });
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${url}`);
+    });
+    const upload = await createCloudConvertUpload(4);
+    expect(upload.jobId).toBe("job-new");
+    expect(posts).toBe(2);
+  });
+
   it("rejects a known duration over 15 seconds before creating a job", async () => {
     process.env.CLOUDCONVERT_API_KEY = "test-key";
     const fetchMock = vi.fn();
