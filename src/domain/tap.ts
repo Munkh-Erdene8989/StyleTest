@@ -90,12 +90,23 @@ export function checkLarsonVerdict(value: unknown): { status: "ready"; reading: 
     if (!instructions.length) return null;
     return { status: "retake", retake: { target, instructions } };
   }
+  if (row.status === "ready" && row.type === "none") {
+    const instructions = stringList(row.instructions);
+    const target = row.retakeTarget === "photo" || row.retakeTarget === "video" || row.retakeTarget === "both" ? row.retakeTarget : "both";
+    return {
+      status: "retake",
+      retake: {
+        target,
+        instructions: instructions.length ? instructions : ["Нүүрээ камер руу бүтэн харуулж, илүү гэрэлтэй дахин авна уу."],
+      },
+    };
+  }
   if (row.status !== "ready") return null;
   if (!LARSON_TYPES.includes(row.type as LarsonType)) return null;
   const traits = traitBlock(row.traits);
   const crops = cropBlock(row.crops);
-  const summary = cleanText(row.summary);
-  if (!traits || !crops || !summary) return null;
+  const summary = cleanText(row.summary) || "Нүүрний хэлбэрт тааруулсан өнгө, хувцасны чиглэл.";
+  if (!traits || !crops) return null;
   return { status: "ready", reading: { type: row.type as LarsonType, traits, summary, crops } };
 }
 
@@ -104,9 +115,7 @@ function traitBlock(value: unknown): LarsonTraits | null {
   const row = value as Record<string, unknown>;
   const traits = {} as LarsonTraits;
   for (const key of TRAIT_KEYS) {
-    const text = cleanText(row[key]);
-    if (!text) return null;
-    traits[key] = text;
+    traits[key] = cleanText(row[key]) || "Энэ хэсэг зураг дээр тодорхойгүй.";
   }
   return traits;
 }
@@ -126,19 +135,24 @@ function cropBlock(value: unknown): LarsonReading["crops"] | null {
 function cropBox(value: unknown): CropBox | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
-  const x = unit(row.x);
-  const y = unit(row.y);
-  const w = unit(row.w);
-  const h = unit(row.h);
+  let x = unit(row.x);
+  let y = unit(row.y);
+  let w = unit(row.w);
+  let h = unit(row.h);
   if (x === null || y === null || w === null || h === null) return null;
-  if (w < 0.04 || h < 0.04 || x + w > 1.02 || y + h > 1.02) return null;
+  if (w < 0.04) w = 0.08;
+  if (h < 0.04) h = 0.08;
+  if (x + w > 1) w = Math.max(0.04, 1 - x);
+  if (y + h > 1) h = Math.max(0.04, 1 - y);
+  if (x + w > 1) x = Math.max(0, 1 - w);
+  if (y + h > 1) y = Math.max(0, 1 - h);
   return { x, y, w, h };
 }
 
 function unit(value: unknown) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  if (value < 0 || value > 1) return null;
-  return value;
+  const number = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : Number.NaN;
+  if (!Number.isFinite(number) || number < -0.05 || number > 1.05) return null;
+  return Math.min(1, Math.max(0, number));
 }
 
 function cleanText(value: unknown) {

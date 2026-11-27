@@ -1,6 +1,6 @@
 import { checkLarsonVerdict, tapBodyLabel, type LarsonReading, type TapRetake } from "@/domain/tap";
 import { restoreTapImages } from "./larson-images";
-import { responsesJson } from "./model-transport";
+import { modelCreditsExhausted, responsesJson } from "./model-transport";
 
 const INSTRUCTIONS = `You are a personal styling assistant using a clearly labeled Larson-inspired four-family facial style framework. You are not performing medical diagnosis, identity recognition, personality assessment, beauty ranking, or definitive full-body Larson typing.
 
@@ -125,6 +125,7 @@ export async function analyzeLarson(images: Buffer[], bodyShape?: string | null)
     if (!verdict) console.error("larson_schema_rejected");
     return verdict;
   } catch (error) {
+    if (modelCreditsExhausted(error)) throw error;
     console.error("larson_analyze_failed", error instanceof Error ? error.message.slice(0, 180) : "unknown");
     return null;
   }

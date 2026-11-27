@@ -47,6 +47,11 @@ function clipDetail(text: string, max: number) {
   return text.replace(/\s+/g, " ").slice(0, max);
 }
 
+export function modelCreditsExhausted(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /credit_balance_exhausted|insufficient_quota|billing_hard_limit_reached|model_credits/i.test(message);
+}
+
 export async function responsesJson(input: ResponsesRequest): Promise<unknown> {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -135,12 +140,17 @@ export async function renderImage(input: ImageRequest): Promise<ModelImage> {
             output_format: input.outputFormat,
           }),
         });
-    if ((response.status === 429 || response.status >= 500) && attempt === 0) {
-      const retryAfter = Number(response.headers.get("retry-after"));
-      const waitSec = Math.min(20, Math.max(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 0, 2));
-      await delay(waitSec * 1000);
-      last = `image_http_${response.status}`;
-      continue;
+    if (response.status === 429 || response.status >= 500) {
+      const detail = clipDetail(await response.text(), 180);
+      if (response.status === 429 && modelCreditsExhausted(detail)) throw new Error(`model_credits:${detail}`);
+      if (attempt === 0) {
+        const retryAfter = Number(response.headers.get("retry-after"));
+        const waitSec = Math.min(20, Math.max(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 0, 2));
+        await delay(waitSec * 1000);
+        last = `image_http_${response.status}:${detail}`;
+        continue;
+      }
+      throw new Error(`image_http_${response.status}:${detail}`);
     }
     if (!response.ok) {
       const detail = clipDetail(await response.text(), 160);

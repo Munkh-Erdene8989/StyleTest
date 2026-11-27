@@ -77,4 +77,21 @@ describe("model transport", () => {
     expect(image.bytes.equals(PNG)).toBe(true);
     expect(image.inputTokens).toBe(4);
   });
+
+  it("does not retry an image call when the account has no credits", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const fetchMock = vi.fn(async () => new Response('{"error":{"code":"credit_balance_exhausted"}}', { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      renderImage({
+        model: "gpt-image-2.6-flare",
+        prompt: "палитр",
+        size: "1024x1024",
+        outputFormat: "jpeg",
+        quality: "medium",
+        timeoutMs: 30_000,
+      }),
+    ).rejects.toThrow(/model_credits/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

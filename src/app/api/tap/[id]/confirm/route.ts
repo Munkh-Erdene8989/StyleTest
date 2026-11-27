@@ -1,7 +1,7 @@
 import { confirmTap } from "@/server/tap-service";
 import { withGuest } from "@/server/http";
 
-export const maxDuration = 60;
+export const maxDuration = 800;
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   return withGuest(req, async (user) => {

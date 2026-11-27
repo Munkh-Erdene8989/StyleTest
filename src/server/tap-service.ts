@@ -331,7 +331,7 @@ async function linkUploads(user: User, tap: TapRecord) {
 }
 
 function scheduleReport(tap: TapRecord) {
-  if (tap.paymentStatus !== "paid" || reportLocked(tap)) return;
+  if (tap.paymentStatus !== "paid" || tap.reportStatus === "failed" || reportLocked(tap)) return;
   try {
     after(() => fulfillTap(tap.id));
   } catch {

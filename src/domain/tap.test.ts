@@ -25,6 +25,26 @@ describe("larson verdict", () => {
     expect(checkLarsonVerdict({ status: "retake", retakeTarget: "video", instructions: [] })).toBeNull();
   });
 
+  it("keeps a usable reading when a crop sits slightly outside the frame", () => {
+    const verdict = checkLarsonVerdict({
+      ...ready(),
+      traits: { ...ready().traits, chin: "" },
+      summary: "",
+      crops: { ...ready().crops, chin: { x: 0.2, y: 0.9, w: 0.95, h: 0.2 } },
+    });
+    expect(verdict?.status).toBe("ready");
+    if (verdict?.status !== "ready") return;
+    expect(verdict.reading.traits.chin).toBe("Энэ хэсэг зураг дээр тодорхойгүй.");
+    expect(verdict.reading.summary.length).toBeGreaterThan(0);
+    expect(verdict.reading.crops.chin.x + verdict.reading.crops.chin.w).toBeLessThanOrEqual(1);
+  });
+
+  it("turns a ready result with no Larson type into a retake", () => {
+    const verdict = checkLarsonVerdict({ ...ready("none"), retakeTarget: "none", instructions: [] });
+    expect(verdict?.status).toBe("retake");
+    if (verdict?.status === "retake") expect(verdict.retake.instructions.length).toBeGreaterThan(0);
+  });
+
   it("keeps a retake that names the file to repeat", () => {
     const verdict = checkLarsonVerdict({ status: "retake", retakeTarget: "both", instructions: ["Нүүрээ бүтэн харуулна уу."] });
     expect(verdict).toEqual({ status: "retake", retake: { target: "both", instructions: ["Нүүрээ бүтэн харуулна уу."] } });

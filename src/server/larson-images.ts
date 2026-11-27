@@ -1,7 +1,7 @@
 import { imageFormatOk } from "@/domain/images";
 import { tapBodyLabel, type LarsonReading, type TapBodyShape } from "@/domain/tap";
 import { larsonSheet } from "@/content/larson/catalog";
-import { renderImage, type ImageRequest, type ModelImage } from "./model-transport";
+import { modelCreditsExhausted, renderImage, type ImageRequest, type ModelImage } from "./model-transport";
 
 const BODY = {
   hourglass: "upper and lower body similar, with a defined waist",
@@ -187,12 +187,19 @@ export async function restoreTapImages(
 ): Promise<Buffer[] | null> {
   if (!process.env.OPENAI_API_KEY || images.length !== 4) return null;
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.6-flare";
-  const made = await pool(images.map((bytes) => () => cleanFrame(render, model, bytes)), 2);
+  const gate = { stop: false };
+  const made = await pool(images.map((bytes) => () => cleanFrame(render, model, bytes, gate)), 2);
   if (made.every((item) => !item)) return null;
   return images.map((original, index) => made[index] ?? original);
 }
 
-async function cleanFrame(render: (input: ImageRequest) => Promise<ModelImage>, model: string, photo: Buffer) {
+async function cleanFrame(
+  render: (input: ImageRequest) => Promise<ModelImage>,
+  model: string,
+  photo: Buffer,
+  gate: { stop: boolean },
+) {
+  if (gate.stop) return null;
   try {
     const image = await render({
       model,
@@ -205,7 +212,8 @@ async function cleanFrame(render: (input: ImageRequest) => Promise<ModelImage>, 
     });
     if (!imageFormatOk(image.bytes, "image/jpeg") && !imageFormatOk(image.bytes, "image/png")) return null;
     return image.bytes;
-  } catch {
+  } catch (error) {
+    if (modelCreditsExhausted(error)) gate.stop = true;
     return null;
   }
 }
@@ -220,7 +228,8 @@ export async function createLarsonArt(
   if (!process.env.OPENAI_API_KEY) return empty;
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.6-flare";
   const jobs = larsonImageJobs(reading, bodyShape);
-  const made = await pool(jobs.map((job) => () => draw(render, model, photo, job)), 3);
+  const gate = { stop: false };
+  const made = await pool(jobs.map((job) => () => draw(render, model, photo, job, gate)), 3);
   for (const [index, job] of jobs.entries()) {
     const bytes = made[index];
     if (!bytes) continue;
@@ -236,7 +245,14 @@ export async function createLarsonArt(
   return empty;
 }
 
-async function draw(render: (input: ImageRequest) => Promise<ModelImage>, model: string, photo: Buffer, job: LarsonImageJob) {
+async function draw(
+  render: (input: ImageRequest) => Promise<ModelImage>,
+  model: string,
+  photo: Buffer,
+  job: LarsonImageJob,
+  gate: { stop: boolean },
+) {
+  if (gate.stop) return null;
   try {
     const image = await render({
       model,
@@ -254,6 +270,7 @@ async function draw(render: (input: ImageRequest) => Promise<ModelImage>, model:
     console.log("larson_image_ok", job.slot, job.index);
     return image.bytes;
   } catch (error) {
+    if (modelCreditsExhausted(error)) gate.stop = true;
     console.error("larson_image_failed", job.slot, job.index, error instanceof Error ? error.message.slice(0, 160) : "unknown");
     return null;
   }

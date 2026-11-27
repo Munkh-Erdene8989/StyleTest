@@ -39,7 +39,12 @@ export function faceCrops(crops: LarsonReading["crops"]): LarsonReading["crops"]
 }
 
 export async function renderTapPdf(photo: Buffer, reading: LarsonReading, bodyShape?: TapBodyShape) {
-  const art = await createLarsonArt(photo, reading, bodyShape);
+  let art: LarsonGenerated | undefined;
+  try {
+    art = await createLarsonArt(photo, reading, bodyShape);
+  } catch (error) {
+    console.error("larson_art_failed", error instanceof Error ? error.message.slice(0, 180) : "unknown");
+  }
   const html = await renderLarsonHtml(photo, reading, bodyShape, art);
   const pdf = await printHtmlToPdf(html);
   return assertTapPdf(pdf);
