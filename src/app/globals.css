@@ -3304,7 +3304,42 @@ body:has(.admin-root) .shell > main {
 }
 
 .tap-step-copy .tap-actions {
-  justify-content: flex-start;
+  display: grid;
+  justify-content: stretch;
+  gap: 0.6rem;
+}
+
+.tap-window .tap-pay-check {
+  width: 100%;
+}
+
+.tap-pay-copy {
+  padding: 1.5rem;
+  gap: 1rem;
+}
+
+.tap-banks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.tap-bank {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
+  padding: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1.15rem;
+  background: #fff;
+}
+
+.tap-bank img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .tap-window .tap-guide-stage {

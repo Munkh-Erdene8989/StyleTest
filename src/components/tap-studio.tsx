@@ -586,20 +586,13 @@ function TapResult({
   if (tap.paymentStatus !== "paid") {
     return (
       <div className="tap-window-body">
-        <div className="tap-step-copy">
+        <div className="tap-step-copy tap-pay-copy">
           <p>
             {formatMnt(tap.amount)}₮. Төлбөр баталгаажмагц тайлан {tap.email} хаяг руу очно.
           </p>
           {tap.qrImage ? <img className="tap-qr" src={tap.qrImage} alt="QPay QR" /> : null}
-          <div className="tap-links">
-            {tap.urls.map((url) => (
-              <a key={url.link} className="btn-quiet" href={url.link}>
-                {url.name}
-              </a>
-            ))}
-          </div>
           <div className="tap-actions">
-            <button type="button" className="btn" disabled={pending} onClick={onConfirm}>
+            <button type="button" className="btn tap-pay-check" disabled={pending} onClick={onConfirm}>
               Төлбөр шалгах
             </button>
             {tap.simulate ? (
@@ -607,6 +600,13 @@ function TapResult({
                 Туршилтын төлбөр
               </button>
             ) : null}
+          </div>
+          <div className="tap-banks">
+            {tap.urls.filter((url) => url.logo).map((url) => (
+              <a key={url.link} className="tap-bank" href={url.link} aria-label={url.name}>
+                <img src={url.logo} alt="" />
+              </a>
+            ))}
           </div>
         </div>
       </div>
